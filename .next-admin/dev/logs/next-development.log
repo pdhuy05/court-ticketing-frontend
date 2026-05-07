@@ -1,2 +1,3 @@
 {"timestamp":"00:00:07.032","source":"Server","level":"LOG","message":""}
 {"timestamp":"00:00:07.955","source":"Browser","level":"ERROR","message":"uncaughtError: Error: Internal Next.js error: Router action dispatched before initialization."}
+{"timestamp":"00:37:12.820","source":"Browser","level":"ERROR","message":"./src/lib/role-routing.ts\nError: \n\nCaused by:\n    0: Failed to read source code from /Users/dinhhungpham/Downloads/hethonglaysotudong-fe/src/lib/role-routing.ts\n    1: No such file or directory (os error 2)\n\nImport trace for requested module:\n./src/lib/role-routing.ts\n./src/app/(admin)/layout.tsx"}

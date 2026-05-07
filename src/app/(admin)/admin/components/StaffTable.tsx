@@ -459,8 +459,24 @@ export default function StaffTable() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button className="admin-table-btn" onClick={() => handleOpenModal()}>
-            + Thêm Mới
+          <button
+            onClick={() => handleOpenModal()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "9px 14px",
+              background: "#003366",
+              color: "white",
+              border: "none",
+              borderRadius: "20px",
+              fontSize: "14px",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: "18px", lineHeight: 1 }}>+</span>
+            Thêm mới
           </button>
         </div>
       </div>
@@ -468,108 +484,536 @@ export default function StaffTable() {
       {loading ? (
         <div className="admin-table-loading">Đang tải...</div>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Tên đăng nhập</th>
-              <th>Họ và tên</th>
-              <th>Phòng trực</th>
-              <th>Quầy trực</th>
-              <th>Trạng thái</th>
-              <th>Đăng nhập</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.map((staff) => (
-              <tr key={staff._id}>
-                <td>
-                  <strong>{staff.username}</strong>
-                </td>
-                <td>{staff.fullName}</td>
-                <td>
-                  {staff.counterId ? (
-                    getCounterDisplay(staff)
-                  ) : (
-                    <span style={{ color: "#999" }}>Chưa gán</span>
-                  )}
-                </td>
-                <td>
-                  {staff.effectiveServices && staff.effectiveServices.length > 0 ? (
-                    <div className="table-cell-counters">
-                      {staff.effectiveServices.map((service) => {
-                        const serviceId = service.id || service._id;
-                        const tagStyle = serviceColorMap.get(serviceId);
+        <table
+  style={{
+    width: "100%",
+    borderCollapse: "separate",
+    borderSpacing: "0 8px",
+    background: "transparent",
+    fontSize: "clamp(13px, 0.9vw, 14px)",
+    textAlign: "left",
+  }}
+>
+  <thead>
+    <tr>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          borderRadius: "12px 0 0 12px",
+        }}
+      >
+        Tên đăng nhập
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Họ và tên
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Phòng trực
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Quầy trực
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Trạng thái
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Đăng nhập
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          borderRadius: "0 12px 12px 0",
+        }}
+      >
+        Hành động
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    {loading ? (
+      <tr>
+        <td
+          colSpan={7}
+          style={{
+            padding: "48px 24px",
+            textAlign: "center",
+            background: "white",
+            borderRadius: "12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              color: "#64748b",
+            }}
+          >
+            <div
+              style={{
+                width: "20px",
+                height: "20px",
+                border: "2px solid #e2e8f0",
+                borderTopColor: "#1e4775",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+            Đang tải...
+          </div>
+        </td>
+      </tr>
+    ) : currentItems.length > 0 ? (
+      currentItems.map((staff) => (
+        <tr
+          key={staff._id}
+          style={{
+            background: "white",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f8fafc";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "white";
+          }}
+        >
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              borderLeft: "1px solid #eef2f6",
+              borderRadius: "12px 0 0 12px",
+              fontWeight: 600,
+              color: "#1e293b",
+            }}
+          >
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #1e4775 0%, #2d5a8c 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "white",
+                }}
+              >
+                {staff.username?.charAt(0).toUpperCase() || "U"}
+              </span>
+              <span style={{ fontWeight: 600 }}>{staff.username}</span>
+            </span>
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              color: "#475569",
+              fontWeight: 500,
+            }}
+          >
+            {staff.fullName || (
+              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>
+                Chưa cập nhật
+              </span>
+            )}
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+            }}
+          >
+            {staff.counterId ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "4px 12px",
+                  borderRadius: "20px",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  background: "#e0e7ff",
+                  color: "#3730a3",
+                }}
+              >
+                {getCounterDisplay(staff)}
+              </span>
+            ) : (
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                  fontStyle: "italic",
+                }}
+              >
+                — Chưa gán —
+              </span>
+            )}
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px",
+              }}
+            >
+              {staff.effectiveServices && staff.effectiveServices.length > 0 ? (
+                staff.effectiveServices.map((service) => {
+                  const serviceId = service.id || service._id;
+                  const tagStyle = serviceColorMap.get(serviceId) || {
+                    background: "#dbeafe",
+                    border: "#2563eb",
+                    color: "#1e3a8a",
+                  };
 
-                        return (
-                          <span
-                            key={serviceId}
-                            className="table-cell-tag"
-                            style={{
-                              background: tagStyle?.background || "#bfdbfe",
-                              borderLeftColor: tagStyle?.border || "#2563eb",
-                              color: tagStyle?.color || "#1e3a8a",
-                            }}
-                          >
-                            {service.name}
-                            {service.code ? ` (${service.code})` : ""}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ) : staff.serviceRestrictionConfigured ? (
-                    <span className="admin-empty-info">Không có quầy</span>
-                  ) : (
-                    <span style={{ color: "#666", fontStyle: "italic", fontSize: "0.9em" }}>
-                      Tất cả (mặc định)
+                  return (
+                    <span
+                      key={serviceId}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                        fontSize: "11px",
+                        fontWeight: 500,
+                        background: tagStyle.background,
+                        borderLeft: `3px solid ${tagStyle.border}`,
+                        color: tagStyle.color,
+                      }}
+                    >
+                       {service.name}
+                      {service.code ? ` (${service.code})` : ""}
                     </span>
-                  )}
-                </td>
-                <td>
-                  <span
-                    className={`table-cell-status ${
-                      staff.isActive ? "status-true" : "status-false"
-                    }`}
-                  >
-                    {staff.isActive ? "Hoạt động" : "Vô hiệu"}
-                  </span>
-                </td>
-                <td>
-                  {staff.lastLoginAt
-                    ? new Date(staff.lastLoginAt).toLocaleString("vi-VN")
-                    : "Chưa đăng nhập"}
-                </td>
-                <td>
-                  <div className="table-actions">
-                    <button
-                      className="table-action-btn table-action-edit"
-                      onClick={() => handleOpenModal(staff)}
-                      title="Sửa"
-                    >
-                      <FiEdit size={18} />
-                    </button>
-                    <button
-                      className="table-action-btn"
-                      style={{ background: "transparent", color: "#000", border: "none" }}
-                      onClick={() => handleOpenServiceModal(staff)}
-                      title="Phân quyền quầy"
-                      disabled={!staff.counterId}
-                    >
-                      <FiRepeat size={16} color="#000" />
-                    </button>
-                    <button
-                      className="table-action-btn table-action-delete"
-                      onClick={() => handleDelete(staff._id)}
-                      title="Xóa"
-                    >
-                      <RiDeleteBin6Line size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  );
+                })
+              ) : staff.serviceRestrictionConfigured ? (
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    fontStyle: "italic",
+                  }}
+                >
+                  — Không có quầy —
+                </span>
+              ) : (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "4px 10px",
+                    borderRadius: "20px",
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    background: "#f1f5f9",
+                    color: "#64748b",
+                  }}
+                >
+                  📋 Tất cả (mặc định)
+                </span>
+              )}
+            </div>
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "4px 12px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                fontWeight: 600,
+                background: staff.isActive ? "#f0fdf4" : "#fef2f2",
+                color: staff.isActive ? "#166534" : "#991b1b",
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  background: staff.isActive ? "#10b981" : "#ef4444",
+                }}
+              />
+              {staff.isActive ? "Hoạt động" : "Vô hiệu"}
+            </span>
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              color: "#64748b",
+              fontSize: "12px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {staff.lastLoginAt ? (
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                {new Date(staff.lastLoginAt).toLocaleString("vi-VN")}
+              </span>
+            ) : (
+              <span
+                style={{
+                  color: "#94a3b8",
+                  fontStyle: "italic",
+                }}
+              >
+                Chưa đăng nhập
+              </span>
+            )}
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              borderRight: "1px solid #eef2f6",
+              borderRadius: "0 12px 12px 0",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <button
+                onClick={() => handleOpenModal(staff)}
+                title="Sửa thông tin"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#eff6ff",
+                  color: "#2563eb",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#dbeafe";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#eff6ff";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <FiEdit size={16} />
+              </button>
+              <button
+                onClick={() => handleOpenServiceModal(staff)}
+                title="Phân quyền quầy"
+                disabled={!staff.counterId}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: staff.counterId ? "#fef3c7" : "#f1f5f9",
+                  color: staff.counterId ? "#d97706" : "#94a3b8",
+                  cursor: staff.counterId ? "pointer" : "not-allowed",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                  opacity: staff.counterId ? 1 : 0.5,
+                }}
+                onMouseEnter={(e) => {
+                  if (staff.counterId) {
+                    e.currentTarget.style.background = "#fde68a";
+                    e.currentTarget.style.transform = "scale(1.05)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (staff.counterId) {
+                    e.currentTarget.style.background = "#fef3c7";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }
+                }}
+              >
+                <FiRepeat size={14} />
+              </button>
+              <button
+                onClick={() => handleDelete(staff._id)}
+                title="Xóa nhân viên"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#fef2f2",
+                  color: "#dc2626",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#fee2e2";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fef2f2";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <RiDeleteBin6Line size={16} />
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))
+    ) : (
+      <tr>
+        <td
+          colSpan={7}
+          style={{
+            padding: "48px 24px",
+            textAlign: "center",
+            background: "white",
+            borderRadius: "12px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "48px",
+              marginBottom: "12px",
+              opacity: 0.5,
+            }}
+          >
+            👥
+          </div>
+          <div
+            style={{
+              fontSize: "18px",
+              fontWeight: 500,
+              color: "#64748b",
+              marginBottom: "8px",
+            }}
+          >
+            Không có nhân viên nào
+          </div>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#94a3b8",
+            }}
+          >
+            Nhấn "Thêm Mới" để thêm nhân viên đầu tiên
+          </div>
+        </td>
+      </tr>
+    )}
+  </tbody>
+</table>
+
       )}
 
       <div className="admin-table-footer">
@@ -584,136 +1028,628 @@ export default function StaffTable() {
       )}
 
       {showModal && (
-        <div className="admin-modal">
-          <div className="admin-modal-content">
-            <button className="admin-modal-close" onClick={handleCloseModal}>
-              ×
-            </button>
-            <h3>{editingId ? "Chỉnh Sửa Nhân Viên" : "Thêm Nhân Viên Mới"}</h3>
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.6)",
+      backdropFilter: "blur(4px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      animation: "fadeIn 0.2s ease",
+    }}
+    onClick={handleCloseModal}
+  >
+    <div
+      style={{
+        background: "white",
+        borderRadius: "24px",
+        width: "90%",
+        maxWidth: "1000px",
+        maxHeight: "90vh",
+        overflow: "auto",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        animation: "slideUp 0.3s ease",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          background: "white",
+          borderBottom: "1px solid #eef2f6",
+          padding: "20px 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          zIndex: 10,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: "22px",
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {editingId ? "Chỉnh Sửa Nhân Viên" : "Thêm Nhân Viên Mới"}
+          </h2>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: "13px",
+              color: "#94a3b8",
+            }}
+          >
+            {editingId
+              ? "Cập nhật thông tin nhân viên"
+              : "Tạo tài khoản nhân viên mới để quản lý hệ thống"}
+          </p>
+        </div>
+        <button
+          onClick={handleCloseModal}
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "12px",
+            border: "none",
+            background: "#f1f5f9",
+            fontSize: "24px",
+            cursor: "pointer",
+            color: "#64748b",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#fee2e2";
+            e.currentTarget.style.color = "#dc2626";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#f1f5f9";
+            e.currentTarget.style.color = "#64748b";
+          }}
+        >
+          ×
+        </button>
+      </div>
 
-            <div className="admin-form-grid">
-              <div className="admin-form-left">
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Tên đăng nhập:</label>
-                  <input
-                    type="text"
-                    className="admin-form-input"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    disabled={!!editingId}
-                  />
-                </div>
+      {/* Body */}
+      <div style={{ padding: "28px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "32px",
+          }}
+        >
+          {/* Left Column */}
+          <div>
+            {/* Tên đăng nhập */}
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Tên đăng nhập <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
+                disabled={!!editingId}
+                placeholder="Nhập tên đăng nhập"
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  fontSize: "14px",
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "12px",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                  backgroundColor: editingId ? "#f8fafc" : "#fff",
+                  cursor: editingId ? "not-allowed" : "text",
+                  opacity: editingId ? 0.7 : 1,
+                  fontWeight: 500,
+                }}
+                onFocus={(e) => {
+                  if (!editingId) {
+                    e.target.style.borderColor = "#3b82f6";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                  }
+                }}
+                onBlur={(e) => {
+                  if (!editingId) {
+                    e.target.style.borderColor = "#e2e8f0";
+                    e.target.style.boxShadow = "none";
+                  }
+                }}
+              />
+            </div>
 
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Mật khẩu:</label>
-                  <input
-                    type="password"
-                    className="admin-form-input"
-                    placeholder={editingId ? "Để trống nếu không đổi mật khẩu" : ""}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Họ và tên:</label>
-                  <input
-                    type="text"
-                    className="admin-form-input"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="admin-form-right">
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Gán phòng:</label>
-                  <select
-                    className="admin-form-input"
-                    value={formData.counterId || ""}
-                    onChange={(e) => handleFormCounterChange(e.target.value || null)}
+            {/* Mật khẩu */}
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Mật khẩu {!editingId && <span style={{ color: "#ef4444" }}>*</span>}
+                {editingId && (
+                  <span
+                    style={{
+                      marginLeft: "8px",
+                      fontSize: "11px",
+                      color: "#94a3b8",
+                      fontWeight: 400,
+                    }}
                   >
-                    <option value="">Không gán</option>
-                    {counters.map((counter) => (
-                      <option key={counter._id} value={counter._id}>
-                        {counter.name} ({counter.code})
-                      </option>
-                    ))}
-                  </select>
+                    (Để trống nếu không đổi)
+                  </span>
+                )}
+              </label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                placeholder={editingId ? "Nhập mật khẩu mới nếu muốn đổi" : "Nhập mật khẩu"}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  fontSize: "14px",
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "12px",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#3b82f6";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
 
-                  <div className="admin-form-hint">
-                    Sau khi lưu gán phòng, hệ thống sẽ chuyển sang bước chọn quầy.
+            {/* Họ và tên */}
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Họ và tên <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.fullName}
+                onChange={(e) =>
+                  setFormData({ ...formData, fullName: e.target.value })
+                }
+                placeholder="Nhập họ và tên"
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  fontSize: "14px",
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "12px",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#3b82f6";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div>
+            {/* Gán phòng */}
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Gán phòng
+              </label>
+              <select
+                value={formData.counterId || ""}
+                onChange={(e) => handleFormCounterChange(e.target.value || null)}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  fontSize: "14px",
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "12px",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                  backgroundColor: "white",
+                  cursor: "pointer",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#3b82f6";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.boxShadow = "none";
+                }}
+              >
+                <option value="">— Không gán phòng —</option>
+                {counters.map((counter) => (
+                  <option key={counter._id} value={counter._id}>
+                    {counter.name} ({counter.code})
+                  </option>
+                ))}
+              </select>
+              <div
+                style={{
+                  marginTop: "8px",
+                  padding: "8px 12px",
+                  background: "#f0fdf4",
+                  borderRadius: "10px",
+                  fontSize: "11px",
+                  color: "#166534",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                Sau khi lưu gán phòng, hệ thống sẽ chuyển sang bước chọn quầy
+              </div>
+            </div>
+
+            {/* Quầy áp dụng - Chỉ hiển thị khi đã chọn phòng */}
+            {formData.counterId && (
+              <div style={{ marginBottom: "24px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "12px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#334155",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Quầy áp dụng cho nhân viên
+                  <span
+                    style={{
+                      marginLeft: "8px",
+                      fontSize: "11px",
+                      color: "#94a3b8",
+                      fontWeight: 400,
+                    }}
+                  >
+                    ({formAvailableServices.length} quầy)
+                  </span>
+                </label>
+
+                {formAvailableServices.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "40px 20px",
+                      textAlign: "center",
+                      background: "#fafbfc",
+                      border: "2px dashed #e2e8f0",
+                      borderRadius: "16px",
+                      color: "#94a3b8",
+                    }}
+                  >
+                    <div style={{ fontSize: "40px", marginBottom: "8px" }}>
+                      📭
+                    </div>
+                    <div style={{ fontSize: "14px" }}>Phòng này chưa có quầy nào</div>
+                    <div style={{ fontSize: "12px", marginTop: "4px" }}>
+                      Vui lòng thêm quầy vào phòng trước
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div
+                    style={{
+                      border: "2px solid #e2e8f0",
+                      borderRadius: "16px",
+                      padding: "12px",
+                      maxHeight: "240px",
+                      overflowY: "auto",
+                      background: "#fafbfc",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                      }}
+                    >
+                      {formAvailableServices.map((service) => {
+                        const id = service.id || service._id;
+                        const checked = formSelectedServiceIds.has(id);
 
-                {formData.counterId && (
-                  <div className="admin-form-group">
-                    <label className="admin-form-label">Quầy áp dụng cho nhân viên</label>
-
-                    {formAvailableServices.length === 0 ? (
-                      <div className="admin-empty">Phòng này chưa có quầy nào.</div>
-                    ) : (
-                      <div className="admin-service-list">
-                        {formAvailableServices.map((service) => {
-                          const id = service.id || service._id;
-                          const checked = formSelectedServiceIds.has(id);
-
-                          return (
-                            <label
-                              key={id}
-                              className={`admin-service-item ${checked ? "active" : ""}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => handleToggleFormService(id)}
-                              />
-                              <div>
-                                <div className="service-name">{service.name}</div>
-                                <div className="service-code">{service.code}</div>
+                        return (
+                          <label
+                            key={id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                              padding: "12px",
+                              background: checked ? "#eff6ff" : "white",
+                              border: `1px solid ${
+                                checked ? "#3b82f6" : "#e2e8f0"
+                              }`,
+                              borderRadius: "12px",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!checked) {
+                                e.currentTarget.style.borderColor = "#94a3b8";
+                                e.currentTarget.style.background = "#f8fafc";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!checked) {
+                                e.currentTarget.style.borderColor = "#e2e8f0";
+                                e.currentTarget.style.background = "white";
+                              }
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => handleToggleFormService(id)}
+                              style={{
+                                width: "18px",
+                                height: "18px",
+                                cursor: "pointer",
+                                accentColor: "#3b82f6",
+                              }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div
+                                style={{
+                                  fontWeight: 600,
+                                  fontSize: "14px",
+                                  color: "#1e293b",
+                                  marginBottom: "2px",
+                                }}
+                              >
+                                {service.name}
                               </div>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {formAvailableServices.length > 0 && formSelectedServiceIds.size === 0 && (
-                      <div className="admin-error">Không chọn quầy nào.</div>
-                    )}
+                              <div
+                                style={{
+                                  fontSize: "11px",
+                                  color: "#94a3b8",
+                                }}
+                              >
+                                Mã: {service.code}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
-                <div className="admin-form-group">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={formData.isActive}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          isActive: e.target.checked,
-                        })
-                      }
-                    />{" "}
-                    Kích hoạt tài khoản
-                  </label>
-                </div>
-              </div>
-            </div>
+                {formAvailableServices.length > 0 && formSelectedServiceIds.size === 0 && (
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      padding: "8px 12px",
+                      background: "#fef2f2",
+                      borderRadius: "10px",
+                      fontSize: "12px",
+                      color: "#dc2626",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    Vui lòng chọn ít nhất một quầy cho nhân viên
+                  </div>
+                )}
 
-            <div className="admin-form-actions">
-              <button className="submit" onClick={handleSave}>
-                Lưu
-              </button>
-              <button className="cancel" onClick={handleCloseModal}>
-                Hủy
-              </button>
+                {formSelectedServiceIds.size > 0 && (
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      padding: "8px 12px",
+                      background: "#eff6ff",
+                      borderRadius: "10px",
+                      fontSize: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span>
+                      Đã chọn <strong>{formSelectedServiceIds.size}</strong> quầy
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Kích hoạt tài khoản */}
+            <div>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px",
+                  padding: "16px",
+                  background: formData.isActive ? "#f0fdf4" : "#fef2f2",
+                  border: `2px solid ${formData.isActive ? "#bbf7d0" : "#fecaca"}`,
+                  borderRadius: "16px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.isActive}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      isActive: e.target.checked,
+                    })
+                  }
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    cursor: "pointer",
+                    accentColor: formData.isActive ? "#10b981" : "#ef4444",
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      color: formData.isActive ? "#166534" : "#991b1b",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    {formData.isActive ? "Tài khoản hoạt động" : "Tài khoản bị khóa"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: formData.isActive ? "#26b85e" : "#ff8484",
+                    }}
+                  >
+                    {formData.isActive
+                      ? "Nhân viên có thể đăng nhập và làm việc"
+                      : "Nhân viên không thể đăng nhập vào hệ thống"}
+                  </div>
+                </div>
+              </label>
             </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Footer Actions */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          background: "white",
+          borderTop: "1px solid #eef2f6",
+          padding: "16px 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: "12px",
+        }}
+      >
+        <button
+          onClick={handleCloseModal}
+          style={{
+            padding: "10px 24px",
+            background: "white",
+            color: "#64748b",
+            border: "2px solid #e2e8f0",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f8fafc";
+            e.currentTarget.style.borderColor = "#cbd5e1";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "white";
+            e.currentTarget.style.borderColor = "#e2e8f0";
+          }}
+        >
+          Hủy bỏ
+        </button>
+        <button
+          onClick={handleSave}
+          style={{
+            padding: "10px 28px",
+            background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+            color: "white",
+            border: "none",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: "0 4px 6px rgba(37, 99, 235, 0.2)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 6px 12px rgba(37, 99, 235, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 6px rgba(37, 99, 235, 0.2)";
+          }}
+        >
+          {editingId ? "Cập nhật" : "Thêm nhân viên"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <AdminConfirmDialog
         isOpen={showDeleteConfirm}

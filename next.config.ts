@@ -1,9 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-     allowedDevOrigins: ["192.168.1.241"], 
+  allowedDevOrigins: [
+    "192.168.1.19",
+    "localhost",
+  ],
+
   async rewrites() {
-      const backendUrl = process.env.BACKEND_API_URL || "http://192.168.1.241:6060"; 
+    const backendUrl =
+      process.env.BACKEND_API_URL || "http://localhost:6060";
+
     return [
       {
         source: "/api/:path*",
@@ -11,6 +17,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
   onDemandEntries: {
     maxInactiveAge: 60 * 1000,
     pagesBufferLength: 5,

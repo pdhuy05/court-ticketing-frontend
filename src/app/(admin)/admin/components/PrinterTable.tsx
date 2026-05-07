@@ -273,8 +273,24 @@ export default function PrinterTable() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button className="admin-table-btn" onClick={() => handleOpenModal()}>
-            + Thêm Mới
+          <button
+            onClick={() => handleOpenModal()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "9px 14px",
+              background: "#003366",
+              color: "white",
+              border: "none",
+              borderRadius: "20px",
+              fontSize: "14px",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: "18px", lineHeight: 1 }}>+</span>
+            Thêm mới
           </button>
         </div>
       </div>
@@ -284,69 +300,320 @@ export default function PrinterTable() {
       ) : filteredPrinters.length === 0 ? (
         <div className="admin-table-empty">Không có máy in nào</div>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Tên Máy In</th>
-              <th>Mã Máy In</th>
-              <th>Vị trí</th>
-              <th>Kết nối IP Wifi</th>
-              <th>Trạng thái</th>
-              <th>Mặc định in</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.map((printer) => (
-              <tr key={printer._id}>
-                <td>
-                  <strong>{printer.name}</strong>
-                </td>
-                <td>{printer.code}</td>
-                <td>{printer.location}</td>
-                <td>
-                  {printer.connection.host}:{printer.connection.port}
-                </td>
-                <td>
-                  <span
-                    className={`table-cell-status ${
-                      printer.isActive ? "status-true" : "status-false"
-                    }`}
-                  >
-                    {printer.isActive ? "Hoạt động" : "Vô hiệu"}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={`table-cell-status ${
-                      printer.isDefault ? "status-true" : "status-false"
-                    }`}
-                  >
-                    {printer.isDefault ? "Có" : "Không"}
-                  </span>
-                </td>
-                <td>
-                  <div className="table-actions">
-                    <button
-                      className="table-action-btn table-action-edit"
-                      onClick={() => handleOpenModal(printer)}
-                      title="Sửa"
-                    >
-                      <FiEdit size={18} />
-                    </button>
-                    <button
-                      className="table-action-btn table-action-delete"
-                      onClick={() => handleDelete(printer._id)}
-                      title="Xóa"
-                    >
-                      <RiDeleteBin6Line size={18} />
-                    </button>
-                  </div>
-                </td>
+        <table
+            style={{
+              width: "100%",
+              borderCollapse: "separate",
+              borderSpacing: "0 8px",
+              background: "transparent",
+              fontSize: "clamp(13px, 0.9vw, 14px)",
+              textAlign: "left",
+            }}
+          >
+            <thead>
+              <tr>
+                <th
+                  style={{
+                    padding: "clamp(10px, 1.5vh, 14px) 16px",
+                    background: "#1e4775",
+                    color: "white",
+                    fontSize: "clamp(12px, 0.85vw, 13px)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: "12px 0 0 12px",
+                  }}
+                >
+                  Tên Máy In
+                </th>
+                <th
+                  style={{
+                    padding: "clamp(10px, 1.5vh, 14px) 16px",
+                    background: "#1e4775",
+                    color: "white",
+                    fontSize: "clamp(12px, 0.85vw, 13px)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Mã Máy In
+                </th>
+                <th
+                  style={{
+                    padding: "clamp(10px, 1.5vh, 14px) 16px",
+                    background: "#1e4775",
+                    color: "white",
+                    fontSize: "clamp(12px, 0.85vw, 13px)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Vị trí
+                </th>
+                <th
+                  style={{
+                    padding: "clamp(10px, 1.5vh, 14px) 16px",
+                    background: "#1e4775",
+                    color: "white",
+                    fontSize: "clamp(12px, 0.85vw, 13px)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Kết nối
+                </th>
+                <th
+                  style={{
+                    padding: "clamp(10px, 1.5vh, 14px) 16px",
+                    background: "#1e4775",
+                    color: "white",
+                    fontSize: "clamp(12px, 0.85vw, 13px)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Trạng thái
+                </th>
+                <th
+                  style={{
+                    padding: "clamp(10px, 1.5vh, 14px) 16px",
+                    background: "#1e4775",
+                    color: "white",
+                    fontSize: "clamp(12px, 0.85vw, 13px)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Mặc định
+                </th>
+                <th
+                  style={{
+                    padding: "clamp(10px, 1.5vh, 14px) 16px",
+                    background: "#1e4775",
+                    color: "white",
+                    fontSize: "clamp(12px, 0.85vw, 13px)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    borderRadius: "0 12px 12px 0",
+                  }}
+                >
+                  Hành động
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {currentItems.map((printer) => (
+                <tr
+                  key={printer._id}
+                  style={{
+                    background: "white",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f8fafc";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "white";
+                  }}
+                >
+                  <td
+                    style={{
+                      padding: "clamp(12px, 1.8vh, 16px) 16px",
+                      borderTop: "1px solid #eef2f6",
+                      borderBottom: "1px solid #eef2f6",
+                      borderLeft: "1px solid #eef2f6",
+                      borderRadius: "12px 0 0 12px",
+                      fontWeight: 600,
+                      color: "#1e293b",
+                    }}
+                  >
+                    {printer.name}
+                  </td>
+                  <td
+                    style={{
+                      padding: "clamp(12px, 1.8vh, 16px) 16px",
+                      borderTop: "1px solid #eef2f6",
+                      borderBottom: "1px solid #eef2f6",
+                      color: "#475569",
+                      fontFamily: "monospace",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {printer.code}
+                  </td>
+                  <td
+                    style={{
+                      padding: "clamp(12px, 1.8vh, 16px) 16px",
+                      borderTop: "1px solid #eef2f6",
+                      borderBottom: "1px solid #eef2f6",
+                      color: "#64748b",
+                    }}
+                  >
+                    {printer.location || "—"}
+                  </td>
+                  <td
+                    style={{
+                      padding: "clamp(12px, 1.8vh, 16px) 16px",
+                      borderTop: "1px solid #eef2f6",
+                      borderBottom: "1px solid #eef2f6",
+                      color: "#475569",
+                      fontFamily: "monospace",
+                      fontSize: "12px",
+                    }}
+                  >
+                    {printer.connection.host && printer.connection.port ? (
+                      `${printer.connection.host}:${printer.connection.port}`
+                    ) : (
+                      <span style={{ color: "#94a3b8" }}>—</span>
+                    )}
+                  </td>
+                  <td
+                    style={{
+                      padding: "clamp(12px, 1.8vh, 16px) 16px",
+                      borderTop: "1px solid #eef2f6",
+                      borderBottom: "1px solid #eef2f6",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "4px 12px",
+                        borderRadius: "20px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        background: printer.isActive ? "#f0fdf4" : "#fef2f2",
+                        color: printer.isActive ? "#166534" : "#991b1b",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          background: printer.isActive ? "#10b981" : "#ef4444",
+                        }}
+                      />
+                      {printer.isActive ? "Hoạt động" : "Vô hiệu"}
+                    </span>
+                  </td>
+                  <td
+                    style={{
+                      padding: "clamp(12px, 1.8vh, 16px) 16px",
+                      borderTop: "1px solid #eef2f6",
+                      borderBottom: "1px solid #eef2f6",
+                    }}
+                  >
+                    {printer.isDefault ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          padding: "4px 10px",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          background: "#eff6ff",
+                          color: "#1e40af",
+                        }}
+                      >
+                        Có
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        —
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    style={{
+                      padding: "clamp(12px, 1.8vh, 16px) 16px",
+                      borderTop: "1px solid #eef2f6",
+                      borderBottom: "1px solid #eef2f6",
+                      borderRight: "1px solid #eef2f6",
+                      borderRadius: "0 12px 12px 0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <button
+                        onClick={() => handleOpenModal(printer)}
+                        title="Sửa"
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "8px",
+                          border: "none",
+                          background: "#eff6ff",
+                          color: "#2563eb",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#dbeafe";
+                          e.currentTarget.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "#eff6ff";
+                          e.currentTarget.style.transform = "scale(1)";
+                        }}
+                      >
+                        <FiEdit size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(printer._id)}
+                        title="Xóa"
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "8px",
+                          border: "none",
+                          background: "#fef2f2",
+                          color: "#dc2626",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#fee2e2";
+                          e.currentTarget.style.transform = "scale(1.05)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "#fef2f2";
+                          e.currentTarget.style.transform = "scale(1)";
+                        }}
+                      >
+                        <RiDeleteBin6Line size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
       )}
 
       <div className="admin-table-footer">
@@ -361,131 +628,606 @@ export default function PrinterTable() {
       )}
 
       {showModal && (
-        <div className="admin-modal">
-          <div className="admin-modal-content">
-            <button className="admin-modal-close" onClick={handleCloseModal}>
-              ×
-            </button>
-            <h3>{editingId ? "Chỉnh Sửa Máy In" : "Thêm Máy In Mới"}</h3>
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.6)",
+      backdropFilter: "blur(4px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      animation: "fadeIn 0.2s ease",
+    }}
+    onClick={handleCloseModal}
+  >
+    <div
+      style={{
+        background: "white",
+        borderRadius: "24px",
+        width: "90%",
+        maxWidth: "900px",
+        maxHeight: "90vh",
+        overflow: "auto",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        animation: "slideUp 0.3s ease",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          background: "white",
+          borderBottom: "1px solid #eef2f6",
+          padding: "20px 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          zIndex: 10,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: "22px",
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {editingId ? "Chỉnh Sửa Máy In" : "Thêm Máy In Mới"}
+          </h2>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: "13px",
+              color: "#94a3b8",
+            }}
+          >
+            {editingId
+              ? "Cập nhật thông tin máy in"
+              : "Thêm máy in mới để phục vụ in vé"}
+          </p>
+        </div>
+        <button
+          onClick={handleCloseModal}
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "12px",
+            border: "none",
+            background: "#f1f5f9",
+            fontSize: "24px",
+            cursor: "pointer",
+            color: "#64748b",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#fee2e2";
+            e.currentTarget.style.color = "#dc2626";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#f1f5f9";
+            e.currentTarget.style.color = "#64748b";
+          }}
+        >
+          ×
+        </button>
+      </div>
 
-            <div className="admin-modal-two-column-grid">
-              <div className="admin-form-group">
-                <label className="admin-form-label">Tên Máy In:</label>
-                <input
-                  type="text"
-                  className="admin-form-input"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Mã Máy In:</label>
-                <input
-                  type="text"
-                  className="admin-form-input"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                />
-              </div>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Loại kết nối:</label>
-                <select
-                  className="admin-form-select"
-                  value={formData.type}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      type: e.target.value as PrinterFormData["type"],
-                    })
-                  }
-                >
-                  <option value="network">network</option>
-                  <option value="serial">serial</option>
-                  <option value="usb">usb</option>
-                </select>
-              </div>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Địa chỉ IP:</label>
-                <input
-                  type="text"
-                  className="admin-form-input"
-                  value={formData.connection.host}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      connection: { ...formData.connection, host: e.target.value },
-                    })
-                  }
-                />
-              </div>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Cổng (Port):</label>
-                <input
-                  type="number"
-                  className="admin-form-input"
-                  value={formData.connection.port}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      connection: { ...formData.connection, port: Number(e.target.value) },
-                    })
-                  }
-                />
-              </div>
-              <div className="admin-form-group">
-                <label className="admin-form-label">Vị trí:</label>
-                <input
-                  type="text"
-                  className="admin-form-input"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="admin-checkbox-row">
-              <label className="admin-checkbox-card">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                />
-                <div>
-                  <div className="admin-checkbox-card-title">
-                    {formData.isActive ? "Hoạt động" : "Vô hiệu"}
-                  </div>
-                  <div className="admin-checkbox-card-description">
-                    Bật checkbox là hoạt động, bỏ chọn là vô hiệu
-                  </div>
-                </div>
-              </label>
-              <label className="admin-checkbox-card">
-                <input
-                  type="checkbox"
-                  checked={formData.isDefault}
-                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                />
-                <div>
-                  <div className="admin-checkbox-card-title">
-                    {formData.isDefault ? "Mặc định" : "Không mặc định"}
-                  </div>
-                  <div className="admin-checkbox-card-description">
-                    Đánh dấu máy in mặc định cho hệ thống
-                  </div>
-                </div>
-              </label>
-            </div>
+      {/* Body */}
+      <div style={{ padding: "28px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "24px",
+          }}
+        >
+          {/* Tên Máy In */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Tên Máy In <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder="VD: Máy in vé tầng 1, POS-01..."
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                fontSize: "14px",
+                border: "2px solid #e2e8f0",
+                borderRadius: "12px",
+                outline: "none",
+                transition: "all 0.2s ease",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#3b82f6";
+                e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "#e2e8f0";
+                e.target.style.boxShadow = "none";
+              }}
+            />
+          </div>
 
-            <div className="admin-form-actions">
-              <button className="submit" onClick={handleSave}>
-                Lưu
-              </button>
-              <button className="cancel" onClick={handleCloseModal}>
-                Hủy
-              </button>
-            </div>
+          {/* Mã Máy In */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Mã Máy In <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) =>
+                setFormData({ ...formData, code: e.target.value })
+              }
+              placeholder="VD: PR001, PRINTER_01..."
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                fontSize: "14px",
+                border: "2px solid #e2e8f0",
+                borderRadius: "12px",
+                outline: "none",
+                transition: "all 0.2s ease",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#3b82f6";
+                e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "#e2e8f0";
+                e.target.style.boxShadow = "none";
+              }}
+            />
+          </div>
+
+          {/* Loại kết nối */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Loại kết nối
+            </label>
+            <select
+              value={formData.type}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  type: e.target.value as PrinterFormData["type"],
+                })
+              }
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                fontSize: "14px",
+                border: "2px solid #e2e8f0",
+                borderRadius: "12px",
+                outline: "none",
+                transition: "all 0.2s ease",
+                backgroundColor: "white",
+                cursor: "pointer",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#3b82f6";
+                e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "#e2e8f0";
+                e.target.style.boxShadow = "none";
+              }}
+            >
+              <option value="network">Network (Mạng)</option>
+              <option value="serial">Serial (COM)</option>
+              <option value="usb">USB</option>
+            </select>
+          </div>
+
+          {/* Vị trí */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Vị trí
+            </label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) =>
+                setFormData({ ...formData, location: e.target.value })
+              }
+              placeholder="VD: Phòng A, Tầng 1, Quầy số 3..."
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                fontSize: "14px",
+                border: "2px solid #e2e8f0",
+                borderRadius: "12px",
+                outline: "none",
+                transition: "all 0.2s ease",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#3b82f6";
+                e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "#e2e8f0";
+                e.target.style.boxShadow = "none";
+              }}
+            />
+          </div>
+
+          {/* Địa chỉ IP */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Địa chỉ IP
+            </label>
+            <input
+              type="text"
+              value={formData.connection.host}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  connection: { ...formData.connection, host: e.target.value },
+                })
+              }
+              placeholder="VD: 192.168.1.100"
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                fontSize: "14px",
+                border: "2px solid #e2e8f0",
+                borderRadius: "12px",
+                outline: "none",
+                transition: "all 0.2s ease",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#3b82f6";
+                e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "#e2e8f0";
+                e.target.style.boxShadow = "none";
+              }}
+            />
+          </div>
+
+          {/* Cổng (Port) */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#334155",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              Cổng (Port)
+            </label>
+            <input
+              type="number"
+              value={formData.connection.port}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  connection: {
+                    ...formData.connection,
+                    port: Number(e.target.value),
+                  },
+                })
+              }
+              placeholder="VD: 9100"
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                fontSize: "14px",
+                border: "2px solid #e2e8f0",
+                borderRadius: "12px",
+                outline: "none",
+                transition: "all 0.2s ease",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#3b82f6";
+                e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "#e2e8f0";
+                e.target.style.boxShadow = "none";
+              }}
+            />
           </div>
         </div>
-      )}
+
+        {/* Trạng thái - 2 cột */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "20px",
+            marginTop: "24px",
+          }}
+        >
+          {/* Kích hoạt */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
+              padding: "16px",
+              background: formData.isActive ? "#f0fdf4" : "#fef2f2",
+              border: `2px solid ${formData.isActive ? "#bbf7d0" : "#fecaca"}`,
+              borderRadius: "16px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={formData.isActive}
+              onChange={(e) =>
+                setFormData({ ...formData, isActive: e.target.checked })
+              }
+              style={{
+                width: "20px",
+                height: "20px",
+                cursor: "pointer",
+                accentColor: formData.isActive ? "#10b981" : "#ef4444",
+              }}
+            />
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  color: formData.isActive ? "#166534" : "#991b1b",
+                  marginBottom: "2px",
+                }}
+              >
+                {formData.isActive ? "Hoạt động" : "Vô hiệu"}
+              </div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: formData.isActive ? "#47cf79" : "#fb6e6e",
+                }}
+              >
+                {formData.isActive
+                  ? "Máy in sẵn sàng phục vụ"
+                  : "Máy in tạm thời không sử dụng"}
+              </div>
+            </div>
+          </label>
+
+          {/* Mặc định */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
+              padding: "16px",
+              background: formData.isDefault ? "#eff6ff" : "#f8fafc",
+              border: `2px solid ${
+                formData.isDefault ? "#bfdbfe" : "#e2e8f0"
+              }`,
+              borderRadius: "16px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={formData.isDefault}
+              onChange={(e) =>
+                setFormData({ ...formData, isDefault: e.target.checked })
+              }
+              style={{
+                width: "20px",
+                height: "20px",
+                cursor: "pointer",
+                accentColor: "#3b82f6",
+              }}
+            />
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  color: formData.isDefault ? "#1e40af" : "#475569",
+                  marginBottom: "2px",
+                }}
+              >
+                {formData.isDefault ? "Mặc định" : "Không mặc định"}
+              </div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: formData.isDefault ? "#93c5fd" : "#94a3b8",
+                }}
+              >
+                {formData.isDefault
+                  ? "Máy in sẽ được sử dụng mặc định"
+                  : "Chỉ sử dụng khi được chọn"}
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* Thông tin kết nối mạng - Hint */}
+        {formData.type === "network" && (
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "12px 16px",
+              background: "#eff6ff",
+              borderRadius: "12px",
+              fontSize: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: "#1e40af",
+            }}
+          >
+            <span>
+              Đảm bảo máy in đã được cấu hình IP tĩnh và kết nối mạng
+            </span>
+          </div>
+        )}
+
+        {formData.type === "serial" && (
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "12px 16px",
+              background: "#fef3c7",
+              borderRadius: "12px",
+              fontSize: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: "#92400e",
+            }}
+          >
+            <span>
+              Kết nối COM: Kiểm tra cổng COM và tốc độ Baudrate
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Actions */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          background: "white",
+          borderTop: "1px solid #eef2f6",
+          padding: "16px 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: "12px",
+        }}
+      >
+        <button
+          onClick={handleCloseModal}
+          style={{
+            padding: "10px 24px",
+            background: "white",
+            color: "#64748b",
+            border: "2px solid #e2e8f0",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f8fafc";
+            e.currentTarget.style.borderColor = "#cbd5e1";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "white";
+            e.currentTarget.style.borderColor = "#e2e8f0";
+          }}
+        >
+          Hủy bỏ
+        </button>
+        <button
+          onClick={handleSave}
+          style={{
+            padding: "10px 28px",
+            background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+            color: "white",
+            border: "none",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: "0 4px 6px rgba(37, 99, 235, 0.2)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 6px 12px rgba(37, 99, 235, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 6px rgba(37, 99, 235, 0.2)";
+          }}
+        >
+          {editingId ? "Cập nhật" : "Thêm máy in"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <AdminConfirmDialog
         isOpen={showDeleteConfirm}

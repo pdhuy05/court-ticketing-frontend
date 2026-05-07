@@ -659,23 +659,131 @@ export default function StaffCounterPage() {
           flexWrap: "wrap",
         }}
       >
-        <div style={{ color: "#666", fontSize: "clamp(14px, 1.1vw, 18px)" }}>
-          {staffName && `Xin chào: ${staffName}`} 
-          {restricted && (
-            <span
-              style={{
-                marginLeft: 8,
-                fontSize: "0.85em",
-                color: "#856404",
-                backgroundColor: "#fff3cd",
-                padding: "2px 8px",
-                borderRadius: "4px",
-              }}
-            >
-              Đang áp dụng giới hạn quầy: {assignedServices.map((s) => s.name).join(", ")}
-            </span>
-          )}
-        </div>
+        <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "12px",
+    padding: "8px 0",
+  }}
+>
+  {staffName && (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+    }}
+  >
+    <div
+      style={{
+        width: "36px",
+        height: "36px",
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+        fontWeight: 600,
+        fontSize: "16px",
+        boxShadow: "0 2px 8px rgba(102, 126, 234, 0.25)",
+      }}
+    >
+      {staffName.charAt(0).toUpperCase()}
+    </div>
+    <div>
+      <div
+        style={{
+          fontSize: "clamp(13px, 0.9vw, 14px)",
+          fontWeight: 400,
+          color: "#94a3b8",
+          letterSpacing: "0.3px",
+        }}
+      >
+        Chào mừng trở lại
+      </div>
+      <div
+        style={{
+          fontSize: "clamp(16px, 1.3vw, 22px)",
+          fontWeight: 600,
+          color: "#1e293b",
+          lineHeight: 1.3,
+        }}
+      >
+        {staffName}
+      </div>
+    </div>
+  </div>
+)}
+
+  {/* Restriction Badge */}
+  {restricted && (
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "8px",
+        background: "#fef9e6",
+        border: "1px solid #ffe5b4",
+        borderRadius: "40px",
+        padding: "4px 14px 4px 12px",
+        fontSize: "0.85rem",
+        fontWeight: 500,
+        color: "#b85c00",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+        backdropFilter: "blur(2px)",
+      }}
+    >
+      <span style={{ whiteSpace: "nowrap" }}>Giới hạn quầy:</span>
+      <span
+        style={{
+          padding: "2px 10px",
+          borderRadius: "30px",
+          fontSize: "0.8rem",
+          fontWeight: 400,
+          color: "#a64b00",
+        }}
+      >
+        {restricted && (
+  <div
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      background: "#fef9e6",
+      borderRadius: "40px",
+      padding: "4px 14px 4px 12px",
+      fontSize: "0.85rem",
+      fontWeight: 500,
+      color: "#b85c00",
+    }}
+  >
+    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+      {assignedServices.map((s, idx) => (
+        <span
+          key={idx}
+          style={{
+            background: "#fcdfb7",
+            padding: "2px 10px",
+            borderRadius: "30px",
+            fontSize: "0.8rem",
+            fontWeight: 400,
+            color: "#a64b00",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {s.name}
+        </span>
+      ))}
+    </div>
+  </div>
+)}
+      </span>
+    </div>
+  )}
+</div>
         <div
           style={{
             display: "flex",

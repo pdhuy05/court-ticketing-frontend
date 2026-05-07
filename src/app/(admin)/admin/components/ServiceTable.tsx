@@ -393,111 +393,468 @@ export default function ServiceTable() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button className="admin-table-btn" onClick={() => handleOpenModal()}>
-            + Thêm Mới
+          <button
+            onClick={() => handleOpenModal()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "9px 14px",
+              background: "#003366",
+              color: "white",
+              border: "none",
+              borderRadius: "20px",
+              fontSize: "14px",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: "18px", lineHeight: 1 }}>+</span>
+            Thêm mới
           </button>
         </div>
       </div>
       <div className="admin-table-body">
-        <table className="admin-table service-table">
-          <thead>
-            <tr>
-              <th>Thứ tự</th>
-              <th>Mã quầy</th>
-              <th>Mã tiền tố</th>
-              <th>Tên quầy</th>
-              <th>Phòng</th>
-              <th>Trạng thái</th>
-              <th>Mô tả</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="admin-table-loading">
-                  Đang tải...
-                </td>
-              </tr>
-            ) : paginatedServices.length > 0 ? (
-              paginatedServices.map((service) => (
-                <tr key={service._id}>
-                  <td>{service.displayOrder}</td>
-                  <td>{service.code}</td>
-                  <td>
-                    {service.prefixNumber ?? 0}
-                  </td>
-                  <td>
-                    <span style={{ display: "flex", alignItems: "center" }}>
-                      {service.icon &&
-                        getIconComponent(service.icon) &&
-                        React.createElement(getIconComponent(service.icon)!, {
-                          size: 16,
-                          style: { marginRight: "8px" },
-                        })}
-                      {service.name}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="table-cell-counters">
-                      {service.counters?.map((counter) => (
-                        <span
-                          key={counter._id}
-                          className="table-cell-tag"
-                          style={{
-                            background:
-                              counterColorMap.get(counter._id)?.background ||
-                              "#dbeafe",
-                            borderLeftColor:
-                              counterColorMap.get(counter._id)?.border ||
-                              "#2563eb",
-                            color:
-                              counterColorMap.get(counter._id)?.color ||
-                              "#1e3a8a",
-                          }}
-                        >
-                          {counter.name} ({counter.code})
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td>
-                    <span
-                      className={`table-cell-status ${
-                        service.isActive ? "status-active" : "status-inactive"
-                      }`}
-                    >
-                      {service.isActive ? "Hoạt động" : "Vô hiệu"}
-                    </span>
-                  </td>
-                  <td>{service.description}</td>
-                  <td>
-                    <div className="table-actions">
-                      <button
-                        className="table-action-edit"
-                        onClick={() => handleOpenModal(service)}
-                      >
-                        <FiEdit size={16} />
-                      </button>
-                      <button
-                        className="table-action-delete"
-                        onClick={() => handleDelete(service._id)}
-                      >
-                        <RiDeleteBin6Line size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="admin-table-empty">
-                  Không có quầy nào.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <table
+  style={{
+    width: "100%",
+    borderCollapse: "separate",
+    borderSpacing: "0 8px",
+    background: "transparent",
+    fontSize: "clamp(13px, 0.9vw, 14px)",
+    textAlign: "left",
+  }}
+>
+  <thead>
+    <tr>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          borderRadius: "12px 0 0 12px",
+        }}
+      >
+        TT
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Mã quầy
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Mã tiền tố
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Tên quầy
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Phòng
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Trạng thái
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+        }}
+      >
+        Mô tả
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          borderRadius: "0 12px 12px 0",
+        }}
+      >
+        Hành động
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    {loading ? (
+      <tr>
+        <td
+          colSpan={8}
+          style={{
+            padding: "48px 24px",
+            textAlign: "center",
+            background: "white",
+            borderRadius: "12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              color: "#64748b",
+            }}
+          >
+            <div
+              style={{
+                width: "20px",
+                height: "20px",
+                border: "2px solid #e2e8f0",
+                borderTopColor: "#1e4775",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+            Đang tải...
+          </div>
+        </td>
+      </tr>
+    ) : paginatedServices.length > 0 ? (
+      paginatedServices.map((service) => (
+        <tr
+          key={service._id}
+          style={{
+            background: "white",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f8fafc";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "white";
+          }}
+        >
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              borderLeft: "1px solid #eef2f6",
+              borderRadius: "12px 0 0 12px",
+              fontWeight: 600,
+              color: "#1e293b",
+              textAlign: "center",
+              width: "60px",
+            }}
+          >
+            {service.displayOrder}
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              color: "#475569",
+              fontFamily: "monospace",
+              fontSize: "13px",
+              fontWeight: 500,
+            }}
+          >
+            {service.code}
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              color: "#475569",
+              fontFamily: "monospace",
+              fontSize: "13px",
+              fontWeight: 500,
+            }}
+          >
+            {service.prefixNumber ?? 0}
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              fontWeight: 600,
+              color: "#1e293b",
+            }}
+          >
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              {service.icon &&
+                getIconComponent(service.icon) &&
+                React.createElement(getIconComponent(service.icon)!, {
+                  size: 18,
+                  style: { color: "#1e4775" },
+                })}
+              {service.name}
+            </span>
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px",
+              }}
+            >
+              {service.counters?.map((counter) => {
+                const colors = counterColorMap.get(counter._id) || {
+                  background: "#dbeafe",
+                  border: "#2563eb",
+                  color: "#1e3a8a",
+                };
+                return (
+                  <span
+                    key={counter._id}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "4px 10px",
+                      borderRadius: "20px",
+                      fontSize: "11px",
+                      fontWeight: 500,
+                      background: colors.background,
+                      borderLeft: `3px solid ${colors.border}`,
+                      color: colors.color,
+                    }}
+                  >
+                    {counter.name} ({counter.code})
+                  </span>
+                );
+              })}
+            </div>
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "4px 12px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                fontWeight: 600,
+                background: service.isActive ? "#f0fdf4" : "#fef2f2",
+                color: service.isActive ? "#166534" : "#991b1b",
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  background: service.isActive ? "#10b981" : "#ef4444",
+                }}
+              />
+              {service.isActive ? "Hoạt động" : "Vô hiệu"}
+            </span>
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              color: "#64748b",
+              maxWidth: "200px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={service.description}
+          >
+            {service.description || "—"}
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
+              borderRight: "1px solid #eef2f6",
+              borderRadius: "0 12px 12px 0",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <button
+                onClick={() => handleOpenModal(service)}
+                title="Sửa"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#eff6ff",
+                  color: "#2563eb",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#dbeafe";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#eff6ff";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <FiEdit size={16} />
+              </button>
+              <button
+                onClick={() => handleDelete(service._id)}
+                title="Xóa"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#fef2f2",
+                  color: "#dc2626",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#fee2e2";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#fef2f2";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                <RiDeleteBin6Line size={16} />
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))
+    ) : (
+      <tr>
+        <td
+          colSpan={8}
+          style={{
+            padding: "48px 24px",
+            textAlign: "center",
+            background: "white",
+            borderRadius: "12px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "48px",
+              marginBottom: "12px",
+              opacity: 0.5,
+            }}
+          >
+          </div>
+          <div
+            style={{
+              fontSize: "18px",
+              fontWeight: 500,
+              color: "#64748b",
+              marginBottom: "8px",
+            }}
+          >
+            Không có quầy nào
+          </div>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#94a3b8",
+            }}
+          >
+            Nhấn "Thêm Mới" để thêm quầy đầu tiên
+          </div>
+        </td>
+      </tr>
+    )}
+  </tbody>
+</table>
       </div>
       <div className="admin-table-footer">
         <span>
@@ -511,256 +868,785 @@ export default function ServiceTable() {
         onPageChange={handlePageChange}
       />
       {showModal && (
-        <div className="admin-modal">
-          <div className="admin-modal-content">
-            <button className="admin-modal-close" onClick={handleCloseModal}>
-              ×</button>
-            <h3 style={{ marginTop: 0, marginBottom: 20 }}>
-              {editingId ? "Chỉnh Sửa Quầy" : "Thêm Quầy Mới"}
-            </h3>
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.6)",
+      backdropFilter: "blur(4px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      animation: "fadeIn 0.2s ease",
+    }}
+    onClick={handleCloseModal}
+  >
+    <div
+      style={{
+        background: "white",
+        borderRadius: "24px",
+        width: "90%",
+        maxWidth: "1200px",
+        maxHeight: "90vh",
+        overflow: "auto",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        animation: "slideUp 0.3s ease",
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          background: "white",
+          borderBottom: "1px solid #eef2f6",
+          padding: "20px 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          zIndex: 10,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: "22px",
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {editingId ? "Chỉnh Sửa Quầy" : "Thêm Quầy Mới"}
+          </h2>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: "13px",
+              color: "#94a3b8",
+            }}
+          >
+            {editingId
+              ? "Cập nhật thông tin quầy dịch vụ"
+              : "Tạo quầy dịch vụ mới để quản lý"}
+          </p>
+        </div>
+        <button
+          onClick={handleCloseModal}
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "12px",
+            border: "none",
+            background: "#f1f5f9",
+            fontSize: "24px",
+            cursor: "pointer",
+            color: "#64748b",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#fee2e2";
+            e.currentTarget.style.color = "#dc2626";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#f1f5f9";
+            e.currentTarget.style.color = "#64748b";
+          }}
+        >
+          ×
+        </button>
+      </div>
 
+      {/* Body */}
+      <div style={{ padding: "28px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "32px",
+          }}
+        >
+          {/* Left Column */}
+          <div>
+            {/* Mã Quầy */}
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Mã Quầy <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.code}
+                onChange={(e) =>
+                  setFormData({ ...formData, code: e.target.value })
+                }
+                disabled={!!editingId}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  fontSize: "14px",
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "12px",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                  backgroundColor: editingId ? "#f8fafc" : "#fff",
+                  cursor: editingId ? "not-allowed" : "text",
+                  opacity: editingId ? 0.7 : 1,
+                  fontWeight: 500,
+                }}
+                onFocus={(e) => {
+                  if (!editingId) {
+                    e.target.style.borderColor = "#3b82f6";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                  }
+                }}
+                onBlur={(e) => {
+                  if (!editingId) {
+                    e.target.style.borderColor = "#e2e8f0";
+                    e.target.style.boxShadow = "none";
+                  }
+                }}
+              />
+            </div>
+
+            {/* Tên Quầy */}
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Tên Quầy <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="VD: Quầy số 1, Quầy VIP..."
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  fontSize: "14px",
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "12px",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#3b82f6";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
+
+            {/* Số Thứ Tự & Mã Tiền tố - 2 cột */}
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
-                gap: "30px",
+                gap: "16px",
+                marginBottom: "20px",
               }}
             >
-              {/* Left Column - Info & Status */}
               <div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Mã Quầy:</label>
-                  <input
-                    type="text"
-                    className="admin-form-input"
-                    value={formData.code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, code: e.target.value })
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#334155",
+                  }}
+                >
+                  Số Thứ Tự
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    background: "#f8fafc",
+                    border: "2px solid #e2e8f0",
+                    borderRadius: "12px",
+                    padding: "4px",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        displayOrder: (formData.displayOrder || 1) - 1,
+                      })
                     }
-                    disabled={!!editingId}
                     style={{
-                      backgroundColor: editingId ? "#f0f0f0" : "#fff",
-                      cursor: editingId ? "not-allowed" : "text",
-                      opacity: editingId ? 0.6 : 1,
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: "white",
+                      cursor: "pointer",
+                      fontSize: "18px",
+                      fontWeight: 600,
+                      color: "#64748b",
                     }}
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Số Thứ Tự:</label>
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#f1f5f9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "white";
+                    }}
+                  >
+                    −
+                  </button>
                   <input
                     type="number"
-                    className="admin-form-input"
                     value={formData.displayOrder}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        displayOrder: parseInt(e.target.value),
+                        displayOrder: parseInt(e.target.value) || 0,
                       })
                     }
+                    style={{
+                      flex: 1,
+                      padding: "8px 0",
+                      textAlign: "center",
+                      fontSize: "16px",
+                      fontWeight: 600,
+                      border: "none",
+                      outline: "none",
+                      background: "transparent",
+                    }}
                   />
-                </div>
-
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Mã tiền tố:</label>
-                  <input
-                    type="number"
-                    min={PREFIX_NUMBER_MIN}
-                    max={PREFIX_NUMBER_MAX}
-                    className="admin-form-input"
-                    value={formData.prefixNumber}
-                    onChange={(e) => handlePrefixNumberChange(e.target.value)}
-                  />
-                  {prefixNumberError ? (
-                    <div
-                      style={{
-                        marginTop: "6px",
-                        fontSize: "12px",
-                        color: "#dc3545",
-                      }}
-                    >
-                      {prefixNumberError}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Tên Quầy:</label>
-                  <input
-                    type="text"
-                    className="admin-form-input"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        displayOrder: (formData.displayOrder || 0) + 1,
+                      })
                     }
-                  />
-                </div>
-
-                <div className="admin-form-group">
-                  <label
-                    className="admin-form-label"
-                    style={{ marginBottom: "12px" }}
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: "white",
+                      cursor: "pointer",
+                      fontSize: "18px",
+                      fontWeight: 600,
+                      color: "#64748b",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#f1f5f9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "white";
+                    }}
                   >
-                    Trạng Thái:
-                  </label>
-                  <label className="admin-checkbox-card">
-                    <input
-                      type="checkbox"
-                      checked={formData.isActive}
-                      onChange={(e) => handleStatusChange(e.target.checked)}
-                    />
-                    <div>
-                      <div className="admin-checkbox-card-title">
-                        {formData.isActive ? "Hoạt động" : "Vô hiệu"}
-                      </div>
-                      <div className="admin-checkbox-card-description">
-                        Bật checkbox là hoạt động, bỏ chọn là vô hiệu
-                      </div>
-                    </div>
-                  </label>
+                    +
+                  </button>
                 </div>
               </div>
 
-              {/* Right Column - Icon & Description */}
               <div>
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Biểu tượng</label>
-                  <div
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#334155",
+                  }}
+                >
+                  Mã tiền tố
+                  <span
                     style={{
-                      border: "1px solid #d0d0d0",
-                      borderRadius: "4px",
-                      padding: "12px",
-                      maxHeight: "200px",
-                      overflowY: "auto",
-                      display: "grid",
-                      gridTemplateColumns: "repeat(5, 1fr)",
-                      gap: "8px",
-                      marginBottom: "15px",
+                      marginLeft: "6px",
+                      fontSize: "11px",
+                      color: "#94a3b8",
+                      fontWeight: 400,
                     }}
                   >
-                    {FONTAWESOME_ICONS.map((icon: (typeof FONTAWESOME_ICONS)[number]) => {
-                      const IconComponent = getIconComponent(icon.class);
-                      return (
-                        <button
-                          key={icon.id}
-                          onClick={() =>
-                            setFormData({ ...formData, icon: icon.class })
-                          }
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "12px",
-                            border:
-                              formData.icon === icon.class
-                                ? "2px solid #003366"
-                                : "1px solid #e0e0e0",
-                            borderRadius: "4px",
-                            backgroundColor:
-                              formData.icon === icon.class ? "#f0f7ff" : "#fff",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: formData.icon === icon.class ? 600 : 400,
-                            color:
-                              formData.icon === icon.class ? "#003366" : "#333",
-                            transition: "all 0.2s ease",
-                            minHeight: "60px",
-                          }}
-                          title={icon.name}
-                        >
-                          {IconComponent ? (
-                            <IconComponent
-                              size={24}
-                              style={{
-                                color: "#000",
-                                marginBottom: "4px",
-                              }}
-                            />
-                          ) : (
-                            <span style={{ fontSize: "12px", color: "#999" }}>
-                              N/A
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                    ({PREFIX_NUMBER_MIN}-{PREFIX_NUMBER_MAX})
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  min={PREFIX_NUMBER_MIN}
+                  max={PREFIX_NUMBER_MAX}
+                  value={formData.prefixNumber}
+                  onChange={(e) => handlePrefixNumberChange(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    fontSize: "14px",
+                    border: `2px solid ${prefixNumberError ? "#ef4444" : "#e2e8f0"}`,
+                    borderRadius: "12px",
+                    outline: "none",
+                    transition: "all 0.2s ease",
+                  }}
+                  onFocus={(e) => {
+                    if (!prefixNumberError) {
+                      e.target.style.borderColor = "#3b82f6";
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!prefixNumberError) {
+                      e.target.style.borderColor = "#e2e8f0";
+                    }
+                  }}
+                />
+                {prefixNumberError && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "11px",
+                      color: "#ef4444",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <span></span> {prefixNumberError}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Trạng Thái */}
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "12px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Trạng Thái
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px",
+                  padding: "16px",
+                  background: formData.isActive ? "#f0fdf4" : "#fef2f2",
+                  border: `2px solid ${formData.isActive ? "#bbf7d0" : "#fecaca"}`,
+                  borderRadius: "16px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.isActive}
+                  onChange={(e) => handleStatusChange(e.target.checked)}
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    cursor: "pointer",
+                    accentColor: formData.isActive ? "#10b981" : "#ef4444",
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      color: formData.isActive ? "#166534" : "#991b1b",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    {formData.isActive ? "Hoạt động" : "Vô hiệu"}
                   </div>
                   <div
                     style={{
                       fontSize: "12px",
-                      color: "#666",
-                      marginTop: "8px",
+                      color: formData.isActive ? "#86efac" : "#fca5a5",
                     }}
                   >
-                    Đã chọn: <strong>{formData.icon || "Chưa chọn"}</strong>
+                    {formData.isActive
+                      ? "Quầy đang hoạt động bình thường"
+                      : "Quầy tạm thời không phục vụ"}
                   </div>
                 </div>
+              </label>
+            </div>
+          </div>
 
-                <div className="admin-form-group">
-                  <label className="admin-form-label">Mô Tả:</label>
-                  <textarea
-                    className="admin-form-textarea"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    style={{ minHeight: "80px" }}
-                  />
-                </div>
+          {/* Right Column */}
+          <div>
+            {/* Biểu tượng */}
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "12px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Biểu tượng
+              </label>
+              <div
+                style={{
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "16px",
+                  padding: "16px",
+                  maxHeight: "240px",
+                  overflowY: "auto",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(6, 1fr)",
+                  gap: "10px",
+                  background: "#fafbfc",
+                }}
+              >
+                {FONTAWESOME_ICONS.map((icon) => {
+                  const IconComponent = getIconComponent(icon.class);
+                  return (
+                    <button
+                      key={icon.id}
+                      onClick={() => setFormData({ ...formData, icon: icon.class })}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "12px 8px",
+                        border:
+                          formData.icon === icon.class
+                            ? "2px solid #3b82f6"
+                            : "1px solid #e2e8f0",
+                        borderRadius: "12px",
+                        background:
+                          formData.icon === icon.class ? "#eff6ff" : "white",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        gap: "6px",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (formData.icon !== icon.class) {
+                          e.currentTarget.style.borderColor = "#94a3b8";
+                          e.currentTarget.style.background = "#f8fafc";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (formData.icon !== icon.class) {
+                          e.currentTarget.style.borderColor = "#e2e8f0";
+                          e.currentTarget.style.background = "white";
+                        }
+                      }}
+                    >
+                      {IconComponent ? (
+                        <IconComponent
+                          size={22}
+                          style={{
+                            color: formData.icon === icon.class ? "#3b82f6" : "#64748b",
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "#999" }}>
+                          N/A
+                        </span>
+                      )}
+                      <span
+                        style={{
+                          fontSize: "9px",
+                          color: formData.icon === icon.class ? "#3b82f6" : "#94a3b8",
+                          fontWeight: formData.icon === icon.class ? 600 : 400,
+                        }}
+                      >
+                        {icon.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div
+                style={{
+                  marginTop: "12px",
+                  padding: "10px 12px",
+                  background: "#f0fdf4",
+                  borderRadius: "10px",
+                  fontSize: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span>
+                  Đã chọn: <strong>{formData.icon || "Chưa chọn"}</strong>
+                </span>
               </div>
             </div>
 
-            <div style={{ marginTop: "20px" }}>
-              <div className="admin-form-group" style={{ marginBottom: 0 }}>
-                <label className="admin-form-label">Thêm quầy vào phòng đã có:</label>
-                <div
-                  className="admin-counter-grid"
-                >
-                  {counters.length === 0 ? (
-                    <span style={{ color: "#999", fontSize: "14px" }}>
-                      Chưa có phòng nào
-                    </span>
-                  ) : (
-                    counters.map((counter) => (
+            {/* Mô Tả */}
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Mô Tả
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Nhập mô tả chi tiết về quầy..."
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  fontSize: "14px",
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "12px",
+                  outline: "none",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                  transition: "all 0.2s ease",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#3b82f6";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
+
+            {/* Thêm vào phòng */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "12px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Thêm vào phòng
+              </label>
+              <div
+                style={{
+                  border: "2px solid #e2e8f0",
+                  borderRadius: "16px",
+                  padding: "16px",
+                  background: "#fafbfc",
+                  maxHeight: "160px",
+                  overflowY: "auto",
+                }}
+              >
+                {counters.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px",
+                      color: "#94a3b8",
+                    }}
+                  >
+                    📭 Chưa có phòng nào
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, 1fr)",
+                      gap: "12px",
+                    }}
+                  >
+                    {counters.map((counter) => (
                       <label
                         key={counter._id}
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "8px",
+                          gap: "10px",
+                          padding: "10px 12px",
+                          background: selectedCounters.includes(counter._id)
+                            ? "#eff6ff"
+                            : "white",
+                          border: `1px solid ${
+                            selectedCounters.includes(counter._id)
+                              ? "#3b82f6"
+                              : "#e2e8f0"
+                          }`,
+                          borderRadius: "10px",
                           cursor: "pointer",
-                          fontSize: "14px",
-                          color: "#333",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!selectedCounters.includes(counter._id)) {
+                            e.currentTarget.style.borderColor = "#94a3b8";
+                            e.currentTarget.style.background = "#f8fafc";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!selectedCounters.includes(counter._id)) {
+                            e.currentTarget.style.borderColor = "#e2e8f0";
+                            e.currentTarget.style.background = "white";
+                          }
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={selectedCounters.includes(counter._id)}
                           onChange={() => handleCounterToggle(counter._id)}
-                          style={{ cursor: "pointer" }}
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            cursor: "pointer",
+                            accentColor: "#3b82f6",
+                          }}
                         />
-                        <span>
-                          {counter.name} ({counter.code})
-                        </span>
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "13px",
+                              color: "#1e293b",
+                            }}
+                          >
+                            {counter.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: "#94a3b8",
+                            }}
+                          >
+                            {counter.code}
+                          </div>
+                        </div>
                       </label>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="admin-form-actions" style={{ marginTop: "30px" }}>
-              <button className="submit" onClick={handleSave}>
-                Cập nhật
-              </button>
-              <button className="cancel" onClick={handleCloseModal}>
-                Hủy bỏ
-              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Footer Actions */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          background: "white",
+          borderTop: "1px solid #eef2f6",
+          padding: "16px 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: "12px",
+        }}
+      >
+        <button
+          onClick={handleCloseModal}
+          style={{
+            padding: "10px 24px",
+            background: "white",
+            color: "#64748b",
+            border: "2px solid #e2e8f0",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f8fafc";
+            e.currentTarget.style.borderColor = "#cbd5e1";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "white";
+            e.currentTarget.style.borderColor = "#e2e8f0";
+          }}
+        >
+          Hủy bỏ
+        </button>
+        <button
+          onClick={handleSave}
+          style={{
+            padding: "10px 28px",
+            background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+            color: "white",
+            border: "none",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            boxShadow: "0 4px 6px rgba(37, 99, 235, 0.2)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 6px 12px rgba(37, 99, 235, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 6px rgba(37, 99, 235, 0.2)";
+          }}
+        >
+          {editingId ? "Cập nhật" : "Thêm mới"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <AdminConfirmDialog
         isOpen={showStatusConfirm}

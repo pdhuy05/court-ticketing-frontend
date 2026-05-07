@@ -1,0 +1,497 @@
+/*!**********************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[15].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[15].oneOf[5].use[3]!./src/app/(admin)/admin/components/AdminDashboardTech.module.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************************************/
+.AdminDashboardTech_page__fcwO9 {
+  min-height: 100%;
+  padding: 18px;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(circle at top left, rgba(85, 170, 255, 0.16), transparent 24%),
+    radial-gradient(circle at top right, rgba(98, 214, 255, 0.13), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(112, 175, 255, 0.1), transparent 22%),
+    linear-gradient(180deg, #122c4b 0%, #18385d 52%, #122f50 100%);
+}
+
+.AdminDashboardTech_shell__EGFIJ {
+  display: grid;
+  gap: 16px;
+}
+
+.AdminDashboardTech_hero__BGWbb {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(127, 194, 255, 0.22);
+  border-radius: 28px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, rgba(24, 73, 126, 0.92), rgba(18, 57, 102, 0.9)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  color: #fff4ff;
+  box-shadow:
+    0 22px 60px rgba(7, 0, 20, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.AdminDashboardTech_hero__BGWbb::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(150, 217, 255, 0.18);
+  border-radius: 22px;
+  pointer-events: none;
+}
+
+.AdminDashboardTech_hero__BGWbb::after {
+  content: "";
+  position: absolute;
+  right: -120px;
+  top: -80px;
+  width: 360px;
+  height: 360px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(86, 214, 255, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+.AdminDashboardTech_heroTop__iMtAs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.AdminDashboardTech_heroText__Tm8Rr {
+  max-width: 720px;
+}
+
+.AdminDashboardTech_eyebrow__JmQ90 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(130, 214, 255, 0.18);
+  color: #a8efff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.AdminDashboardTech_heroTitle__3vQC4 {
+  margin: 14px 0 8px;
+  font-size: clamp(30px, 3vw, 46px);
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.AdminDashboardTech_heroSubtitle__MzkNm {
+  margin: 0;
+  max-width: 720px;
+  color: rgba(225, 243, 255, 0.82);
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.AdminDashboardTech_heroMeta__zDzVm {
+  display: grid;
+  gap: 10px;
+  min-width: 300px;
+}
+
+.AdminDashboardTech_metaCard__IaVpK {
+  border-radius: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(127, 198, 255, 0.16);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.AdminDashboardTech_metaLabel__Qt7Ql {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(203, 229, 255, 0.72);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.AdminDashboardTech_metaValue__W9LXC {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.AdminDashboardTech_statGrid__A7Xjm {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.AdminDashboardTech_statCard__xw0Dw {
+  border-radius: 20px;
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(123, 193, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.AdminDashboardTech_metricTop__Ez5wM {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(249, 228, 255, 0.84);
+}
+
+.AdminDashboardTech_metricIcon__74sMC {
+  display: inline-flex;
+  font-size: 14px;
+}
+
+.AdminDashboardTech_metricLabel__vyyRQ {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.AdminDashboardTech_statValue__5cLoe {
+  margin: 10px 0 0;
+  color: #ffffff;
+  font-size: clamp(24px, 2.4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.AdminDashboardTech_statHint__fHJAY {
+  margin-top: 8px;
+  color: #9fdfff;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.AdminDashboardTech_filters__FvqlR,
+.AdminDashboardTech_gridThree__Lds2f,
+.AdminDashboardTech_gridTwo__A5b8E {
+  display: grid;
+  gap: 16px;
+}
+
+.AdminDashboardTech_filters__FvqlR {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.AdminDashboardTech_gridThree__Lds2f {
+  grid-template-columns: 1.1fr 1.15fr 1fr;
+}
+
+.AdminDashboardTech_gridTwo__A5b8E {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.AdminDashboardTech_filterCard__a_0iO,
+.AdminDashboardTech_panel__yHuEa,
+.AdminDashboardTech_tablePanel__qqr_8,
+.AdminDashboardTech_counterCard__eWCmH {
+  border-radius: 24px;
+  border: 1px solid rgba(119, 191, 255, 0.14);
+  background:
+    linear-gradient(180deg, rgba(27, 73, 122, 0.9), rgba(20, 56, 98, 0.92)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    0 18px 48px rgba(8, 0, 23, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.AdminDashboardTech_filterCard__a_0iO,
+.AdminDashboardTech_panel__yHuEa {
+  padding: 16px;
+}
+
+.AdminDashboardTech_filterHead__eJi32,
+.AdminDashboardTech_panelHead__vCFzP,
+.AdminDashboardTech_tableHeader__dV_Db {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.AdminDashboardTech_filterTitle__xe3Av,
+.AdminDashboardTech_panelTitle__QHEZE {
+  margin: 0;
+  color: #f4fbff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.AdminDashboardTech_muted__YzfUZ {
+  color: rgba(203, 227, 244, 0.72);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.AdminDashboardTech_filterBadge__lfIsu,
+.AdminDashboardTech_chip__WjTDF,
+.AdminDashboardTech_chipSuccess__0gtg0,
+.AdminDashboardTech_chipDanger__uuwTB {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.AdminDashboardTech_filterBadge__lfIsu,
+.AdminDashboardTech_chip__WjTDF {
+  background: rgba(255, 255, 255, 0.12);
+  color: #d7f2ff;
+  border: 1px solid rgba(127, 208, 255, 0.14);
+}
+
+.AdminDashboardTech_chipSuccess__0gtg0 {
+  background: rgba(62, 224, 188, 0.12);
+  color: #7fffd3;
+  border: 1px solid rgba(127, 255, 211, 0.16);
+}
+
+.AdminDashboardTech_chipDanger__uuwTB {
+  background: rgba(255, 112, 143, 0.12);
+  color: #ff9ab1;
+  border: 1px solid rgba(255, 154, 177, 0.16);
+}
+
+.AdminDashboardTech_inputGroup__zWWpj {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.AdminDashboardTech_label__BRtV_ {
+  color: #e7f8ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.AdminDashboardTech_input__LFsno {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 14px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(132, 205, 255, 0.14);
+  font: inherit;
+  outline: none;
+}
+
+.AdminDashboardTech_inputAccent__6WaRb {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+}
+
+.AdminDashboardTech_input__LFsno:focus {
+  border-color: rgba(96, 198, 255, 0.55);
+  box-shadow: 0 0 0 4px rgba(96, 198, 255, 0.12);
+}
+
+.AdminDashboardTech_chartWrap__O_gTW {
+  position: relative;
+  min-height: 310px;
+  margin-top: 12px;
+}
+
+.AdminDashboardTech_chartWrapCompact__xNdeM {
+  position: relative;
+  min-height: 250px;
+  margin-top: 10px;
+}
+
+.AdminDashboardTech_legendList__xL0gb,
+.AdminDashboardTech_serviceList__jJmxa,
+.AdminDashboardTech_counterList__0wB2w,
+.AdminDashboardTech_timelineStats__6o_o6 {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.AdminDashboardTech_legendItem__NV6_8,
+.AdminDashboardTech_serviceItem__JoLI6,
+.AdminDashboardTech_counterItem__fjoI_,
+.AdminDashboardTech_timelineItem__2ABiP {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.AdminDashboardTech_legendLabel___QpnX,
+.AdminDashboardTech_serviceName__irdiL,
+.AdminDashboardTech_counterName__kI_VY,
+.AdminDashboardTech_timelineLabel__P5IP4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #eefbff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.AdminDashboardTech_dot__wwBNG {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 10px;
+}
+
+.AdminDashboardTech_legendValue__RPBNG,
+.AdminDashboardTech_timelineValue___Ku5U {
+  color: #c8efff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.AdminDashboardTech_serviceMetricRow__6t24E,
+.AdminDashboardTech_counterMeta__vx6lR {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.AdminDashboardTech_counterCard__eWCmH {
+  padding: 14px;
+}
+
+.AdminDashboardTech_tableHeader__dV_Db {
+  padding: 16px 16px 0;
+}
+
+.AdminDashboardTech_tableScroll__n4ACO {
+  overflow-x: auto;
+  padding: 12px 16px 16px;
+}
+
+.AdminDashboardTech_table__6P_g5 {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+.AdminDashboardTech_table__6P_g5 th {
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(145, 205, 255, 0.12);
+  color: rgba(201, 228, 247, 0.74);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.AdminDashboardTech_table__6P_g5 td {
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(145, 205, 255, 0.08);
+  color: #f4fbff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.AdminDashboardTech_table__6P_g5 tr:last-child td {
+  border-bottom: none;
+}
+
+.AdminDashboardTech_loading__Icl1_,
+.AdminDashboardTech_error__DoFWW,
+.AdminDashboardTech_empty__Yj9cu {
+  padding: 40px 22px;
+  border-radius: 24px;
+  text-align: center;
+}
+
+.AdminDashboardTech_loading__Icl1_ {
+  border: 1px solid rgba(122, 198, 255, 0.16);
+  background: linear-gradient(180deg, rgba(17, 45, 86, 0.96), rgba(10, 31, 62, 0.95));
+  color: #f5fbff;
+}
+
+.AdminDashboardTech_error__DoFWW {
+  border: 1px solid rgba(255, 139, 139, 0.16);
+  background: linear-gradient(180deg, rgba(63, 22, 40, 0.96), rgba(49, 17, 32, 0.95));
+  color: #ffc8d7;
+}
+
+.AdminDashboardTech_empty__Yj9cu {
+  border: 1px dashed rgba(136, 203, 255, 0.18);
+  background: rgba(17, 45, 86, 0.9);
+  color: #dbf3ff;
+}
+
+@media (max-width: 1280px) {
+  .AdminDashboardTech_gridThree__Lds2f {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .AdminDashboardTech_statGrid__A7Xjm,
+  .AdminDashboardTech_filters__FvqlR,
+  .AdminDashboardTech_gridThree__Lds2f,
+  .AdminDashboardTech_gridTwo__A5b8E {
+    grid-template-columns: 1fr;
+  }
+
+  .AdminDashboardTech_heroMeta__zDzVm {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .AdminDashboardTech_page__fcwO9 {
+    padding: 12px;
+  }
+
+  .AdminDashboardTech_hero__BGWbb,
+  .AdminDashboardTech_filterCard__a_0iO,
+  .AdminDashboardTech_panel__yHuEa,
+  .AdminDashboardTech_tablePanel__qqr_8 {
+    padding: 14px;
+  }
+
+  .AdminDashboardTech_chartWrap__O_gTW {
+    min-height: 240px;
+  }
+
+  .AdminDashboardTech_chartWrapCompact__xNdeM {
+    min-height: 210px;
+  }
+}
+
+
+
+
+
+
+
+
+
