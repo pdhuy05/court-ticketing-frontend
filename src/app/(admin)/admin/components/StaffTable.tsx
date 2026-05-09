@@ -988,7 +988,6 @@ export default function StaffTable() {
               opacity: 0.5,
             }}
           >
-            👥
           </div>
           <div
             style={{

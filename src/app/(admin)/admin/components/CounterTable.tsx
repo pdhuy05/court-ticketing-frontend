@@ -736,7 +736,6 @@ export default function CounterTable() {
               opacity: 0.5,
             }}
           >
-            🏢
           </div>
           <div
             style={{

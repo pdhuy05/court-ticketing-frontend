@@ -1109,4 +1109,4 @@ export default function AdminDashboardTech() {
       </div>
     </div>
   );
-}
+} 
