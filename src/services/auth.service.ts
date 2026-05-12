@@ -93,13 +93,7 @@ export interface AdminLoginResponse {
   success: boolean;
   data: {
     token: string;
-    user: {
-      id: string;
-      username: string;
-      fullName: string;
-      role: "admin" | "staff";
-      counterId?: string;
-    };
+    user: AdminProfile;
   };
   message?: string;
 }
@@ -129,4 +123,86 @@ export async function loginAdmin(
   }
 
   return data;
+}
+
+export type ProfileCounter = {
+  _id?: string;
+  id?: string;
+  code?: string;
+  name?: string;
+  number?: number;
+  isActive?: boolean;
+};
+
+export type ProfileService = {
+  _id?: string;
+  id?: string;
+  code?: string;
+  name?: string;
+  icon?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+};
+
+export type AdminProfile = {
+  _id?: string;
+  id?: string;
+  username?: string;
+  fullName?: string;
+  role?: "admin" | "staff" | string;
+  counterId?: string | null;
+  counter?: ProfileCounter | null;
+  isActive?: boolean;
+  lastLoginAt?: string | null;
+  onDuty?: boolean;
+  lastShiftStart?: string | null;
+  lastShiftEnd?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  availableServices?: ProfileService[];
+  assignedServices?: ProfileService[];
+  effectiveServices?: ProfileService[];
+  serviceRestrictionConfigured?: boolean;
+};
+
+export type MeResponse = {
+  success: boolean;
+  data: AdminProfile;
+  message?: string;
+};
+
+export async function getMyProfile(): Promise<AdminProfile> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+
+  if (!token) {
+    throw new Error("NO_TOKEN");
+  }
+
+  const response = await fetch(`${API_BASE}/auth/me`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const rawText = await response.text();
+  const data = parseJsonSafely<MeResponse & ApiErrorPayload>(rawText);
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessageFromPayload(data, rawText, "Không thể tải hồ sơ"),
+    );
+  }
+
+  if (!data?.data) {
+    throw new Error("Phản hồi hồ sơ không hợp lệ");
+  }
+
+  return data.data;
 }

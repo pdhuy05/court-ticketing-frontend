@@ -12,15 +12,23 @@ export default function ToastContainer({
   onRemoveToast,
 }: ToastContainerProps) {
   return (
-    <>
+    <div
+      style={{
+        position: "fixed",
+        top: 24,
+        right: 24,
+        zIndex: 9999,
+        display: "grid",
+        gap: 14,
+        width: "min(520px, calc(100vw - 32px))",
+        pointerEvents: "none",
+      }}
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}
           style={{
-            position: "fixed",
-            top: `${24 + toasts.indexOf(toast) * 100}px`,
-            right: 24,
-            zIndex: 9999,
+            pointerEvents: "auto",
           }}
         >
           <Toast
@@ -29,9 +37,10 @@ export default function ToastContainer({
             type={toast.type}
             onClose={() => onRemoveToast(toast.id)}
             duration={0}
+            inline
           />
         </div>
       ))}
-    </>
+    </div>
   );
 }

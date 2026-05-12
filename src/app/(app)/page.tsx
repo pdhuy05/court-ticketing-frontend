@@ -13,6 +13,7 @@ interface Service {
   description: string;
   displayOrder: number;
   id: string;
+  isActive: boolean;
   counters: Array<{
     _id: string;
     code: string;
@@ -57,25 +58,32 @@ export default function HomePage() {
       }
     }
     
-    // Fallback cho Font Awesome nếu icon không bắt đầu bằng Ri
     const faClass = iconName.startsWith("fa-") ? `fas ${iconName}` : `fas ${iconName}`;
     return <i className={faClass}></i>;
   };
   
-const SERVICE_COLORS = [
-  { bg: "#F05769", hover: "#E84655" },
-  { bg: "#41B660", hover: "#36944E" },
-  { bg: "#0B6D7F", hover: "#084F5A" },
-  { bg: "#8383C1", hover: "#6B6BA5" },
-  { bg: "#FF8C42", hover: "#E6762F" },
-  { bg: "#6BCB77", hover: "#57A863" },
-  { bg: "#4D96FF", hover: "#3B7EDB" },
-  { bg: "#B76EFF", hover: "#9A59DB" },
-  { bg: "#FF6B6B", hover: "#E05555" },
-  { bg: "#00A8A8", hover: "#008080" },
-];
+  const SERVICE_COLORS = [
+    { bg: "#F05769", hover: "#E84655" },
+    { bg: "#41B660", hover: "#36944E" },
+    { bg: "#0B6D7F", hover: "#084F5A" },
+    { bg: "#8383C1", hover: "#6B6BA5" },
+    { bg: "#FF8C42", hover: "#E6762F" },
+    { bg: "#6BCB77", hover: "#57A863" },
+    { bg: "#4D96FF", hover: "#3B7EDB" },
+    { bg: "#B76EFF", hover: "#9A59DB" },
+    { bg: "#FF6B6B", hover: "#E05555" },
+    { bg: "#00A8A8", hover: "#008080" },
+  ];
 
-  
+  const getCardBackground = (index: number) => {
+    const colorSet = SERVICE_COLORS[index % SERVICE_COLORS.length];
+    return {
+      background: colorSet.bg,
+      hoverBackground: colorSet.hover,
+      color: "#ffffff",
+    };
+  };
+
   if (error) {
     return (
       <div style={{ padding: 20, color: "red" }}>
@@ -83,15 +91,7 @@ const SERVICE_COLORS = [
       </div>
     );
   }
-const getCardBackground = (index: number) => {
-  const colorSet = SERVICE_COLORS[index % SERVICE_COLORS.length];
 
-  return {
-    background: colorSet.bg,
-    hoverBackground: colorSet.hover,
-    color: "#ffffff",
-  };
-};
   return (
     <div
       style={{
@@ -116,8 +116,9 @@ const getCardBackground = (index: number) => {
           lineHeight: 1.2,
         }}
       >
-      QUÝ ÔNG BÀ VUI LÒNG CHỌN YÊU CẦU
+        QUÝ ÔNG BÀ VUI LÒNG CHỌN YÊU CẦU
       </h2>
+      
       {loading ? (
         <p style={{ textAlign: "center" }}>Đang tải...</p>
       ) : (
@@ -132,10 +133,105 @@ const getCardBackground = (index: number) => {
               minHeight: 0,
             }}
           >
-          {servicesList.map((s, index) => {
-  const { background, hoverBackground, color } =
-    getCardBackground(index);
+            {servicesList.map((s, index) => {
+              const { background, hoverBackground, color } = getCardBackground(index);
+              const isInactive = !s.isActive;
 
+              // Nếu không hoạt động, dùng div thay vì Link
+              if (isInactive) {
+                return (
+                  <div
+                    key={s._id}
+                    style={{ display: "block", height: "100%" }}
+                  >
+                    <button
+                      disabled
+                      style={{
+                        height: "100%",
+                        padding: "clamp(12px, 1.6vw, 20px)",
+                        fontSize: "clamp(14px, 1.2vw, 22px)",
+                        borderRadius: 10,
+                        background,
+                        color,
+                        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "clamp(8px, 1vh, 12px)",
+                        cursor: "not-allowed",
+                        transition: "all 0.3s ease",
+                        width: "100%",
+                        border: "none",
+                        opacity: 0.7,
+                        filter: "grayscale(15%)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: "clamp(34px, 5vh, 62px)",
+                          fontSize: "clamp(21px, 2.55vw, 39px)",
+                          color,
+                          opacity: 0.6,
+                        }}
+                      >
+                        {renderIcon(s.icon, color)}
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div
+                          style={{
+                            fontWeight: "bold",
+                            fontSize: "clamp(24px, 2.8vw, 50px)",
+                            lineHeight: 1.15,
+                            whiteSpace: "normal",
+                            overflowWrap: "anywhere",
+                            opacity: 0.6,
+                          }}
+                        >
+                          {s.name}
+                        </div>
+                        <div style={{ fontSize: "clamp(16px, 1.4vw, 24px)", marginTop: 4, opacity: 0.5 }}>
+                          {s.description}
+                        </div>
+                        {/* Badge tạm ngưng phục vụ */}
+                        <div
+                          style={{
+                            marginTop: 14,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 20px",
+                            background: "rgba(0,0,0,0.75)",
+                            backdropFilter: "blur(4px)",
+                            borderRadius: 40,
+                            fontSize: "clamp(12px, 1.2vw, 15px)",
+                            fontWeight: 700,
+                            color: "#f87171",
+                            letterSpacing: "0.5px",
+                            border: "1px solid rgba(248,113,113,0.3)",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: "#f87171",
+                              animation: "pulse 1.5s infinite",
+                            }}
+                          />
+                          TẠM NGƯNG PHỤC VỤ
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              }
+
+              // Hoạt động bình thường
               return (
                 <Link
                   key={s._id}
@@ -167,8 +263,7 @@ const getCardBackground = (index: number) => {
                     }}
                     onMouseOver={(e) => {
                       e.currentTarget.style.background = hoverBackground;
-                      e.currentTarget.style.boxShadow =
-                        "0 4px 12px rgba(0,123,255,0.3)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,123,255,0.3)";
                       e.currentTarget.style.transform = "translateY(-2px)";
                     }}
                     onMouseOut={(e) => {
@@ -223,6 +318,19 @@ const getCardBackground = (index: number) => {
           </p>
         </div>
       )}
+
+      <style>
+        {`
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.4;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 }

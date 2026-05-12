@@ -5,6 +5,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ConfirmModal";
 import { clearAdminSession } from "@/lib/admin-auth";
+import { AdminProfile, getMyProfile } from "@/services/auth.service";
 import {
   FiActivity,
   FiGrid,
@@ -19,14 +20,6 @@ import {
 } from "react-icons/fi";
 import { IconType } from "react-icons";
 
-interface AdminUser {
-  id: string;
-  username: string;
-  fullName: string;
-  role: string;
-  counterId: string | null;
-}
-
 type NavItem = {
   href: string;
   label: string;
@@ -36,6 +29,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/admin", label: "Thống kê", icon: FiActivity },
   { href: "/admin/users", label: "Người dùng", icon: FiUsers },
+  { href: "/admin/profile", label: "Hồ sơ", icon: FiUser },
   { href: "/admin/counter", label: "Quản lý phòng", icon: FiGrid },
   { href: "/admin/services", label: "Quản lý quầy", icon: FiTool },
   { href: "/admin/printers", label: "Máy in", icon: FiPrinter },
@@ -46,14 +40,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminProfile | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const isLoginPage = pathname === "/login";
+  const isLoginPage = pathname === "/login" || pathname === "/admin/login";
 
   const handleSessionExpired = () => {
     clearAdminSession();
-    router.replace("/login?reason=session_expired");
+    router.replace("/admin/login?reason=session_expired");
   };
 
   useEffect(() => {
@@ -61,22 +55,43 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       return;
     }
 
-    const token = localStorage.getItem("adminToken");
-    const user = localStorage.getItem("adminUser");
+    let isMounted = true;
 
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
+    const hydrateAdminUser = async () => {
+      const token = localStorage.getItem("adminToken");
+      const user = localStorage.getItem("adminUser");
 
-    try {
-      if (user) {
-        setAdminUser(JSON.parse(user));
+      if (!token) {
+        router.replace("/admin/login");
+        return;
       }
-      setIsLoggedIn(true);
-    } catch {
-      handleSessionExpired();
-    }
+
+      try {
+        if (user) {
+          const cachedUser = JSON.parse(user) as AdminProfile;
+          if (isMounted) {
+            setAdminUser(cachedUser);
+            setIsLoggedIn(true);
+          }
+        }
+
+        const profile = await getMyProfile();
+        localStorage.setItem("adminUser", JSON.stringify(profile));
+
+        if (isMounted) {
+          setAdminUser(profile);
+          setIsLoggedIn(true);
+        }
+      } catch {
+        handleSessionExpired();
+      }
+    };
+
+    void hydrateAdminUser();
+
+    return () => {
+      isMounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoginPage]);
 
@@ -87,7 +102,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const handleConfirmLogout = () => {
     setShowLogoutConfirm(false);
     clearAdminSession();
-    router.replace("/login");
+    router.replace("/admin/login");
   };
 
   const getActiveIndex = () => {
