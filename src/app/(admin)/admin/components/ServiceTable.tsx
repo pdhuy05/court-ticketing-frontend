@@ -571,7 +571,7 @@ export default function ServiceTable() {
         </td>
       </tr>
     ) : paginatedServices.length > 0 ? (
-      paginatedServices.map((service) => (
+      paginatedServices.map((service, rowIndex) => (
         <tr
           key={service._id}
           style={{
@@ -598,7 +598,7 @@ export default function ServiceTable() {
               width: "60px",
             }}
           >
-            {service.displayOrder}
+            {indexOfFirstItem + rowIndex + 1}
           </td>
           <td
             style={{
@@ -848,7 +848,7 @@ export default function ServiceTable() {
               color: "#94a3b8",
             }}
           >
-            Nhấn "Thêm Mới" để thêm quầy đầu tiên
+            Nhấn &quot;Thêm Mới&quot; để thêm quầy đầu tiên
           </div>
         </td>
       </tr>
@@ -1669,6 +1669,4 @@ export default function ServiceTable() {
     </div>
   );
 }
-
-
 

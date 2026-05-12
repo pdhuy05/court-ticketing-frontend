@@ -25,13 +25,15 @@
   flex-grow: 1;
   overflow: visible;
   position: relative;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .admin-table-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 20px; /* Reduced padding */
+  padding: 18px 20px; 
   border-bottom: 1px solid #e8e8e8;
   background: white;
 }

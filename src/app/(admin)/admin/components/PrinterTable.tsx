@@ -295,12 +295,13 @@ export default function PrinterTable() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="admin-table-loading">Đang tải dữ liệu...</div>
-      ) : filteredPrinters.length === 0 ? (
-        <div className="admin-table-empty">Không có máy in nào</div>
-      ) : (
-        <table
+      <div className="admin-table-body">
+        {loading ? (
+          <div className="admin-table-loading">Đang tải dữ liệu...</div>
+        ) : filteredPrinters.length === 0 ? (
+          <div className="admin-table-empty">Không có máy in nào</div>
+        ) : (
+          <table
             style={{
               width: "100%",
               borderCollapse: "separate",
@@ -614,7 +615,8 @@ export default function PrinterTable() {
               ))}
             </tbody>
           </table>
-      )}
+        )}
+      </div>
 
       <div className="admin-table-footer">
         <span>Hiển thị {currentItems.length} trên tổng số {filteredPrinters.length} kết quả</span>

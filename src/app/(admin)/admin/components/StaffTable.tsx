@@ -58,6 +58,11 @@ const parseApiError = (err: unknown): string => {
   return data.message || "Lỗi không xác định";
 };
 
+type StaffTableService = StaffServiceInfo & {
+  _id: string;
+  id?: string;
+};
+
 export default function StaffTable() {
   const { toasts, removeToast, success, error } = useToast();
   const guardSession = useAdminSessionGuard();
@@ -328,21 +333,21 @@ export default function StaffTable() {
   };
 
   const allServices = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, StaffTableService>();
     counters.forEach((counter) => {
       counter.services?.forEach((service) => {
-        map.set(service._id, service);
+        map.set(service._id, service as StaffTableService);
       });
     });
 
     return Array.from(map.values()).sort(
-      (a: any, b: any) => (a.displayOrder || 0) - (b.displayOrder || 0),
+      (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
     );
   }, [counters]);
 
   const serviceColorMap = useMemo(() => {
     const colorMap = new Map<string, ReturnType<typeof getSequentialTagColorStyle>>();
-    allServices.forEach((service: any, index: number) => {
+    allServices.forEach((service, index) => {
       const color = getSequentialTagColorStyle(index);
       if (service._id) colorMap.set(service._id, color);
       if (service.id) colorMap.set(service.id, color);
@@ -433,7 +438,7 @@ export default function StaffTable() {
                 options: [
                   { label: "Tất cả quầy", value: "all" },
                   { label: "Không có quầy", value: "unassigned" },
-                  ...allServices.map((service: any) => ({
+                  ...allServices.map((service) => ({
                     label: `${service.name} (${service.code})`,
                     value: service._id,
                   })),
@@ -481,10 +486,11 @@ export default function StaffTable() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="admin-table-loading">Đang tải...</div>
-      ) : (
-        <table
+      <div className="admin-table-body">
+        {loading ? (
+          <div className="admin-table-loading">Đang tải...</div>
+        ) : (
+          <table
   style={{
     width: "100%",
     borderCollapse: "separate",
@@ -1005,7 +1011,7 @@ export default function StaffTable() {
               color: "#94a3b8",
             }}
           >
-            Nhấn "Thêm Mới" để thêm nhân viên đầu tiên
+            Nhấn &quot;Thêm Mới&quot; để thêm nhân viên đầu tiên
           </div>
         </td>
       </tr>
@@ -1013,7 +1019,8 @@ export default function StaffTable() {
   </tbody>
 </table>
 
-      )}
+        )}
+      </div>
 
       <div className="admin-table-footer">
         <span>Hiển thị {currentItems.length} trên tổng số {filteredStaff.length} kết quả</span>

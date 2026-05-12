@@ -13,6 +13,70 @@ const getAuthHeaders = () => {
   return headers;
 };
 
+type ApiErrorDetail = {
+  field?: string;
+  message?: string;
+};
+
+type ApiErrorPayload = {
+  message?: string;
+  errors?:
+    | ApiErrorDetail[]
+    | Record<string, string | string[] | ApiErrorDetail | ApiErrorDetail[]>;
+};
+
+const getApiErrorMessage = (
+  payload: ApiErrorPayload | null | undefined,
+  fallbackMessage: string,
+) => {
+  if (!payload) {
+    return fallbackMessage;
+  }
+
+  if (Array.isArray(payload.errors) && payload.errors.length > 0) {
+    const messages = payload.errors
+      .map((error) => error.message || error.field)
+      .filter(Boolean);
+
+    if (messages.length > 0) {
+      return messages.join("; ");
+    }
+  }
+
+  if (payload.errors && typeof payload.errors === "object") {
+    for (const value of Object.values(payload.errors)) {
+      if (typeof value === "string" && value.trim()) {
+        return value;
+      }
+
+      if (Array.isArray(value) && value.length > 0) {
+        const messages = value
+          .map((item) =>
+            typeof item === "string" ? item : item.message || item.field,
+          )
+          .filter(Boolean);
+
+        if (messages.length > 0) {
+          return messages.join("; ");
+        }
+      }
+
+      if (value && typeof value === "object") {
+        const detail = value as ApiErrorDetail;
+        if (detail.message || detail.field) {
+          return detail.message || detail.field || fallbackMessage;
+        }
+      }
+    }
+  }
+
+  if (payload.message && payload.message !== "Validation error") {
+    return payload.message;
+  }
+
+  return fallbackMessage;
+};
+
 const parseJsonResponse = async <T>(response: Response): Promise<T> => {
   const contentType = response.headers.get("content-type") || "";
   const raw = await response.text();
@@ -23,13 +87,21 @@ const parseJsonResponse = async <T>(response: Response): Promise<T> => {
     );
   }
 
+  let data: T & ApiErrorPayload;
+
   try {
-    return JSON.parse(raw) as T;
+    data = JSON.parse(raw) as T & ApiErrorPayload;
   } catch {
     throw new Error(
       `Không đọc được JSON từ ${response.url}. Kiểm tra API backend theo biến môi trường.`,
     );
   }
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(data, "Yêu cầu không hợp lệ"));
+  }
+
+  return data as T;
 };
 
 // ==================== SERVICES ====================
@@ -98,7 +170,7 @@ export async function createService(
   });
   const data = await parseJsonResponse<{ success: boolean; data: Service; message?: string }>(response);
   if (data.success) return data.data;
-  throw new Error(data.message || "Lỗi tạo quầy");
+  throw new Error(getApiErrorMessage(data, "Lỗi tạo quầy"));
 }
 
 export async function updateService(
@@ -112,7 +184,7 @@ export async function updateService(
   });
   const data = await parseJsonResponse<{ success: boolean; data: Service; message?: string }>(response);
   if (data.success) return data.data;
-  throw new Error(data.message || "Lỗi cập nhật quầy");
+  throw new Error(getApiErrorMessage(data, "Lỗi cập nhật quầy"));
 }
 
 // ==================== COUNTERS ====================
@@ -167,7 +239,7 @@ export async function createCounter(counterData: {
   });
   const data = await response.json();
   if (data.success) return data.data;
-  throw new Error(data.message || "Lỗi tạo quầy");
+  throw new Error(getApiErrorMessage(data, "Lỗi tạo quầy"));
 }
 
 export async function updateCounter(
@@ -181,7 +253,7 @@ export async function updateCounter(
   });
   const data = await response.json();
   if (data.success) return data.data;
-  throw new Error(data.message || "Lỗi cập nhật quầy");
+  throw new Error(getApiErrorMessage(data, "Lỗi cập nhật quầy"));
 }
 
 export async function deleteCounter(id: string): Promise<void> {

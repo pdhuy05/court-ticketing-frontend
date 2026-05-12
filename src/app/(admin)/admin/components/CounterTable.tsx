@@ -477,7 +477,7 @@ export default function CounterTable() {
         </td>
       </tr>
     ) : paginatedCounters.length > 0 ? (
-      paginatedCounters.map((counter) => (
+      paginatedCounters.map((counter, rowIndex) => (
         <tr
           key={counter._id}
           style={{
@@ -504,7 +504,7 @@ export default function CounterTable() {
               width: "60px",
             }}
           >
-            {counter.number}
+            {indexOfFirstItem + rowIndex + 1}
           </td>
           <td
             style={{
@@ -753,7 +753,7 @@ export default function CounterTable() {
               color: "#94a3b8",
             }}
           >
-            Nhấn "Thêm Mới" để thêm phòng đầu tiên
+            Nhấn &quot;Thêm Mới&quot; để thêm phòng đầu tiên
           </div>
         </td>
       </tr>
