@@ -196,7 +196,6 @@ export default function HomePage() {
                         <div style={{ fontSize: "clamp(16px, 1.4vw, 24px)", marginTop: 4, opacity: 0.5 }}>
                           {s.description}
                         </div>
-                        {/* Badge tạm ngưng phục vụ */}
                         <div
                           style={{
                             marginTop: 14,
@@ -223,7 +222,7 @@ export default function HomePage() {
                               animation: "pulse 1.5s infinite",
                             }}
                           />
-                          TẠM NGƯNG PHỤC VỤ
+                          ĐANG THỬ NGHIỆM
                         </div>
                       </div>
                     </button>
@@ -231,7 +230,6 @@ export default function HomePage() {
                 );
               }
 
-              // Hoạt động bình thường
               return (
                 <Link
                   key={s._id}
