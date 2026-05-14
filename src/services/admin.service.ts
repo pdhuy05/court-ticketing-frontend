@@ -111,6 +111,8 @@ export interface Service {
   name: string;
   icon: string;
   isActive: boolean;
+  /** In 2 tờ: vé đầy đủ + tờ nhỏ kẹp hồ sơ (theo cấu hình backend). */
+  doublePrint?: boolean;
   description: string;
   displayOrder: number;
   prefixNumber: number;
@@ -185,6 +187,29 @@ export async function updateService(
   const data = await parseJsonResponse<{ success: boolean; data: Service; message?: string }>(response);
   if (data.success) return data.data;
   throw new Error(getApiErrorMessage(data, "Lỗi cập nhật quầy"));
+}
+
+export interface ToggleDoublePrintResponse {
+  success: boolean;
+  data: Service;
+  message: string;
+}
+
+/** Bật/tắt in 2 vé (vé đầy đủ + tờ nhỏ) cho một dịch vụ. */
+export async function patchServiceDoublePrint(
+  serviceId: string,
+  doublePrint: boolean,
+): Promise<{ service: Service; message: string }> {
+  const response = await fetch(`${API_BASE}/services/${serviceId}/double-print`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ doublePrint }),
+  });
+  const data = await parseJsonResponse<ToggleDoublePrintResponse>(response);
+  if (data.success) {
+    return { service: data.data, message: data.message };
+  }
+  throw new Error(getApiErrorMessage(data, "Không cập nhật được in 2 vé"));
 }
 
 // ==================== COUNTERS ====================

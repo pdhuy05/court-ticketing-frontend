@@ -14,6 +14,7 @@ interface Service {
   displayOrder: number;
   id: string;
   isActive: boolean;
+  doublePrint?: boolean;
   counters: Array<{
     _id: string;
     code: string;

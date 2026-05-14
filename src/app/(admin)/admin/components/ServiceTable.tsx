@@ -12,6 +12,7 @@ import {
   deleteService,
   addServicesToCounter,
   removeServiceFromCounter,
+  patchServiceDoublePrint,
   Counter,
   Service,
 } from "@/services/admin.service";
@@ -57,6 +58,7 @@ export default function ServiceTable() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [prefixNumberError, setPrefixNumberError] = useState("");
+  const [doublePrintTogglingId, setDoublePrintTogglingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -65,6 +67,7 @@ export default function ServiceTable() {
     displayOrder: 1,
     prefixNumber: 0,
     isActive: true,
+    doublePrint: false,
   });
 
   const validatePrefixNumber = (value: number) => {
@@ -108,6 +111,7 @@ export default function ServiceTable() {
         displayOrder: service.displayOrder,
         prefixNumber: service.prefixNumber ?? 0,
         isActive: service.isActive,
+        doublePrint: Boolean(service.doublePrint),
       });
       setPrefixNumberError("");
       const counterIds = service.counters?.map((counter) => counter._id) || [];
@@ -123,6 +127,7 @@ export default function ServiceTable() {
         displayOrder: 1,
         prefixNumber: 0,
         isActive: true,
+        doublePrint: false,
       });
       setPrefixNumberError("");
       setSelectedCounters([]);
@@ -142,6 +147,7 @@ export default function ServiceTable() {
       displayOrder: 1,
       prefixNumber: 0,
       isActive: true,
+      doublePrint: false,
     });
     setPrefixNumberError("");
     setSelectedCounters([]);
@@ -181,6 +187,28 @@ export default function ServiceTable() {
       prefixNumber: nextValue,
     }));
     setPrefixNumberError(validatePrefixNumber(nextValue));
+  };
+
+  const handleToggleDoublePrint = async (service: Service, nextValue: boolean) => {
+    if (doublePrintTogglingId === service._id) return;
+    if (Boolean(service.doublePrint) === nextValue) return;
+    setDoublePrintTogglingId(service._id);
+    try {
+      const { service: updated, message } = await patchServiceDoublePrint(
+        service._id,
+        nextValue,
+      );
+      setServices((prev) =>
+        prev.map((s) => (s._id === service._id ? { ...s, ...updated } : s)),
+      );
+      success(message);
+    } catch (err) {
+      error(
+        err instanceof Error ? err.message : "Không cập nhật được in 2 vé",
+      );
+    } finally {
+      setDoublePrintTogglingId(null);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -256,6 +284,7 @@ export default function ServiceTable() {
           displayOrder: formData.displayOrder,
           prefixNumber: normalizedPrefixNumber,
           isActive: formData.isActive,
+          doublePrint: formData.doublePrint,
         });
 
         await Promise.all(
@@ -528,6 +557,20 @@ export default function ServiceTable() {
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.5px",
+        }}
+        title="Bật: in vé đầy đủ + tờ nhỏ kẹp hồ sơ. Tắt: chỉ một tờ."
+      >
+        In 2 vé
+      </th>
+      <th
+        style={{
+          padding: "clamp(10px, 1.5vh, 14px) 16px",
+          background: "#1e4775",
+          color: "white",
+          fontSize: "clamp(12px, 0.85vw, 13px)",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
           borderRadius: "0 12px 12px 0",
         }}
       >
@@ -539,7 +582,7 @@ export default function ServiceTable() {
     {loading ? (
       <tr>
         <td
-          colSpan={8}
+          colSpan={9}
           style={{
             padding: "48px 24px",
             textAlign: "center",
@@ -744,6 +787,50 @@ export default function ServiceTable() {
               padding: "clamp(12px, 1.8vh, 16px) 16px",
               borderTop: "1px solid #eef2f6",
               borderBottom: "1px solid #eef2f6",
+              verticalAlign: "middle",
+            }}
+          >
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "10px",
+                cursor:
+                  doublePrintTogglingId === service._id ? "wait" : "pointer",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(service.doublePrint)}
+                disabled={doublePrintTogglingId === service._id}
+                onChange={(e) => {
+                  void handleToggleDoublePrint(service, e.target.checked);
+                }}
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  cursor:
+                    doublePrintTogglingId === service._id ? "wait" : "pointer",
+                  accentColor: "#1e4775",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  color: service.doublePrint ? "#0f766e" : "#64748b",
+                }}
+              >
+                {service.doublePrint ? "2 tờ" : "1 tờ"}
+              </span>
+            </label>
+          </td>
+          <td
+            style={{
+              padding: "clamp(12px, 1.8vh, 16px) 16px",
+              borderTop: "1px solid #eef2f6",
+              borderBottom: "1px solid #eef2f6",
               borderRight: "1px solid #eef2f6",
               borderRadius: "0 12px 12px 0",
             }}
@@ -816,7 +903,7 @@ export default function ServiceTable() {
     ) : (
       <tr>
         <td
-          colSpan={8}
+          colSpan={9}
           style={{
             padding: "48px 24px",
             textAlign: "center",
@@ -1305,6 +1392,71 @@ export default function ServiceTable() {
                     {formData.isActive
                       ? "Quầy đang hoạt động bình thường"
                       : "Quầy tạm thời không phục vụ"}
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "12px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#334155",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                In 2 vé (tờ nhỏ kẹp hồ sơ)
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px",
+                  padding: "16px",
+                  background: formData.doublePrint ? "#ecfeff" : "#f8fafc",
+                  border: `2px solid ${formData.doublePrint ? "#67e8f9" : "#e2e8f0"}`,
+                  borderRadius: "16px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.doublePrint}
+                  onChange={(e) =>
+                    setFormData({ ...formData, doublePrint: e.target.checked })
+                  }
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    cursor: "pointer",
+                    accentColor: "#0891b2",
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      color: formData.doublePrint ? "#0e7490" : "#475569",
+                      marginBottom: "2px",
+                    }}
+                  >
+                    {formData.doublePrint
+                      ? "Bật — in vé đầy đủ + tờ nhỏ"
+                      : "Tắt — chỉ in một tờ vé đầy đủ"}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: formData.doublePrint ? "#22d3ee" : "#94a3b8",
+                    }}
+                  >
+                    Có thể bật/tắt nhanh trong bảng (cột In 2 vé).
                   </div>
                 </div>
               </label>

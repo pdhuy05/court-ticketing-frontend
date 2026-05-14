@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ConfirmModal";
+import NewTicketGlobalSocket from "@/components/NewTicketGlobalSocket";
+import NotificationPermissionButton from "@/components/NotificationPermissionButton";
 import { clearAdminSession } from "@/lib/admin-auth";
 import { AdminProfile, getMyProfile } from "@/services/auth.service";
 import {
@@ -126,6 +128,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <NewTicketGlobalSocket />
       <div
         style={{
           display: "flex",
@@ -418,6 +421,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   gap: "16px",
                 }}
               >
+                <NotificationPermissionButton variant="admin" />
                 {/* User Info Card */}
                 <div
                   style={{

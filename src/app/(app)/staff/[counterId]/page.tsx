@@ -26,6 +26,9 @@ import {
   onSocketError,
   onStaffDisplayUpdated,
 } from "@/lib/staff-socket";
+import { useNewTicketAlerts } from "@/hooks/useNewTicketAlerts";
+import type { NewTicketSocketPayload } from "@/types/new-ticket";
+import NotificationPermissionButton from "@/components/NotificationPermissionButton";
 
 const getTicketDisplayNumber = (ticket?: Ticket | null) =>
   ticket?.displayNumber ||
@@ -141,6 +144,8 @@ export default function StaffCounterPage() {
     }
   }, []);
 
+  const onNewTicketAlert = useNewTicketAlerts();
+
   useEffect(() => {
     const token =
       typeof window !== "undefined" ? sessionStorage.getItem("staffToken") : null;
@@ -255,13 +260,19 @@ export default function StaffCounterPage() {
       console.error("Socket connection failed on staff screen:", error);
     });
 
+    const handleNewTicket = (payload: NewTicketSocketPayload) => {
+      onNewTicketAlert(payload);
+    };
+    socket.on("new_ticket", handleNewTicket);
+
     return () => {
+      socket.off("new_ticket", handleNewTicket);
       unsubscribe();
       unsubscribeJoined();
       unsubscribeSocketError();
       socket.disconnect();
     };
-  }, [authenticated, counterId, staffId]);
+  }, [authenticated, counterId, staffId, onNewTicketAlert]);
 
   useEffect(() => {
     if (!authenticated) {
@@ -792,6 +803,7 @@ export default function StaffCounterPage() {
             marginLeft: "auto",
           }}
         >
+          <NotificationPermissionButton variant="staff" />
           <div
             title={ttsEnabled ? "Loa đang bật" : "Loa đang tắt"}
             aria-label={ttsEnabled ? "Loa đang bật" : "Loa đang tắt"}
