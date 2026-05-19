@@ -365,7 +365,8 @@ export default function PrinterTable() {
                     { label: "Tất cả", value: "all" },
                     { label: "Network (TCP/IP)", value: "network" },
                     { label: "USB", value: "usb" },
-                    { label: "Bluetooth", value: "bluetooth" },
+                    // ✅ FIX: đổi bluetooth → serial cho đúng type Printer
+                    { label: "Serial", value: "serial" },
                   ],
                 },
               ]}
@@ -403,7 +404,14 @@ export default function PrinterTable() {
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  style={{ border: "none", background: "none", cursor: "pointer", padding: 0, display: "flex", color: C.gray400 }}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    display: "flex",
+                    color: C.gray400,
+                  }}
                 >
                   <FiX size={14} />
                 </button>
@@ -794,7 +802,8 @@ export default function PrinterTable() {
                     <select
                       value={formData.type}
                       onChange={(e) =>
-                        setFormData({ ...formData, type: e.target.value as "network" | "usb" | "bluetooth" })
+                        // ✅ FIX: đổi "bluetooth" → "serial" cho đúng type Printer
+                        setFormData({ ...formData, type: e.target.value as "network" | "usb" | "serial" })
                       }
                       style={{ ...field, cursor: "pointer" }}
                       onFocus={focusField}
@@ -802,7 +811,8 @@ export default function PrinterTable() {
                     >
                       <option value="network">Network (TCP/IP)</option>
                       <option value="usb">USB</option>
-                      <option value="bluetooth">Bluetooth</option>
+                      {/* ✅ FIX: đổi bluetooth → serial */}
+                      <option value="serial">Serial</option>
                     </select>
                   </div>
                 </div>
@@ -827,7 +837,8 @@ export default function PrinterTable() {
                           ? "VD: 192.168.1.100"
                           : formData.type === "usb"
                           ? "VD: /dev/usb/lp0"
-                          : "VD: AA:BB:CC:DD:EE:FF"
+                          // ✅ FIX: đổi bluetooth placeholder → serial
+                          : "VD: COM3 hoặc /dev/ttyUSB0"
                       }
                       style={field}
                       onFocus={focusField}
