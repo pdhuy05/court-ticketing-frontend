@@ -11,6 +11,7 @@ import { AdminProfile, getMyProfile } from "@/services/auth.service";
 
 import {
   FiActivity,
+  FiFileText,
   FiGrid,
   FiLogOut,
   FiPrinter,
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { href: "/admin/services", label: "Quản lý quầy", icon: FiTool },
   { href: "/admin/printers", label: "Máy in", icon: FiPrinter },
   { href: "/admin/settings", label: "Cài đặt", icon: FiSettings },
+  { href: "/admin/reports", label: "Báo cáo", icon: FiFileText },
   { href: "/admin/profile", label: "Hồ sơ", icon: FiUser },
 ];
 

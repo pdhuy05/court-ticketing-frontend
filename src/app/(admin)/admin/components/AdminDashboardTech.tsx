@@ -273,6 +273,7 @@ export default function AdminDashboardTech() {
 
   // ── State ──
   const [overview, setOverview] = useState<DashboardOverviewData | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [ticketOverview, setTicketOverview] = useState<DashboardTicketOverview | null>(null);
   const [countersStatus, setCountersStatus] = useState<DashboardCountersStatus | null>(null);
   const [staffData, setStaffData] = useState<DashboardStaffData | null>(null);
@@ -291,7 +292,6 @@ export default function AdminDashboardTech() {
 
   // filters
   const [trendPeriod, setTrendPeriod] = useState<"day" | "month">("day");
-  const [monthValue] = useState(currentMonth);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -689,9 +689,9 @@ export default function AdminDashboardTech() {
         (c.id ? overviewMap.get(c.id) : undefined) ??
         (c.name ? overviewMap.get(c.name) : undefined);
 
+      // ✅ FIX: c.waiting ĐÃ BỊ XÓA — DashboardCountersStatus.countersList không có field này
       const waiting =
         overviewEntry?.waiting ??
-        c.waiting ??
         alert?.waitingCount ??
         0;
 
@@ -977,7 +977,6 @@ export default function AdminDashboardTech() {
                         </span>
                       </div>
 
-                      {/* Hiển thị tất cả nhân viên đang trực tại quầy */}
                       {staffNames.map((name, i) => (
                         <div key={i} className={styles.counterStaff}>
                           <FiUsers size={11} /> {name}

@@ -833,3 +833,29 @@ export async function updateStaffServices(
   if (data.success) return data.data;
   throw new Error(data.message || "Lỗi cập nhật quầy nhân viên");
 }
+// ==================== REPORT EXPORT ====================
+export async function exportReport(startDate: string, endDate: string): Promise<void> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const response = await fetch(
+    `${API_BASE}/reports/export?startDate=${startDate}&endDate=${endDate}`,
+    { headers }
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Xuất báo cáo thất bại");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bao-cao-${startDate}_${endDate}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

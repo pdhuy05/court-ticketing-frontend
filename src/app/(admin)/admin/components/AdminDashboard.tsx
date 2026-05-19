@@ -108,6 +108,9 @@ const doughnutLabelPlugin: Plugin<"doughnut"> = {
   },
 };
 
+// ✅ doughnutLabelPlugin được khai báo nhưng dùng tùy nơi — giữ lại để tránh xóa nhầm
+void doughnutLabelPlugin;
+
 const chartOptionsBase = {
   maintainAspectRatio: false,
   layout: {
@@ -134,9 +137,6 @@ const formatNumber = (value: number) =>
 
 const formatUnit = (value: number, unit: string) =>
   `${formatNumber(value)} ${unit}`;
-
-const formatPercent = (value: number, total: number) =>
-  `${Math.round((value / (total || 1)) * 100)}%`;
 
 const formatMinutes = (value: number) =>
   `${new Intl.NumberFormat("vi-VN", {
@@ -265,13 +265,6 @@ const buildMonthlyBars = (report: DashboardReportData) => ({
   ],
 });
 
-const statusLabelMap: Record<string, string> = {
-  completed: "Hoàn tất",
-  processing: "Đang xử lý",
-  waiting: "Đang chờ",
-  skipped: "Bỏ qua",
-};
-
 function MetricCard({
   icon,
   label,
@@ -351,12 +344,8 @@ export default function AdminDashboard() {
   const [overview, setOverview] = useState<Awaited<
     ReturnType<typeof getDashboardOverview>
   > | null>(null);
-  const [dailyReport, setDailyReport] = useState<DashboardReportData | null>(
-    null,
-  );
-  const [monthlyReport, setMonthlyReport] = useState<DashboardReportData | null>(
-    null,
-  );
+  const [dailyReport, setDailyReport] = useState<DashboardReportData | null>(null);
+  const [monthlyReport, setMonthlyReport] = useState<DashboardReportData | null>(null);
   const [dailyDate, setDailyDate] = useState(previousDay);
   const [monthValue, setMonthValue] = useState(currentMonth);
   const [loading, setLoading] = useState(true);
@@ -376,17 +365,13 @@ export default function AdminDashboard() {
           getDashboardReport({ period: "monthly", month: monthValue }),
         ]);
 
-        if (!mounted) {
-          return;
-        }
+        if (!mounted) return;
 
         setOverview(overviewData);
         setDailyReport(dailyData);
         setMonthlyReport(monthlyData);
       } catch (fetchError) {
-        if (!mounted) {
-          return;
-        }
+        if (!mounted) return;
 
         setError(
           fetchError instanceof Error
@@ -408,9 +393,7 @@ export default function AdminDashboard() {
   }, [dailyDate, monthValue]);
 
   const overviewStatusData = useMemo(() => {
-    if (!overview) {
-      return null;
-    }
+    if (!overview) return null;
 
     return {
       labels: ["Đang chờ", "Đang xử lý", "Hoàn tất hôm nay", "Bỏ qua hôm nay"],
@@ -491,7 +474,6 @@ export default function AdminDashboard() {
                 <FiCpu />
                 Trung tâm điều hành thống kê thời gian thực
               </span>
-              
             </div>
             <div className={styles.heroMeta}>
               <div className={styles.metaCard}>
@@ -859,8 +841,6 @@ export default function AdminDashboard() {
         )}
 
         <ServiceTable services={dailyReport.services} />
-
-      
       </div>
     </div>
   );
@@ -873,6 +853,8 @@ function CounterCard({
   counter: DashboardCounterOverview;
   monthlyCompleted: number;
 }) {
+  const firstStaff = Array.isArray(counter.staff) ? counter.staff[0] : null;
+
   return (
     <div className={styles.panel} style={{ padding: 18 }}>
       <div className={styles.counterItem}>
@@ -897,7 +879,11 @@ function CounterCard({
               : styles.chipSuccess
           }
         >
-          {counter.isOverloaded ? "Quá tải" : counter.isServing ? "Đang phục vụ" : "Sẵn sàng"}
+          {counter.isOverloaded
+            ? "Quá tải"
+            : counter.isServing
+            ? "Đang phục vụ"
+            : "Sẵn sàng"}
         </span>
       </div>
       <div className={styles.counterMeta}>
@@ -909,7 +895,7 @@ function CounterCard({
           Hoàn tất tháng: {formatNumber(monthlyCompleted)}
         </span>
         <span className={styles.chip}>
-          Nhân sự: {counter.staff?.fullName || "Chưa gán"}
+          Nhân sự: {firstStaff?.fullName ?? "Chưa gán"}
         </span>
       </div>
       {counter.currentTicket && (
