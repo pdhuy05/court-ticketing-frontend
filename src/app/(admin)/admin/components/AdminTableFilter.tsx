@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FiFilter, FiX } from "react-icons/fi";
+import { FiX } from "react-icons/fi";
+import { TbAdjustmentsHorizontal } from "react-icons/tb";
 
 export interface FilterOption {
   label: string;
@@ -29,122 +30,214 @@ export default function AdminTableFilter({
 }: AdminTableFilterProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasActiveFilters = useMemo(() => activeCount > 0, [activeCount]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const hasActiveFilters = useMemo(() => activeCount > 0, [activeCount]);
+  const handleOptionChange = (section: FilterSection, optionValue: string, checked: boolean) => {
+    const current = section.value;
+    let next: string[];
+    if (checked) {
+      if (optionValue === "all") {
+        next = ["all"];
+      } else {
+        next = current.filter((v) => v !== "all" && v !== optionValue);
+        next.push(optionValue);
+      }
+    } else {
+      next = current.filter((v) => v !== optionValue);
+      if (next.length === 0) next = ["all"];
+    }
+    section.onChange(next);
+  };
 
   return (
-    <div
-      className="admin-filter"
-      ref={containerRef}
-      style={{ display: "flex", alignItems: "center", gap: "10px" }}
-    >
+    <div ref={containerRef} style={{ position: "relative" }}>
+      {/* Trigger */}
       <button
         type="button"
-        className={`admin-filter-trigger ${open ? "is-open" : ""}`}
         onClick={() => setOpen((prev) => !prev)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: "0 12px",
+          height: "34px",
+          background: open || hasActiveFilters ? "#f1f5f9" : "white",
+          border: `0.5px solid ${open || hasActiveFilters ? "#94a3b8" : "#e2e8f0"}`,
+          borderRadius: "8px",
+          fontSize: "13px",
+          color: "#1e293b",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+          transition: "all .15s",
+        }}
       >
-        <FiFilter size={16} />
+        <TbAdjustmentsHorizontal size={15} />
         <span>Bộ lọc</span>
-        <span
-          className={`admin-filter-badge ${hasActiveFilters ? "" : "is-hidden"}`}
-          aria-hidden={!hasActiveFilters}
-        >
-          {hasActiveFilters ? activeCount : 0}
-        </span>
+        {hasActiveFilters && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "18px",
+              height: "18px",
+              borderRadius: "50%",
+              background: "#1e293b",
+              color: "white",
+              fontSize: "10px",
+              fontWeight: 500,
+            }}
+          >
+            {activeCount}
+          </span>
+        )}
       </button>
 
+      {/* Popover */}
       {open && (
         <div
-          className="admin-filter-popover"
-          style={{ maxHeight: "400px", overflowY: "auto" }}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            width: "252px",
+            background: "white",
+            border: "0.5px solid #e2e8f0",
+            borderRadius: "12px",
+            overflow: "hidden",
+            zIndex: 100,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+            animation: "filterPop .12s ease",
+          }}
         >
-          <div className="admin-filter-popover__header">
-            <strong>Bộ lọc</strong>
+          <style>{`
+            @keyframes filterPop {
+              from { opacity: 0; transform: translateY(-4px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+            .filter-opt:hover { background: #f8fafc; }
+          `}</style>
+
+          {/* Header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "10px 14px",
+              borderBottom: "0.5px solid #f1f5f9",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "#94a3b8",
+                letterSpacing: ".06em",
+                textTransform: "uppercase",
+              }}
+            >
+              Bộ lọc
+            </span>
             {hasActiveFilters && (
               <button
                 type="button"
-                className="admin-filter-reset"
                 onClick={onReset}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "3px 8px",
+                  border: "0.5px solid #e2e8f0",
+                  borderRadius: "6px",
+                  background: "none",
+                  fontSize: "12px",
+                  color: "#64748b",
+                  cursor: "pointer",
+                }}
               >
-                <FiX size={14} />
-                <span>Xóa lọc</span>
+                <FiX size={11} />
+                Xóa lọc
               </button>
             )}
           </div>
 
-          <div className="admin-filter-popover__body">
-            {sections.map((section) => (
-              <div key={section.id} className="admin-filter-field">
-                <span style={{ display: "block", marginBottom: "8px" }}>
-                  {section.label}
-                </span>
+          {/* Body */}
+          <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+            {sections.map((section, si) => (
+              <div key={section.id}>
+                {si > 0 && (
+                  <div
+                    style={{
+                      height: "0.5px",
+                      background: "#f1f5f9",
+                      margin: "2px 0",
+                    }}
+                  />
+                )}
                 <div
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "6px",
-                    maxHeight: "150px",
-                    overflowY: "auto",
+                    padding: "8px 14px 4px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "#94a3b8",
+                    letterSpacing: ".06em",
+                    textTransform: "uppercase",
                   }}
                 >
-                  {section.options.map((option) => {
-                    const isChecked = section.value.includes(option.value);
-
-                    return (
-                      <label
-                        key={option.value}
+                  {section.label}
+                </div>
+                {section.options.map((option) => {
+                  const isChecked = section.value.includes(option.value);
+                  const isAll = option.value === "all";
+                  return (
+                    <label
+                      key={option.value}
+                      className="filter-opt"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "9px",
+                        padding: "6px 14px",
+                        cursor: "pointer",
+                        transition: "background .1s",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) =>
+                          handleOptionChange(section, option.value, e.target.checked)
+                        }
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
+                          width: "14px",
+                          height: "14px",
                           cursor: "pointer",
-                          fontWeight: "normal",
-                          textTransform: "none",
+                          accentColor: "#1e293b",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: isAll ? "12px" : "13px",
+                          color: isAll ? "#94a3b8" : "#1e293b",
                         }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(event) => {
-                            if (event.target.checked) {
-                              if (option.value === "all") {
-                                section.onChange(["all"]);
-                              } else {
-                                const newValue = section.value.filter(
-                                  (item) =>
-                                    item !== "all" && item !== option.value,
-                                );
-                                newValue.push(option.value);
-                                section.onChange(newValue);
-                              }
-                            } else {
-                              const newValue = section.value.filter(
-                                (item) => item !== option.value,
-                              );
-                              if (newValue.length === 0) newValue.push("all");
-                              section.onChange(newValue);
-                            }
-                          }}
-                        />
                         {option.label}
-                      </label>
-                    );
-                  })}
-                </div>
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             ))}
           </div>

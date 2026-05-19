@@ -75,10 +75,8 @@ const TICKET_STATUS_LABELS: Record<string, string> = {
   skipped: "Bỏ qua",
 };
 
-// FIX #11: Đưa magic number ra constant có comment rõ ràng
 const LIST_MAX_HEIGHT = 336; // 4 rows × ~76px + 3 × 8px gap
 
-// FIX #10: Đưa chart options ra ngoài component — không phụ thuộc state
 const BASE_CHART_OPTIONS = {
   maintainAspectRatio: false,
   plugins: {
@@ -115,7 +113,6 @@ const fmt = (n: number) => new Intl.NumberFormat("vi-VN").format(n);
 const timeAgo = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  // FIX #7: guard âm (clock skew server/client)
   if (mins <= 0) return "vừa xong";
   if (mins < 60) return `${mins} phút trước`;
   return new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
@@ -206,7 +203,6 @@ function Panel({
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
-// FIX #9: Tách header thành component riêng thay vì inline JSX cũ
 function DashboardHeader({
   lastUpdated,
   overloadedAlerts,
@@ -295,16 +291,64 @@ export default function AdminDashboardTech() {
 
   // filters
   const [trendPeriod, setTrendPeriod] = useState<"day" | "month">("day");
-  // FIX #1: Bỏ dayValue — không được sử dụng trong barData
   const [monthValue] = useState(currentMonth);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const [trendDayCustom, setTrendDayCustom] = useState<DashboardTicketTrendPoint[] | null>(null);
+  const [trendMonthCustom, setTrendMonthCustom] = useState<DashboardTicketTrendPoint[] | null>(null);
+  const [trendCustomLoading, setTrendCustomLoading] = useState(false);
   const [recentMode, setRecentMode] = useState<"counter" | "service">("counter");
   const [pieCounter, setPieCounter] = useState("Tất cả");
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // FIX #2: Flag để tránh race condition khi fetch chồng chéo
   const fetchingRef = useRef(false);
-  // FIX #8: Ref để tránh setState sau khi unmount
   const mountedRef = useRef(true);
+
+  // ── Derived: is today selected ──
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const isDefaultDay = selectedDate === todayStr;
+  const isDefaultYear = selectedYear === currentYear;
+
+  // ── Fetch custom trend (when non-default date/year) ──
+  useEffect(() => {
+    if (trendPeriod === "day" && isDefaultDay) {
+      setTrendDayCustom(null);
+      return;
+    }
+    if (trendPeriod === "month" && isDefaultYear) {
+      setTrendMonthCustom(null);
+      return;
+    }
+    let cancelled = false;
+    setTrendCustomLoading(true);
+    const opts =
+      trendPeriod === "day"
+        ? { date: selectedDate }
+        : { year: selectedYear };
+    getDashboardTicketTrend(trendPeriod === "day" ? "day" : "month", opts)
+      .then((data) => {
+        if (cancelled) return;
+        if (trendPeriod === "day") setTrendDayCustom(data);
+        else setTrendMonthCustom(data);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          if (trendPeriod === "day") setTrendDayCustom([]);
+          else setTrendMonthCustom([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setTrendCustomLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [trendPeriod, selectedDate, selectedYear, isDefaultDay, isDefaultYear]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -316,7 +360,6 @@ export default function AdminDashboardTech() {
   // ── Fetch ──
   const loadAll = useCallback(
     async (silent = false) => {
-      // FIX #2: Bỏ qua nếu đang có request silent đang chạy
       if (silent && fetchingRef.current) return;
       fetchingRef.current = true;
 
@@ -351,7 +394,6 @@ export default function AdminDashboardTech() {
           getCounters(),
         ]);
 
-        // FIX #8: Không setState nếu đã unmount
         if (!mountedRef.current) return;
 
         setOverview(ovData);
@@ -388,8 +430,7 @@ export default function AdminDashboardTech() {
 
   useEffect(() => {
     loadAll();
-    // FIX #2: Tăng interval lên 30s để tránh request chồng chéo
-    intervalRef.current = setInterval(() => loadAll(true), 30_000);
+    intervalRef.current = setInterval(() => loadAll(true), 5_000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -421,6 +462,24 @@ export default function AdminDashboardTech() {
     return map;
   }, [overview]);
 
+  const staffByCounter = useMemo(() => {
+    const map = new Map<string, string[]>();
+    (staffData?.staffList ?? []).forEach((s) => {
+      if (!s.onDuty || !s.counterId) return;
+
+      const cid =
+        typeof s.counterId === "object"
+          ? s.counterId.name ||
+            (s.counterId.number !== undefined ? `Quầy ${s.counterId.number}` : null)
+          : s.counterId;
+
+      if (!cid) return;
+      if (!map.has(cid)) map.set(cid, []);
+      map.get(cid)!.push(s.fullName);
+    });
+    return map;
+  }, [staffData]);
+
   const getCounterName = useCallback(
     (cid: DashboardRecentTickets["recentByCounter"][0]["counterId"]) => {
       if (!cid) return "Chưa gán";
@@ -435,7 +494,6 @@ export default function AdminDashboardTech() {
       if (!sid) return "Chưa rõ";
       if (typeof sid === "string") {
         const resolved = serviceNameMap.get(sid);
-        // FIX #6: Log trong dev nếu không resolve được ID
         if (!resolved && process.env.NODE_ENV === "development") {
           console.warn(`[Dashboard] Không tìm thấy tên dịch vụ cho ID: ${sid}`);
         }
@@ -453,7 +511,6 @@ export default function AdminDashboardTech() {
       return recentTicketsData.recentByService
         .flatMap((g, gi) =>
           g.tickets.map((t, ti) => ({
-            // FIX #5: Key đủ unique — thêm serviceId vào
             id: `svc-${g.serviceId}-${t.ticketNumber}-${gi}-${ti}`,
             ticketNumber: t.ticketNumber,
             status: t.status,
@@ -468,7 +525,6 @@ export default function AdminDashboardTech() {
     return recentTicketsData.recentByCounter
       .flatMap((g, gi) =>
         g.tickets.map((t, ti) => ({
-          // FIX #5: Key đủ unique — thêm counterId vào
           id: `ctr-${String(g.counterId)}-${t.ticketNumber}-${gi}-${ti}`,
           ticketNumber: t.ticketNumber,
           status: t.status,
@@ -484,7 +540,7 @@ export default function AdminDashboardTech() {
   // ── Derived: trend chart data ──
   const barData = useMemo(() => {
     if (trendPeriod === "day") {
-      const source = trendDay ?? [];
+      const source = (trendDayCustom ?? trendDay) ?? [];
       return {
         labels: source.map((p) => p.label),
         datasets: [
@@ -513,9 +569,10 @@ export default function AdminDashboardTech() {
       };
     }
 
-    const year = monthValue.split("-")[0];
+    const year = String(selectedYear);
+    const rawMonthly = trendMonthCustom ?? trendMonth ?? [];
     const monthlyMap = new Map<number, DashboardTicketTrendPoint>();
-    (trendMonth ?? []).forEach((p) => {
+    rawMonthly.forEach((p) => {
       const m = p.label.match(/(\d{4})-(\d{1,2})/);
       if (m && m[1] === year) monthlyMap.set(Number(m[2]), p);
     });
@@ -546,8 +603,7 @@ export default function AdminDashboardTech() {
         },
       ],
     };
-    // FIX #1: Bỏ dayValue khỏi deps — không được dùng trong memo này
-  }, [trendPeriod, trendDay, trendMonth, monthValue]);
+  }, [trendPeriod, trendDay, trendDayCustom, trendMonth, trendMonthCustom, selectedYear]);
 
   // ── Derived: donut today ──
   const donutTodayData = useMemo(() => {
@@ -612,7 +668,6 @@ export default function AdminDashboardTech() {
       alertMap.set(a.counterName, a);
     });
 
-    // Map waiting count + overload info từ overview.counters — nguồn chính xác nhất
     const overviewMap = new Map<
       string,
       { waiting: number; isOverloaded: boolean; overloadThreshold: number }
@@ -634,15 +689,12 @@ export default function AdminDashboardTech() {
         (c.id ? overviewMap.get(c.id) : undefined) ??
         (c.name ? overviewMap.get(c.name) : undefined);
 
-      // Ưu tiên: overview.counters → countersStatus.waiting → counterAlerts.waitingCount → 0
       const waiting =
         overviewEntry?.waiting ??
         c.waiting ??
         alert?.waitingCount ??
         0;
 
-      // isAlert: ưu tiên counterAlerts API → fallback overview.isOverloaded
-      // → fallback tự tính nếu overloadThreshold > 0
       const apiAlert = alert?.isAlert ?? false;
       const overviewOverloaded = overviewEntry?.isOverloaded ?? false;
       const threshold = overviewEntry?.overloadThreshold ?? 0;
@@ -663,14 +715,12 @@ export default function AdminDashboardTech() {
     [alertItems],
   );
 
-  // FIX #4: Tính maxWaiting an toàn, tránh Math.max(...[]) trả về -Infinity
   const maxWaiting = useMemo(() => {
     if (alertItems.length === 0) return 1;
     return Math.max(...alertItems.map((x) => x.waiting), 0) || 1;
   }, [alertItems]);
 
   const summary = overview?.summary;
-  const hasAlerts = (overview?.alerts?.length ?? 0) > 0 || overloadedAlerts.length > 0;
 
   // ── Render: error ──
   if (error && !overview) {
@@ -691,7 +741,7 @@ export default function AdminDashboardTech() {
   // ── Render: main ──
   return (
     <div className={styles.page}>
-      {/* ── Header (FIX #9: dùng component mới) ── */}
+      {/* ── Header ── */}
       <DashboardHeader
         lastUpdated={lastUpdated}
         overloadedAlerts={overloadedAlerts}
@@ -704,7 +754,6 @@ export default function AdminDashboardTech() {
         <div className={styles.alertsBanner}>
           {overloadedAlerts.map((a) => (
             <div key={a.id} className={styles.alertRow}>
-              <FiAlertTriangle size={14} />
               <span>
                 <strong>{a.name}</strong> đang quá tải với{" "}
                 <strong>{fmt(a.waiting)}</strong> phiếu chờ
@@ -750,7 +799,7 @@ export default function AdminDashboardTech() {
         />
         <KpiCard
           icon={<FiGrid />}
-          label="Quầy hoạt động"
+          label="Phòng hoạt động"
           value={
             loading
               ? "—"
@@ -758,7 +807,7 @@ export default function AdminDashboardTech() {
           }
           sub={
             (summary?.overloadedCounters ?? 0) > 0
-              ? `⚠ ${summary!.overloadedCounters} quầy quá tải`
+              ? `${summary!.overloadedCounters} phòng quá tải`
               : "Hoạt động bình thường"
           }
           accent="#8b5cf6"
@@ -784,25 +833,46 @@ export default function AdminDashboardTech() {
           title="Xu hướng phiếu"
           sub="Thống kê phát sinh theo thời gian"
           action={
-            <div className={styles.tabRow}>
-              <button
-                className={trendPeriod === "day" ? styles.tabActive : styles.tab}
-                onClick={() => setTrendPeriod("day")}
-              >
-                Hôm nay
-              </button>
-              <button
-                className={trendPeriod === "month" ? styles.tabActive : styles.tab}
-                onClick={() => setTrendPeriod("month")}
-              >
-                Tháng này
-              </button>
+            <div className={styles.trendFilterRow}>
+              <div className={styles.tabRow}>
+                <button
+                  className={trendPeriod === "day" ? styles.tabActive : styles.tab}
+                  onClick={() => setTrendPeriod("day")}
+                >
+                  Theo ngày
+                </button>
+                <button
+                  className={trendPeriod === "month" ? styles.tabActive : styles.tab}
+                  onClick={() => setTrendPeriod("month")}
+                >
+                  Theo tháng
+                </button>
+              </div>
+              {trendPeriod === "day" ? (
+                <input
+                  type="date"
+                  className={styles.dateInput}
+                  value={selectedDate}
+                  max={todayStr}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                />
+              ) : (
+                <select
+                  className={styles.select}
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                >
+                  {Array.from({ length: 5 }, (_, i) => currentYear - i).map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              )}
             </div>
           }
         >
           <div className={styles.chartWrap}>
-            {loading ? (
-              <Skeleton h={220} />
+            {loading || trendCustomLoading ? (
+              <Skeleton h={320} />
             ) : barData ? (
               <Bar data={barData} options={BAR_OPTIONS} />
             ) : (
@@ -865,63 +935,73 @@ export default function AdminDashboardTech() {
       {/* ── Row 3: Counters + Services + Staff ── */}
       <div className={styles.gridThree}>
         {/* Counters */}
-        <Panel title="Trạng thái quầy" sub="Hoạt động theo thời gian thực">
-          {/* FIX #11: Dùng constant LIST_MAX_HEIGHT thay magic number */}
+        <Panel title="Trạng thái phòng" sub="Hoạt động theo thời gian thực">
           <div className={styles.counterList} style={{ maxHeight: LIST_MAX_HEIGHT }}>
             {loading
               ? [1, 2, 3].map((i) => <Skeleton key={i} h={64} r={12} />)
-              : (overview?.counters ?? []).map((ctr) => (
-                  <div
-                    key={ctr.id}
-                    className={`${styles.counterCard} ${
-                      ctr.isOverloaded
-                        ? styles.counterOverload
-                        : ctr.isServing
-                        ? styles.counterActive
-                        : ""
-                    }`}
-                  >
-                    <div className={styles.counterTop}>
-                      <span className={styles.counterName}>{ctr.name}</span>
-                      <span
-                        className={styles.counterStatus}
-                        style={{
-                          color: ctr.isOverloaded
-                            ? STATUS_COLORS.skipped
-                            : ctr.isServing
-                            ? STATUS_COLORS.completed
-                            : "#6b7280",
-                        }}
-                      >
-                        {ctr.isOverloaded
-                          ? "⚠ Quá tải"
+              : (overview?.counters ?? []).map((ctr) => {
+                  const staffNames =
+                    staffByCounter.get(ctr.name) ??
+                    (ctr.staff
+                      ? (Array.isArray(ctr.staff) ? ctr.staff : [ctr.staff]).map((s) => s.fullName)
+                      : []);
+
+                  return (
+                    <div
+                      key={ctr.id}
+                      className={`${styles.counterCard} ${
+                        ctr.isOverloaded
+                          ? styles.counterOverload
                           : ctr.isServing
-                          ? "● Đang phục vụ"
-                          : "○ Trống"}
-                      </span>
-                    </div>
-                    {ctr.staff && (
-                      <div className={styles.counterStaff}>
-                        <FiUsers size={11} /> {ctr.staff.fullName}
+                          ? styles.counterActive
+                          : ""
+                      }`}
+                    >
+                      <div className={styles.counterTop}>
+                        <span className={styles.counterName}>{ctr.name}</span>
+                        <span
+                          className={styles.counterStatus}
+                          style={{
+                            color: ctr.isOverloaded
+                              ? STATUS_COLORS.skipped
+                              : ctr.isServing
+                              ? STATUS_COLORS.completed
+                              : "#6b7280",
+                          }}
+                        >
+                          {ctr.isOverloaded
+                            ? "⚠ Quá tải"
+                            : ctr.isServing
+                            ? "● Đang phục vụ"
+                            : "○ Trống"}
+                        </span>
                       </div>
-                    )}
-                    {ctr.currentTicket && (
-                      <div className={styles.counterTicket}>
-                        Phiếu: <strong>{ctr.currentTicket.ticketNumber}</strong>
-                        {" · "}
-                        {ctr.currentTicket.customerName}
+
+                      {/* Hiển thị tất cả nhân viên đang trực tại quầy */}
+                      {staffNames.map((name, i) => (
+                        <div key={i} className={styles.counterStaff}>
+                          <FiUsers size={11} /> {name}
+                        </div>
+                      ))}
+
+                      {ctr.currentTicket && (
+                        <div className={styles.counterTicket}>
+                          Phiếu: <strong>{ctr.currentTicket.ticketNumber}</strong>
+                          {" · "}
+                          {ctr.currentTicket.customerName}
+                        </div>
+                      )}
+                      <div className={styles.counterMeta}>
+                        <span>
+                          Chờ: <strong>{ctr.waiting}</strong>
+                        </span>
+                        <span>
+                          Đã xử lý: <strong>{ctr.processedCount}</strong>
+                        </span>
                       </div>
-                    )}
-                    <div className={styles.counterMeta}>
-                      <span>
-                        Chờ: <strong>{ctr.waiting}</strong>
-                      </span>
-                      <span>
-                        Đã xử lý: <strong>{ctr.processedCount}</strong>
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
             {!loading && (overview?.counters ?? []).length === 0 && (
               <div className={styles.emptyChart}>Không có dữ liệu quầy</div>
             )}
@@ -929,7 +1009,7 @@ export default function AdminDashboardTech() {
         </Panel>
 
         {/* Services */}
-        <Panel title="Theo dịch vụ" sub="Lượng phiếu phân theo dịch vụ">
+        <Panel title="Theo quầy" sub="Lượng phiếu phân theo quầy">
           <div className={styles.serviceList} style={{ maxHeight: LIST_MAX_HEIGHT }}>
             {loading
               ? [1, 2, 3, 4].map((i) => <Skeleton key={i} h={52} r={10} />)
@@ -988,7 +1068,7 @@ export default function AdminDashboardTech() {
         {/* Staff */}
         <Panel
           title="Nhân viên trực"
-          sub={`${summary?.assignedStaff ?? 0} / ${summary?.totalStaff ?? 0} đã nhận quầy`}
+          sub={`${summary?.assignedStaff ?? 0} / ${summary?.totalStaff ?? 0} đã nhận phòng`}
         >
           <div className={styles.staffList} style={{ maxHeight: LIST_MAX_HEIGHT }}>
             {loading
@@ -1069,8 +1149,8 @@ export default function AdminDashboardTech() {
           <div className={styles.ticketTable}>
             <div className={styles.ticketHead}>
               <span>Số phiếu</span>
-              <span>Dịch vụ</span>
               <span>Quầy</span>
+              <span>Phòng</span>
               <span>Trạng thái</span>
               <span>Thời gian</span>
             </div>
@@ -1092,7 +1172,7 @@ export default function AdminDashboardTech() {
           </div>
         </Panel>
 
-        <Panel title="Tỉ lệ theo quầy" sub="Hoàn tất / Bỏ qua / Chờ">
+        <Panel title="Tỉ lệ theo phòng" sub="Hoàn tất / Bỏ qua / Chờ">
           <div className={styles.filterRow}>
             <select
               className={styles.select}
@@ -1146,6 +1226,7 @@ export default function AdminDashboardTech() {
         </Panel>
       </div>
 
+      {/* ── Overload panel ── */}
       {(loading || alertItems.length > 0) && (
         <Panel title="Cảnh báo quá tải" sub="Trạng thái tải theo từng quầy">
           {loading ? (

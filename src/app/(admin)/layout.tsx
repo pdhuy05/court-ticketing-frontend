@@ -8,6 +8,7 @@ import NewTicketGlobalSocket from "@/components/NewTicketGlobalSocket";
 import NotificationPermissionButton from "@/components/NotificationPermissionButton";
 import { clearAdminSession } from "@/lib/admin-auth";
 import { AdminProfile, getMyProfile } from "@/services/auth.service";
+
 import {
   FiActivity,
   FiGrid,
@@ -20,6 +21,7 @@ import {
   FiChevronRight,
   FiUser,
 } from "react-icons/fi";
+
 import { IconType } from "react-icons";
 
 type NavItem = {
@@ -38,30 +40,29 @@ const navItems: NavItem[] = [
   { href: "/admin/profile", label: "Hồ sơ", icon: FiUser },
 ];
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState<AdminProfile | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const isLoginPage = pathname === "/login" || pathname === "/admin/login";
 
-  const handleSessionExpired = () => {
-    clearAdminSession();
-    router.replace("/admin/login?reason=session_expired");
-  };
+  const isLoginPage =
+    pathname === "/login" || pathname === "/admin/login";
 
   useEffect(() => {
-    if (isLoginPage) {
-      return;
-    }
+    if (isLoginPage) return;
 
     let isMounted = true;
 
     const hydrateAdminUser = async () => {
       const token = localStorage.getItem("adminToken");
-      const user = localStorage.getItem("adminUser");
 
       if (!token) {
         router.replace("/admin/login");
@@ -69,23 +70,29 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       }
 
       try {
-        if (user) {
-          const cachedUser = JSON.parse(user) as AdminProfile;
-          if (isMounted) {
-            setAdminUser(cachedUser);
-            setIsLoggedIn(true);
-          }
+        const cached = localStorage.getItem("adminUser");
+
+        if (cached) {
+          setAdminUser(JSON.parse(cached));
         }
 
         const profile = await getMyProfile();
-        localStorage.setItem("adminUser", JSON.stringify(profile));
+
+        localStorage.setItem(
+          "adminUser",
+          JSON.stringify(profile)
+        );
 
         if (isMounted) {
           setAdminUser(profile);
-          setIsLoggedIn(true);
         }
+
+        setIsLoggedIn(true);
       } catch {
-        handleSessionExpired();
+        clearAdminSession();
+        router.replace(
+          "/admin/login?reason=session_expired"
+        );
       }
     };
 
@@ -94,8 +101,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoginPage]);
+  }, [isLoginPage, router]);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
@@ -107,425 +113,258 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     router.replace("/admin/login");
   };
 
-  const getActiveIndex = () => {
-    return navItems.findIndex((item) => {
-      const isExactMatch = pathname === item.href;
-      const isNestedMatch =
-        item.href !== "/admin" && pathname.startsWith(`${item.href}/`);
-      return isExactMatch || isNestedMatch;
-    });
+  const isActive = (href: string) => {
+    if (href === "/admin") {
+      return pathname === "/admin";
+    }
+
+    return (
+      pathname === href ||
+      pathname.startsWith(`${href}/`)
+    );
   };
 
-  const activeIndex = getActiveIndex();
+  if (isLoginPage) return <>{children}</>;
 
-  if (isLoginPage) {
-    return <>{children}</>;
-  }
-
-  if (!isLoggedIn) {
-    return null;
-  }
+  if (!isLoggedIn) return null;
 
   return (
     <>
       <NewTicketGlobalSocket />
-      <div
-        style={{
-          display: "flex",
-          height: "100vh",
-          flexDirection: "column",
-          background: "#f1f5f9",
-        }}
-      >
+
+      <div className="flex h-screen overflow-hidden bg-gray-50">
+        {/* ================= SIDEBAR ================= */}
         <div
+          className="relative flex h-full flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300"
           style={{
-            display: "flex",
-            flex: 1,
-            overflow: "hidden",
-            minHeight: 0,
+            width: isSidebarCollapsed ? "82px" : "280px",
           }}
         >
-          {/* Sidebar */}
-          <div
-            style={{
-              width: isSidebarCollapsed ? "80px" : "280px",
-              background: "linear-gradient(180deg, #1e4775 0%, #0f2b48 100%)",
-              display: "flex",
-              flexDirection: "column",
-              transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: "4px 0 20px rgba(0, 0, 0, 0.1)",
-              position: "relative",
-              zIndex: 10,
-            }}
-          >
-            {/* Logo */}
-            <div
-  style={{
-    padding: isSidebarCollapsed ? "20px 12px" : "24px 20px",
-    textAlign: "center",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-    marginBottom: "20px",
-    transition: "all 0.3s ease",
-  }}
->
-  <div
-    style={{
-      width: isSidebarCollapsed ? "50px" : "80px",
-      height: isSidebarCollapsed ? "50px" : "80px",
-      margin: "0 auto",
-      backgroundImage: "url(/assets/logotoaan.png)",
-      backgroundSize: "contain",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-      transition: "all 0.3s ease",
-    }}
-  />
-  
-  {!isSidebarCollapsed && (
-    <>
-      <div
-        style={{
-          marginTop: "14px",
-          fontSize: "13px",
-          fontWeight: 700,
-          color: "white",
-          letterSpacing: "1px",
-        }}
-      >
-        TÒA ÁN NHÂN DÂN
-      </div>
-      <div
-        style={{
-          fontSize: "10px",
-          fontWeight: 500,
-          color: "rgba(255, 255, 255, 0.7)",
-          letterSpacing: "0.5px",
-          marginTop: "2px",
-        }}
-      >
-        KHU VỰC 1 - TP.HCM
-      </div>
-    </>
-  )}
-</div>
-
-            {/* Toggle Button */}
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              style={{
-                position: "absolute",
-                right: "-12px",
-                top: "28px",
-                width: "24px",
-                height: "24px",
-                borderRadius: "12px",
-                background: "white",
-                border: "none",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                zIndex: 20,
-                color: "#1e4775",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "scale(1.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              {isSidebarCollapsed ? <FiChevronRight size={14} /> : <FiChevronLeft size={14} />}
-            </button>
-
-            {/* Navigation */}
-            <nav
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: isSidebarCollapsed ? "0 12px" : "0 16px",
-              }}
-            >
-              <ul
-                style={{
-                  listStyle: "none",
-                  margin: 0,
-                  padding: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                }}
-              >
-                {navItems.map((item, index) => {
-                  const Icon = item.icon;
-                  const isActive = activeIndex === index;
-
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: isSidebarCollapsed ? "center" : "flex-start",
-                          gap: isSidebarCollapsed ? 0 : "14px",
-                          padding: isSidebarCollapsed ? "12px" : "12px 16px",
-                          borderRadius: "12px",
-                          background: isActive ? "rgba(255, 255, 255, 0.15)" : "transparent",
-                          color: isActive ? "white" : "rgba(255, 255, 255, 0.7)",
-                          textDecoration: "none",
-                          transition: "all 0.2s ease",
-                          fontWeight: isActive ? 600 : 500,
-                          fontSize: "14px",
-                          width: "100%",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isActive) {
-                            e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-                            e.currentTarget.style.color = "white";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) {
-                            e.currentTarget.style.background = "transparent";
-                            e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)";
-                          }
-                        }}
-                      >
-                        <Icon size={isSidebarCollapsed ? 22 : 20} style={{ minWidth: "20px" }} />
-                        {!isSidebarCollapsed && <span>{item.label}</span>}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
-
-            {/* User Footer */}
-            <div
-              style={{
-                padding: isSidebarCollapsed ? "16px 12px" : "20px 16px",
-                borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-                marginTop: "auto",
-              }}
-            >
+          {/* Logo */}
+          <div className="border-b border-gray-100 pt-8 pb-6">
+            <div className="flex justify-center px-4">
               <div
+                className="bg-contain bg-center bg-no-repeat transition-all duration-300"
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: isSidebarCollapsed ? "center" : "flex-start",
-                  gap: "12px",
+                  backgroundImage:
+                    "url(/assets/logotoaan.png)",
+                  width: isSidebarCollapsed
+                    ? "72px"
+                    : "56px",
+                  height: isSidebarCollapsed
+                    ? "72px"
+                    : "56px",
                 }}
-              >
-                <div
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "50%",
-                    background: "rgba(255, 255, 255, 0.15)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "white",
-                  }}
-                >
-                  {adminUser?.fullName?.charAt(0)?.toUpperCase() || <FiUser size={16} />}
-                </div>
-                {!isSidebarCollapsed && (
-                  <div style={{ flex: 1, overflow: "hidden" }}>
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: "white",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {adminUser?.fullName || "Admin"}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "10px",
-                        color: "rgba(255, 255, 255, 0.6)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {adminUser?.role === "admin" ? "Quản trị viên" : "Nhân viên"}
-                    </div>
-                  </div>
-                )}
-              </div>
+              />
             </div>
+
+            {!isSidebarCollapsed && (
+              <div className="mt-5 px-2 text-center">
+                <div className="text-lg font-bold tracking-tight text-gray-900">
+                  TÒA ÁN NHÂN DÂN
+                </div>
+
+                <div className="text-xs text-gray-500">
+                  KHU VỰC 1 - TP.HCM
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Main Content */}
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              minHeight: 0,
-              background: "#f1f5f9",
-            }}
+          {/* Toggle */}
+          <button
+            onClick={() =>
+              setIsSidebarCollapsed(
+                !isSidebarCollapsed
+              )
+            }
+            className="absolute top-28 -right-3 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 bg-white shadow-md transition-all hover:scale-110 hover:shadow-lg"
           >
-            {/* Header */}
+            {isSidebarCollapsed ? (
+              <FiChevronRight size={18} />
+            ) : (
+              <FiChevronLeft size={18} />
+            )}
+          </button>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto px-3 py-6">
+            <ul className="space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+
+                const active = isActive(item.href);
+
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium transition-all
+                      
+                      ${
+                        active
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      }
+                      
+                      `}
+                    >
+                      <div
+                        className={`flex items-center justify-center ${
+                          isSidebarCollapsed
+                            ? "w-full"
+                            : "w-8"
+                        }`}
+                      >
+                        <Icon
+                          size={
+                            isSidebarCollapsed
+                              ? 28
+                              : 22
+                          }
+                        />
+                      </div>
+
+                      {!isSidebarCollapsed && (
+                        <span>{item.label}</span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {/* User Info */}
+          <div className="mt-auto border-t border-gray-100 p-5">
             <div
-              style={{
-                background: "white",
-                borderBottom: "1px solid #eef2f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 28px",
-                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-              }}
+              className={`flex items-center rounded-2xl bg-gray-50 px-3 py-3 ${
+                isSidebarCollapsed
+                  ? "justify-center"
+                  : "gap-3"
+              }`}
             >
-              <div>
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: "clamp(16px, 1.2vw, 20px)",
-                    fontWeight: 700,
-                    background: "linear-gradient(135deg, #1e4775 0%, #2d5a8c 100%)",
-                    backgroundClip: "text",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}
-                >
-                  TÒA ÁN NHÂN DÂN KHU VỰC 1 - THÀNH PHỐ HỒ CHÍ MINH
-                </h1>
-                <p
-                  style={{
-                    margin: "4px 0 0",
-                    fontSize: "12px",
-                    color: "#94a3b8",
-                  }}
-                >
-                  Hệ thống quản lý vé điện tử
-                </p>
+              {/* Avatar */}
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-600">
+                <span className="translate-y-[-1px] text-lg font-bold leading-none text-white">
+                  {adminUser?.fullName
+                    ?.charAt(0)
+                    ?.toUpperCase() || "A"}
+                </span>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "16px",
-                }}
-              >
-                <NotificationPermissionButton variant="admin" />
-                {/* User Info Card */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "6px 16px 6px 12px",
-                    background: "#f8fafc",
-                    borderRadius: "40px",
-                    border: "1px solid #eef2f6",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #1e4775 0%, #2d5a8c 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "white",
-                      fontWeight: 600,
-                      fontSize: "14px",
-                    }}
-                  >
-                    {adminUser?.fullName?.charAt(0)?.toUpperCase() || "A"}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: "#1e293b",
-                      }}
-                    >
-                      {adminUser?.fullName || "Admin"}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        color: "#94a3b8",
-                      }}
-                    >
-                      {adminUser?.role === "admin" ? "Quản trị viên" : "Nhân viên"}
-                    </span>
-                  </div>
+              {/* Info */}
+              {!isSidebarCollapsed && (
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-gray-800">
+                    {adminUser?.fullName}
+                  </p>
+
+                  <p className="text-xs text-gray-500">
+                    {adminUser?.role === "admin"
+                      ? "Quản trị viên"
+                      : "Nhân viên"}
+                  </p>
                 </div>
-
-                {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "8px 20px",
-                    background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "40px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    boxShadow: "0 2px 4px rgba(220, 38, 38, 0.2)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow = "0 4px 8px rgba(220, 38, 38, 0.3)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(220, 38, 38, 0.2)";
-                  }}
-                >
-                  <FiLogOut size={16} />
-                  <span>Đăng xuất</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Page Content */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                overflowX: "hidden",
-                minHeight: 0,
-                padding: "10px",
-              }}
-            >
-              {children}
+              )}
             </div>
           </div>
         </div>
+
+        {/* ================= MAIN ================= */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Header */}
+          <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200/80 bg-white px-6">
+            {/* Left */}
+            <div className="flex items-center gap-3">
+              <div
+                className="
+                  relative
+                  flex h-9 w-9 items-center justify-center
+                  overflow-hidden
+                  rounded-md
+                  ring-1 ring-white/10
+                  shadow-[0_4px_12px_rgba(0,0,0,0.4)]
+                  transition
+                  hover:scale-105
+                "
+              >
+                <div className="absolute inset-0 -skew-x-6 bg-gradient-to-br from-gray-800 via-gray-900 to-black" />
+
+                <span
+                  className="
+                    relative z-10
+                    bg-gradient-to-br from-gray-200 via-white to-gray-400
+                    bg-clip-text
+                    text-lg font-black leading-none text-transparent
+                  "
+                >
+                  T
+                </span>
+              </div>
+
+              <h1 className="text-sm font-semibold tracking-tight text-gray-800">
+                HỆ THỐNG QUẢN LÝ VÉ ĐIỆN TỬ
+              </h1>
+            </div>
+
+            {/* Right */}
+            <div className="flex items-center gap-3">
+              <NotificationPermissionButton variant="admin" />
+
+              <div className="h-6 w-px bg-gray-200" />
+
+              {/* User */}
+              <div className="flex items-center gap-2.5">
+                <div className="hidden text-right leading-tight sm:block">
+                  <p className="text-sm font-medium text-gray-700">
+                    {adminUser?.fullName || "Admin"}
+                  </p>
+
+                  <p className="text-[11px] text-gray-400">
+                    {adminUser?.role === "admin"
+                      ? "Quản trị viên"
+                      : "Nhân viên"}
+                  </p>
+                </div>
+
+                {/* Fixed avatar */}
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 ring-2 ring-gray-100">
+                  <span className="translate-y-[-1px] text-lg font-bold leading-none text-white">
+                    {adminUser?.fullName
+                      ?.charAt(0)
+                      ?.toUpperCase() || "A"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Logout */}
+              <button
+                onClick={handleLogout}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-500"
+                title="Đăng xuất"
+              >
+                <FiLogOut size={18} />
+              </button>
+            </div>
+          </header>
+
+          {/* Content */}
+          <main className="flex-1 overflow-auto bg-gray-50 p-8">
+            {children}
+          </main>
+        </div>
       </div>
 
+      {/* Logout Modal */}
       <ConfirmModal
         isOpen={showLogoutConfirm}
-        title="Xác Nhận Đăng Xuất"
-        message="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống này?"
+        title="Xác nhận đăng xuất"
+        message="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?"
         onConfirm={handleConfirmLogout}
-        onCancel={() => setShowLogoutConfirm(false)}
+        onCancel={() =>
+          setShowLogoutConfirm(false)
+        }
       />
     </>
   );

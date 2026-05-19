@@ -61,11 +61,11 @@ export interface DashboardCounterOverview {
     status: string;
     serviceId: string;
   } | null;
-  staff: {
+    staff: Array<{
     id: string;
     fullName: string;
     username: string;
-  } | null;
+  }> | null;
 }
 
 export interface DashboardRecentTicket {
@@ -407,10 +407,17 @@ export const getDashboardRecentTickets = () =>
 export const getDashboardTicketRatio = () =>
   requestDashboard<DashboardTicketRatio[]>("/dashboard/tickets/ratio");
 
-export const getDashboardTicketTrend = (groupBy: "day" | "month" | "year") =>
-  requestDashboard<DashboardTicketTrendPoint[]>(
-    `/dashboard/tickets/trend?groupBy=${groupBy}`,
+export const getDashboardTicketTrend = (
+  groupBy: "day" | "month" | "year",
+  options?: { date?: string; year?: string | number },
+) => {
+  const params = new URLSearchParams({ groupBy });
+  if (options?.date) params.set("date", options.date);
+  if (options?.year) params.set("year", String(options.year));
+  return requestDashboard<DashboardTicketTrendPoint[]>(
+    `/dashboard/tickets/trend?${params.toString()}`,
   );
+};
 
 export const getDashboardCounterAlert = () =>
   requestDashboard<DashboardCounterAlert[]>("/dashboard/counters/alert");

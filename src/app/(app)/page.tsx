@@ -15,6 +15,7 @@ interface Service {
   id: string;
   isActive: boolean;
   doublePrint?: boolean;
+  inactiveLabel?: string;
   counters: Array<{
     _id: string;
     code: string;
@@ -36,7 +37,6 @@ export default function HomePage() {
           throw new Error("Failed to fetch services");
         }
         const data = await response.json();
-        // Sort by displayOrder
         const sorted = data.data.sort(
           (a: Service, b: Service) => a.displayOrder - b.displayOrder,
         );
@@ -58,11 +58,10 @@ export default function HomePage() {
         return <IconComponent size="clamp(34px, 5vh, 62px)" color={color} />;
       }
     }
-    
     const faClass = iconName.startsWith("fa-") ? `fas ${iconName}` : `fas ${iconName}`;
     return <i className={faClass}></i>;
   };
-  
+
   const SERVICE_COLORS = [
     { bg: "#F05769", hover: "#E84655" },
     { bg: "#41B660", hover: "#36944E" },
@@ -93,6 +92,10 @@ export default function HomePage() {
     );
   }
 
+  // Tính số cột dựa trên số lượng service
+  const n = servicesList.length;
+  const cols = n <= 4 ? 2 : n <= 6 ? 3 : n <= 9 ? 3 : 4;
+
   return (
     <div
       style={{
@@ -100,13 +103,14 @@ export default function HomePage() {
         width: "100%",
         maxWidth: "1800px",
         margin: "0 auto",
-        padding: "0 clamp(90px, 9vw, 180px)",
+        // ← Chỉ sửa chỗ này: clamp bắt đầu từ 12px thay vì 90px
+        padding: "0 clamp(12px, 9vw, 180px)",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
       }}
-    > 
+    >
       <h2
         style={{
           textAlign: "center",
@@ -119,7 +123,7 @@ export default function HomePage() {
       >
         QUÝ ÔNG BÀ VUI LÒNG CHỌN YÊU CẦU
       </h2>
-      
+
       {loading ? (
         <p style={{ textAlign: "center" }}>Đang tải...</p>
       ) : (
@@ -127,7 +131,8 @@ export default function HomePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              // ← Chỉ sửa chỗ này: dùng cols thay vì hardcode 2
+              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
               gridTemplateRows: "repeat(2, minmax(0, 1fr))",
               gap: "clamp(24px, 3vw, 44px)",
               flex: 1,
@@ -138,7 +143,6 @@ export default function HomePage() {
               const { background, hoverBackground, color } = getCardBackground(index);
               const isInactive = !s.isActive;
 
-              // Nếu không hoạt động, dùng div thay vì Link
               if (isInactive) {
                 return (
                   <div
@@ -223,7 +227,7 @@ export default function HomePage() {
                               animation: "pulse 1.5s infinite",
                             }}
                           />
-                          ĐANG THỬ NGHIỆM
+                          {s.inactiveLabel?.trim() || "ĐANG THỬ NGHIỆM"}
                         </div>
                       </div>
                     </button>
@@ -321,12 +325,8 @@ export default function HomePage() {
       <style>
         {`
           @keyframes pulse {
-            0%, 100% {
-              opacity: 1;
-            }
-            50% {
-              opacity: 0.4;
-            }
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.4; }
           }
         `}
       </style>

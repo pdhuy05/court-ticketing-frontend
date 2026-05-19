@@ -113,6 +113,8 @@ export interface Service {
   isActive: boolean;
   /** In 2 tờ: vé đầy đủ + tờ nhỏ kẹp hồ sơ (theo cấu hình backend). */
   doublePrint?: boolean;
+  /** Nhãn hiển thị khi dịch vụ tắt (isActive = false). Mặc định: "ĐANG THỬ NGHIỆM" */
+  inactiveLabel?: string;
   description: string;
   displayOrder: number;
   prefixNumber: number;
@@ -228,6 +230,7 @@ export interface Counter {
     name: string;
     icon?: string;
     displayOrder?: number;
+    isActive?: boolean;
   }>;
   createdAt?: string;
   updatedAt?: string;
