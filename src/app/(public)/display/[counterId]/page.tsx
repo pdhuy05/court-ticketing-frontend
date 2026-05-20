@@ -490,7 +490,7 @@
                 style={{
                   flex: 1,
                   display: "grid",
-                  gridTemplateRows: "repeat(5, 1fr)", // 👈 CHIA ĐỀU 5 HÀNG
+                  gridTemplateRows: "repeat(5, 1fr)",
                   overflow: "hidden",
                   background: "white",
                 }}

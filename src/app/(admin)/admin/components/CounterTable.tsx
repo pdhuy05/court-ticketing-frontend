@@ -890,7 +890,7 @@ export default function CounterTable() {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="VD: Phòng VIP, Phòng Thường..."
+                      placeholder="VD: Phòng số 1, Phòng Thường..."
                       style={field}
                       onFocus={focusField}
                       onBlur={blurField}

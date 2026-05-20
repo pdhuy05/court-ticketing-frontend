@@ -24,9 +24,15 @@ const FULL_NAME_ALLOWED_PATTERN = /^[\p{L}\s]+$/u;
 const FULL_NAME_REPEATED_CHAR_PATTERN = /([\p{L}])\1{2,}/u;
 
 const sanitizeFullName = (value: string) =>
-  value.replace(/\s+/g, " ").replace(/^\s+/g, "");
+  value
+    .replace(/\s+/g, " ")
+    .replace(/^\s+/g, "");
 
 const normalizeFullName = (value: string) => sanitizeFullName(value).trim();
+
+// Viết hoa đầu mỗi từ — chỉ gọi khi onBlur, không gọi realtime để tránh lỗi IME tiếng Việt
+const capitalizeName = (value: string): string =>
+  value.replace(/(?:^|\s)\S/g, (char) => char.toLocaleUpperCase("vi-VN"));
 
 const getTicketDisplayNumber = (ticket?: Partial<DisplayTicket> | null) =>
   ticket?.displayNumber ||
@@ -58,14 +64,20 @@ function ServiceTicketContent() {
     isOpen: boolean;
     message: string;
     type: "success" | "error" | "warning" | "info";
-  }>({ isOpen: false, message: "", type: "info" });
+  }>({
+    isOpen: false,
+    message: "",
+    type: "info",
+  });
 
   const name = normalizeFullName(fullName);
 
   const showToast = (
     message: string,
     type: "success" | "error" | "warning" | "info",
-  ) => setToast({ isOpen: true, message, type });
+  ) => {
+    setToast({ isOpen: true, message, type });
+  };
 
   const handleCloseToast = useCallback(() => {
     setToast((prev) => ({ ...prev, isOpen: false }));
@@ -75,9 +87,12 @@ function ServiceTicketContent() {
     const loadService = async () => {
       const services = await getServices();
       const found = services.find((s) => s._id === serviceId);
-      if (found) setService(found);
+      if (found) {
+        setService(found);
+      }
       setLoading(false);
     };
+
     void loadService();
   }, [serviceId]);
 
@@ -90,24 +105,45 @@ function ServiceTicketContent() {
   }, [fullName, step]);
 
   useEffect(() => {
-    if (step !== "done") { setCountdown(60); return; }
+    if (step !== "done") {
+      setCountdown(60);
+      return;
+    }
+
     const interval = window.setInterval(() => {
-      setCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
+
     return () => window.clearInterval(interval);
   }, [step]);
 
   useEffect(() => {
-    if (step === "done" && countdown === 0) router.push("/");
+    if (step === "done" && countdown === 0) {
+      router.push("/");
+    }
   }, [countdown, router, step]);
 
   const validateForm = () => {
     const normalizedName = normalizeFullName(fullName);
-    if (!normalizedName) { showToast("Vui lòng nhập họ tên", "error"); return false; }
-    if (!FULL_NAME_ALLOWED_PATTERN.test(normalizedName)) {
-      showToast("Họ và tên chỉ được nhập chữ cái, không dùng ký tự đặc biệt", "error");
+
+    if (!normalizedName) {
+      showToast("Vui lòng nhập họ tên", "error");
       return false;
     }
+
+    if (!FULL_NAME_ALLOWED_PATTERN.test(normalizedName)) {
+      showToast(
+        "Họ và tên chỉ được nhập chữ cái, không dùng ký tự đặc biệt",
+        "error",
+      );
+      return false;
+    }
+
     if (normalizedName.length > MAX_FULL_NAME_LENGTH) {
       showToast("Họ và tên không được vượt quá 35 ký tự", "error");
       return false;
@@ -116,16 +152,28 @@ function ServiceTicketContent() {
       showToast("Họ và tên không được có ký tự lặp liên tiếp từ 3 lần trở lên", "error");
       return false;
     }
-    if (!phoneNumber.trim()) { showToast("Vui lòng nhập số điện thoại", "error"); return false; }
-    if (!/^[0-9]{8,12}$/.test(phoneNumber.replace(/\D/g, ""))) {
-      showToast("Vui lòng nhập đúng số điện thoại (tối thiểu 8 số đến 12 số)", "error");
+
+    if (!phoneNumber.trim()) {
+      showToast("Vui lòng nhập số điện thoại", "error");
       return false;
     }
+
+    if (!/^[0-9]{8,12}$/.test(phoneNumber.replace(/\D/g, ""))) {
+      showToast(
+        "Vui lòng nhập đúng số điện thoại (tối thiểu 8 số đến 12 số)",
+        "error",
+      );
+      return false;
+    }
+
     return true;
   };
 
   const submitTicket = async () => {
-    if (isSubmitting || !service) return;
+    if (isSubmitting || !service) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const result = await createTicket({
@@ -134,6 +182,7 @@ function ServiceTicketContent() {
         phone: phoneNumber,
         counterId: selectedCounterId || undefined,
       });
+
       if (result.success && result.data) {
         const ticketData = {
           ...result.data,
@@ -142,7 +191,8 @@ function ServiceTicketContent() {
           serviceCode: result.service?.code || result.data.serviceId?.code,
           number: result.data.number,
           displayNumber: result.data.displayNumber || result.data.formattedNumber,
-          formattedNumber: result.data.formattedNumber || result.data.displayNumber,
+          formattedNumber:
+            result.data.formattedNumber || result.data.displayNumber,
           qrCode: result.data.qrCode,
         };
         setTicket(ticketData as DisplayTicket);
@@ -154,6 +204,7 @@ function ServiceTicketContent() {
       }
     } catch (error) {
       setIsSubmitting(false);
+      console.error("Error creating ticket:", error);
       showToast(
         error instanceof Error ? error.message : "Không thể kết nối với server",
         "error",
@@ -162,14 +213,22 @@ function ServiceTicketContent() {
   };
 
   const handlePrintTicket = async () => {
-    if (!ticket?._id || isPrinting || hasPrinted) return;
+    if (!ticket?._id || isPrinting || hasPrinted) {
+      return;
+    }
+
     setIsPrinting(true);
     setHasPrinted(true);
     try {
       const result = await printTicket(ticket._id);
-      if (!result?.success) throw new Error(result?.message || "Loi khi gui lenh in ve");
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Loi khi gui lenh in ve");
+      }
+
       showToast(result.message || "Da gui lenh in ve", "success");
     } catch (error) {
+      console.error("Error printing ticket:", error);
       showToast(
         error instanceof Error ? error.message : "Khong the ket noi voi server",
         "error",
@@ -181,15 +240,21 @@ function ServiceTicketContent() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    if (!validateForm()) return;
+    if (isSubmitting) {
+      return;
+    }
+    if (!validateForm()) {
+      return;
+    }
     setConfirmSubmitOpen(true);
   };
 
   const formatName = (inputName: string) => {
     if (!inputName) return "";
     const words = inputName.trim().split(/\s+/);
-    if (words.length <= 2) return inputName;
+    if (words.length <= 2) {
+      return inputName;
+    }
     const firstName = words[0];
     const lastName = words[words.length - 1];
     const middleNames = words.slice(1, -1);
@@ -199,55 +264,126 @@ function ServiceTicketContent() {
     return `${firstName} ${abbreviatedMiddleNames}${lastName}`;
   };
 
-  const handleReset = () => router.push("/");
+  const handleReset = () => {
+    router.push("/");
+  };
 
   const qrData = ticket
     ? `${service?.code ?? ""}-${getTicketDisplayNumber(ticket)}|${fullName}|${service?.name ?? ""}`
     : "";
 
-  if (loading) return <div style={{ padding: 20 }} />;
+  if (loading) {
+    return <div style={{ padding: 20 }} />;
+  }
 
   if (!service) {
     return (
       <div style={{ padding: 20 }}>
         <p>Quầy không tồn tại</p>
-        <Link href="/"><button style={{ padding: 10, fontSize: 16 }}>Quay lại</button></Link>
+        <Link href="/">
+          <button style={{ padding: 10, fontSize: 16 }}>Quay lại</button>
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="stp-root">
-
-      {/* ── FORM ─────────────────────────────────────────────── */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "calc(100vh - 120px)",
+        paddingTop: 0,
+        paddingBottom: 20,
+      }}
+    >
       {step === "form" && (
-        <div className="stp-form-card">
-          <h2 className="stp-form-title">{service.name}</h2>
-          <p className="stp-form-desc">{service.description}</p>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 1000,
+            background: "#f9f9f9",
+            padding: 40,
+            borderRadius: 8,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          }}
+        >
+          <h2
+            style={{
+              textAlign: "center",
+              color: "#003366",
+              textTransform: "uppercase",
+              fontSize: "40px",
+              fontWeight: "bold",
+            }}
+          >
+            {service.name}
+          </h2>
+          <p
+            style={{
+              textAlign: "center",
+              color: "#666",
+              marginBottom: 18,
+              fontSize: 30,
+            }}
+          >
+            {service.description}
+          </p>
 
           <form onSubmit={handleSubmit}>
-            <div className="stp-field">
-              <label className="stp-label">
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 8,
+                  fontWeight: 600,
+                  color: "#333",
+                }}
+              >
                 Họ và tên <span style={{ color: "red" }}>*</span>
               </label>
               <input
                 type="text"
                 value={fullName}
-                onChange={(e) => setFullName(sanitizeFullName(e.target.value))}
+                onChange={(e) => {
+                  setFullName(sanitizeFullName(e.target.value));
+                }}
+                onBlur={(e) => {
+                  setFullName(capitalizeName(sanitizeFullName(e.target.value)));
+                }}
                 onPaste={(e) => {
                   e.preventDefault();
                   const pastedText = e.clipboardData.getData("text");
-                  setFullName((prev) => sanitizeFullName(`${prev} ${pastedText}`));
+                  setFullName((prev) =>
+                    capitalizeName(sanitizeFullName(`${prev} ${pastedText}`))
+                  );
                 }}
                 placeholder="Nhập họ và tên"
                 inputMode="text"
                 autoComplete="name"
-                className="stp-input"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  fontSize: 24,
+                  border: "1px solid #ccc",
+                  borderRadius: 4,
+                  boxSizing: "border-box",
+                  fontFamily: "inherit",
+                }}
               />
             </div>
 
-            <div className="stp-field">
-              <label className="stp-label">
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 8,
+                  fontWeight: 600,
+                  color: "#333",
+                }}
+              >
                 Số điện thoại <span style={{ color: "red" }}>*</span>
               </label>
               <input
@@ -255,20 +391,51 @@ function ServiceTicketContent() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="Nhập số điện thoại"
-                className="stp-input"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  fontSize: 24,
+                  border: "1px solid #ccc",
+                  borderRadius: 4,
+                  boxSizing: "border-box",
+                  fontFamily: "inherit",
+                }}
               />
             </div>
 
-            <div className="stp-btn-row">
+            <div style={{ display: "flex", gap: 10 }}>
               <Link href="/" style={{ flex: 1, textDecoration: "none" }}>
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  className="stp-btn-back"
-                  onMouseOver={(e) => { if (!isSubmitting) (e.currentTarget as HTMLButtonElement).style.background = "#e0e0e0"; }}
-                  onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isSubmitting ? "#d1d5db" : "#f0f0f0"; }}
+                  style={{
+                    width: "100%",
+                    padding: 16,
+                    height: 70,
+                    fontSize: 24,
+                    background: isSubmitting ? "#d1d5db" : "#f0f0f0",
+                    color: isSubmitting ? "#6b7280" : "#333",
+                    border: "1px solid #ccc",
+                    borderRadius: 4,
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
+                    transition: "background 0.3s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.background = "#e0e0e0";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = isSubmitting
+                      ? "#d1d5db"
+                      : "#f0f0f0";
+                  }}
                 >
-                  <RiArrowLeftLine size={24} />
+                  <RiArrowLeftLine size={28} />
                   <span>Quay lại</span>
                 </button>
               </Link>
@@ -276,9 +443,30 @@ function ServiceTicketContent() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="stp-btn-submit"
-                onMouseOver={(e) => { if (!isSubmitting) (e.currentTarget as HTMLButtonElement).style.background = "#001f47"; }}
-                onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isSubmitting ? "#9ca3af" : "#003366"; }}
+                style={{
+                  flex: 1,
+                  padding: 16,
+                  height: 70,
+                  fontSize: 32,
+                  fontWeight: 600,
+                  background: isSubmitting ? "#9ca3af" : "#003366",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 4,
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                  transition: "background 0.3s ease",
+                  opacity: isSubmitting ? 0.95 : 1,
+                }}
+                onMouseOver={(e) => {
+                  if (!isSubmitting) {
+                    e.currentTarget.style.background = "#001f47";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = isSubmitting
+                    ? "#9ca3af"
+                    : "#003366";
+                }}
               >
                 Lấy số
               </button>
@@ -287,77 +475,284 @@ function ServiceTicketContent() {
         </div>
       )}
 
-      {/* ── DONE ─────────────────────────────────────────────── */}
       {step === "done" && (
-        <div className="stp-done-wrap">
+        <div
+          style={{
+            display: "flex",
+            width: "100%",
+            maxWidth: 1380,
+            gap: 26,
+            alignItems: "stretch",
+          }}
+        >
+          <div
+            style={{
+              width: "78%",
+              background: "white",
+              padding: 10,
+              borderRadius: 18,
+              border: "1px solid #dbe6f2",
+              boxShadow: "0 14px 36px rgba(0, 39, 91, 0.12)",
+              textAlign: "center",
+            }}
+          >
+            <h1
+              style={{
+                color: "#003366",
+                fontSize: 36,
+                textTransform: "uppercase",
+                paddingTop: 14,
+                marginBottom: 8,
+              }}
+            >
+              YÊU CẦU CỦA QUÝ ÔNG BÀ ĐÃ ĐƯỢC TIẾP NHẬN
+            </h1>
+            <p style={{ fontSize: 24, color: "#333", marginBottom: 10, marginTop: 0 }}>
+              Xin vui lòng chờ đến thứ tự
+            </p>
 
-          {/* Left: ticket info */}
-          <div className="stp-done-main">
-            <h1 className="stp-done-title">YÊU CẦU CỦA QUÝ ÔNG BÀ ĐÃ ĐƯỢC TIẾP NHẬN</h1>
-            <p className="stp-done-sub">Xin vui lòng chờ đến thứ tự</p>
+            <div
+              style={{
+                background: "white",
+                border: "2px solid #0b4a8a",
+                borderRadius: 16,
+                margin: "0 24px 16px",
+                padding: "28px 26px",
+                minHeight: "360px",
+                display: "flex",
+                alignItems: "stretch",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-around",
+                  alignItems: "center",
+                  width: "100%",
+                  gap: 18,
+                }}
+              >
+                <div
+                  style={{
+                    paddingLeft: 10,
+                    textAlign: "left",
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                  }}
+                  ref={nameContainerRef}
+                >
+                  <p
+                    style={{
+                      fontSize: 28,
+                      color: "#5c6773",
+                      textTransform: "uppercase",
+                      fontStyle: "italic",
+                      margin: "0 0 8px 0",
+                    }}
+                  >
+                    Đương sự:
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 24,
+                      color: "#5c6773",
+                      margin: "0 0 12px 0",
+                      textTransform: "uppercase",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                      overflowWrap: "anywhere",
+                      maxWidth: "100%",
+                      lineHeight: 1.35,
+                    }}
+                    ref={nameRef}
+                  >
+                    <strong>{displayedName}</strong>
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 28,
+                      color: "#5c6773",
+                      textTransform: "uppercase",
+                      fontStyle: "italic",
+                      margin: "0 0 8px 0",
+                    }}
+                  >
+                    YÊU CẦU:
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 24,
+                      color: "#5c6773",
+                      margin: "0 0 4px 0",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    <strong>{service.name}</strong>
+                  </p>
+                </div>
 
-            <div className="stp-done-inner">
-              {/* Name / service info */}
-              <div className="stp-done-info" ref={nameContainerRef}>
-                <p className="stp-done-info-label">Đương sự:</p>
-                <p className="stp-done-info-value" ref={nameRef}>
-                  <strong>{displayedName}</strong>
-                </p>
-                <p className="stp-done-info-label">YÊU CẦU:</p>
-                <p className="stp-done-info-value">
-                  <strong>{service.name}</strong>
-                </p>
-              </div>
+                <div
+                  style={{
+                    textAlign: "center",
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <h2
+                    style={{
+                      fontSize: 190,
+                      fontWeight: "bold",
+                      color: "#003366",
+                      margin: "0",
+                      letterSpacing: 3,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {getTicketDisplayNumber(ticket)}
+                  </h2>
+                </div>
 
-              {/* Big number */}
-              <div className="stp-done-number">
-                {getTicketDisplayNumber(ticket)}
-              </div>
-
-              {/* QR */}
-              <div className="stp-done-qr">
-                <Image
-                  src={
-                    ticket?.qrCode ||
-                    `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`
-                  }
-                  alt="QR mã số thứ tự"
-                  width={200}
-                  height={200}
-                  className="stp-qr-img"
-                  unoptimized
-                />
-                <p className="stp-qr-hint">Quý ông bà vui lòng chụp lại mã QR</p>
+                <div
+                  style={{
+                    flex: 1,
+                    background: "white",
+                    borderRadius: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: "260px",
+                    gap: 18,
+                  }}
+                >
+                  <Image
+                    src={
+                      ticket?.qrCode ||
+                      `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`
+                    }
+                    alt="QR mã số thứ tự"
+                    width={240}
+                    height={240}
+                    style={{ display: "block" }}
+                    unoptimized
+                  />
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 18,
+                      color: "#44515f",
+                      lineHeight: 1.4,
+                      textAlign: "center",
+                    }}
+                  >
+                    Quý ông bà vui lòng chụp lại mã QR
+                  </p>
+                </div>
               </div>
             </div>
+
           </div>
 
-          {/* Right: actions */}
-          <div className="stp-done-side">
-            <h1 className="stp-side-title">QUÝ ÔNG BÀ VUI LÒNG CHỤP LẠI VÉ</h1>
-            <p className="stp-side-or">HOẶC</p>
+          <div
+            style={{
+              width: "22%",
+              background: "#ffffff",
+              padding: "30px 24px",
+              borderRadius: 18,
+              border: "1px solid #dbe6f2",
+              boxShadow: "0 14px 36px rgba(0, 39, 91, 0.12)",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              gap: 0,
+            }}
+          >
+            <h1
+              style={{
+                color: "#003366",
+                textTransform: "uppercase",
+                fontSize: 24,
+                fontWeight: "bold",
+                margin: "0 0 26px 0",
+                lineHeight: 1.45,
+              }}
+            >
+              QUÝ ÔNG BÀ VUI LÒNG CHỤP LẠI VÉ
+            </h1>
+            <p style={{ fontSize: 20, color: "#64748b", margin: "0 0 22px 0" }}>HOẶC</p>
             <button
               type="button"
               onClick={() => void handlePrintTicket()}
               disabled={isPrinting || hasPrinted || !ticket?._id}
-              className="stp-btn-print"
               style={{
+                width: "100%",
+                padding: "18px 18px",
+                borderRadius: 12,
+                border: "1px solid #0f7a35",
                 background: isPrinting || hasPrinted ? "#7bbf8f" : "green",
+                color: "white",
+                fontSize: 18,
+                fontWeight: 700,
                 cursor: isPrinting || hasPrinted ? "not-allowed" : "pointer",
+                marginBottom: 26,
                 opacity: isPrinting || hasPrinted ? 0.85 : 1,
               }}
             >
-              {isPrinting ? "ĐANG IN VÉ..." : hasPrinted ? "ĐÃ GỬI LỆNH IN" : "TÔI MUỐN IN VÉ"}
+              {isPrinting
+                ? "ĐANG IN VÉ..."
+                : hasPrinted
+                  ? "ĐÃ GỬI LỆNH IN"
+                  : "TÔI MUỐN IN VÉ"}
             </button>
-            <p className="stp-side-or">HOẶC</p>
-            <button type="button" disabled className="stp-btn-zalo">
+            <p style={{ fontSize: 20, color: "#64748b", margin: "0 0 18px 0" }}>HOẶC</p>
+            <button
+              type="button"
+              disabled
+              style={{
+                width: "100%",
+                padding: "18px 18px",
+                borderRadius: 12,
+                border: "none",
+                background: "#94a3b8",
+                color: "#e2e8f0",
+                fontSize: 18,
+                fontWeight: 700,
+                cursor: "not-allowed",
+                marginBottom: 16,
+                boxShadow: "none",
+                opacity: 0.75,
+              }}
+            >
               GỬI ZALO
             </button>
             <button
               onClick={handleReset}
-              className="stp-btn-done"
-              onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#001f47"; }}
-              onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#003366"; }}
+              style={{
+                width: "100%",
+                padding: "18px 18px",
+                borderRadius: 12,
+                border: "none",
+                background: "#003366",
+                color: "white",
+                fontSize: 18,
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "background 0.3s ease",
+                marginTop: 32,
+                boxShadow: "0 10px 22px rgba(0, 51, 102, 0.18)",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = "#001f47";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = "#003366";
+              }}
             >
               Hoàn tất ({countdown}s)
             </button>
@@ -377,18 +772,75 @@ function ServiceTicketContent() {
         isOpen={confirmSubmitOpen}
         title="Xác nhận thông tin"
         message={`Họ và tên: ${name.toLocaleUpperCase("vi-VN")}\nSố điện thoại: ${phoneNumber.trim()}\nBạn có muốn lấy số không?`}
-        onConfirm={() => { setConfirmSubmitOpen(false); void submitTicket(); }}
+        onConfirm={() => {
+          setConfirmSubmitOpen(false);
+          void submitTicket();
+        }}
         onCancel={() => setConfirmSubmitOpen(false)}
       />
 
       {isSubmitting && step === "form" && (
-        <div className="stp-overlay">
-          <div className="stp-overlay-card">
-            <div className="stp-overlay-header">
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Đang xử lý</h2>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(6, 20, 37, 0.46)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1100,
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              width: "min(100%, 360px)",
+              borderRadius: 20,
+              boxShadow: "0 28px 70px rgba(8, 27, 54, 0.24)",
+              border: "1px solid rgba(0, 51, 102, 0.08)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                background: "#003366",
+                color: "#fff",
+                padding: "18px 22px",
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: 20,
+                  fontWeight: 700,
+                }}
+              >
+                Đang xử lý
+              </h2>
             </div>
-            <div className="stp-overlay-body">
-              <div className="stp-spinner" />
+            <div
+              style={{
+                padding: 24,
+                color: "#31475f",
+                lineHeight: 1.6,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+              }}
+            >
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  border: "3px solid #dbe6f2",
+                  borderTopColor: "#003366",
+                  animation: "serviceTicketSpin 0.8s linear infinite",
+                  flexShrink: 0,
+                }}
+              />
               <p style={{ margin: 0, fontSize: 16 }}>
                 Vui lòng chờ trong giây lát, hệ thống đang tạo vé cho bạn.
               </p>
@@ -397,347 +849,14 @@ function ServiceTicketContent() {
         </div>
       )}
 
-      <style>{`
-        /* ── Root ───────────────────────────────────────────── */
-        .stp-root {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: calc(100vh - 120px);
-          padding: 16px;
-          box-sizing: border-box;
-        }
-
-        /* ══ FORM ══════════════════════════════════════════════ */
-        .stp-form-card {
-          width: 100%;
-          max-width: 1000px;
-          background: #f9f9f9;
-          padding: clamp(20px, 4vw, 40px);
-          border-radius: 8px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          box-sizing: border-box;
-        }
-        .stp-form-title {
-          text-align: center;
-          color: #003366;
-          text-transform: uppercase;
-          font-size: clamp(22px, 3.5vw, 40px);
-          font-weight: bold;
-          margin: 0 0 8px;
-        }
-        .stp-form-desc {
-          text-align: center;
-          color: #666;
-          margin-bottom: 18px;
-          font-size: clamp(16px, 2.2vw, 30px);
-        }
-        .stp-field { margin-bottom: 20px; }
-        .stp-label {
-          display: block;
-          margin-bottom: 8px;
-          font-weight: 600;
-          color: #333;
-          font-size: clamp(14px, 1.4vw, 18px);
-        }
-        .stp-input {
-          width: 100%;
-          padding: 12px;
-          font-size: clamp(16px, 2vw, 24px);
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          box-sizing: border-box;
-          font-family: inherit;
-        }
-        .stp-btn-row {
-          display: flex;
-          gap: 10px;
-        }
-        .stp-btn-back {
-          width: 100%;
-          padding: 16px;
-          height: clamp(52px, 7vh, 70px);
-          font-size: clamp(16px, 1.8vw, 24px);
-          background: #f0f0f0;
-          color: #333;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          cursor: pointer;
-          transition: background 0.3s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          box-sizing: border-box;
-        }
-        .stp-btn-back:disabled {
-          background: #d1d5db;
-          color: #6b7280;
-          cursor: not-allowed;
-        }
-        .stp-btn-submit {
-          flex: 1;
-          padding: 16px;
-          height: clamp(52px, 7vh, 70px);
-          font-size: clamp(18px, 2.5vw, 32px);
-          font-weight: 600;
-          background: #003366;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          transition: background 0.3s ease;
-        }
-        .stp-btn-submit:disabled {
-          background: #9ca3af;
-          cursor: not-allowed;
-        }
-
-        /* ══ DONE ══════════════════════════════════════════════ */
-        .stp-done-wrap {
-          display: flex;
-          width: 100%;
-          max-width: 1380px;
-          gap: clamp(12px, 2vw, 26px);
-          align-items: stretch;
-          /* Mobile: column */
-          flex-direction: column;
-        }
-
-        /* Main panel */
-        .stp-done-main {
-          background: white;
-          padding: clamp(12px, 2vw, 16px);
-          border-radius: 18px;
-          border: 1px solid #dbe6f2;
-          box-shadow: 0 14px 36px rgba(0,39,91,0.12);
-          text-align: center;
-        }
-        .stp-done-title {
-          color: #003366;
-          font-size: clamp(16px, 2.5vw, 36px);
-          text-transform: uppercase;
-          padding-top: 10px;
-          margin-bottom: 6px;
-        }
-        .stp-done-sub {
-          font-size: clamp(14px, 1.8vw, 24px);
-          color: #333;
-          margin-bottom: 10px;
-          margin-top: 0;
-        }
-        .stp-done-inner {
-          background: white;
-          border: 2px solid #0b4a8a;
-          border-radius: 16px;
-          margin: 0 clamp(4px, 2vw, 24px) 12px;
-          padding: clamp(12px, 2vw, 28px) clamp(8px, 1.8vw, 26px);
-          display: flex;
-          align-items: center;
-          justify-content: space-around;
-          gap: clamp(8px, 1.5vw, 18px);
-          /* Mobile: column */
-          flex-direction: column;
-        }
-
-        /* Info block */
-        .stp-done-info {
-          text-align: left;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          min-width: 0;
-          /* Mobile: center */
-          text-align: center;
-        }
-        .stp-done-info-label {
-          font-size: clamp(14px, 1.8vw, 28px);
-          color: #5c6773;
-          text-transform: uppercase;
-          font-style: italic;
-          margin: 0 0 4px 0;
-        }
-        .stp-done-info-value {
-          font-size: clamp(14px, 1.6vw, 24px);
-          color: #5c6773;
-          margin: 0 0 10px 0;
-          text-transform: uppercase;
-          word-break: break-word;
-          overflow-wrap: anywhere;
-          line-height: 1.35;
-        }
-
-        /* Big number */
-        .stp-done-number {
-          font-size: clamp(80px, 15vw, 190px);
-          font-weight: bold;
-          color: #003366;
-          letter-spacing: 3px;
-          line-height: 1;
-          flex: 1;
-          text-align: center;
-        }
-
-        /* QR block */
-        .stp-done-qr {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-        }
-        .stp-qr-img {
-          width: clamp(120px, 20vw, 240px) !important;
-          height: clamp(120px, 20vw, 240px) !important;
-        }
-        .stp-qr-hint {
-          margin: 0;
-          font-size: clamp(12px, 1.2vw, 18px);
-          color: #44515f;
-          line-height: 1.4;
-          text-align: center;
-        }
-
-        /* Side panel */
-        .stp-done-side {
-          background: #ffffff;
-          padding: clamp(16px, 2.5vw, 30px) clamp(12px, 2vw, 24px);
-          border-radius: 18px;
-          border: 1px solid #dbe6f2;
-          box-shadow: 0 14px 36px rgba(0,39,91,0.12);
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          gap: 0;
-        }
-        .stp-side-title {
-          color: #003366;
-          text-transform: uppercase;
-          font-size: clamp(14px, 1.8vw, 24px);
-          font-weight: bold;
-          margin: 0 0 16px 0;
-          line-height: 1.45;
-        }
-        .stp-side-or {
-          font-size: clamp(14px, 1.5vw, 20px);
-          color: #64748b;
-          margin: 0 0 14px 0;
-        }
-        .stp-btn-print {
-          width: 100%;
-          padding: clamp(12px, 1.5vh, 18px);
-          border-radius: 12px;
-          border: 1px solid #0f7a35;
-          color: white;
-          font-size: clamp(14px, 1.5vw, 18px);
-          font-weight: 700;
-          margin-bottom: 16px;
-          transition: opacity 0.2s;
-        }
-        .stp-btn-zalo {
-          width: 100%;
-          padding: clamp(12px, 1.5vh, 18px);
-          border-radius: 12px;
-          border: none;
-          background: #94a3b8;
-          color: #e2e8f0;
-          font-size: clamp(14px, 1.5vw, 18px);
-          font-weight: 700;
-          cursor: not-allowed;
-          margin-bottom: 16px;
-          opacity: 0.75;
-        }
-        .stp-btn-done {
-          width: 100%;
-          padding: clamp(12px, 1.5vh, 18px);
-          border-radius: 12px;
-          border: none;
-          background: #003366;
-          color: white;
-          font-size: clamp(14px, 1.5vw, 18px);
-          font-weight: 700;
-          cursor: pointer;
-          transition: background 0.3s ease;
-          margin-top: clamp(16px, 2vh, 32px);
-          box-shadow: 0 10px 22px rgba(0,51,102,0.18);
-        }
-
-        /* ══ Overlay ══════════════════════════════════════════ */
-        .stp-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(6,20,37,0.46);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1100;
-          padding: 24px;
-        }
-        .stp-overlay-card {
-          background: #fff;
-          width: min(100%, 360px);
-          border-radius: 20px;
-          box-shadow: 0 28px 70px rgba(8,27,54,0.24);
-          border: 1px solid rgba(0,51,102,0.08);
-          overflow: hidden;
-        }
-        .stp-overlay-header {
-          background: #003366;
-          color: #fff;
-          padding: 18px 22px;
-        }
-        .stp-overlay-body {
-          padding: 24px;
-          color: #31475f;
-          line-height: 1.6;
-          display: flex;
-          align-items: center;
-          gap: 14px;
-        }
-        .stp-spinner {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          border: 3px solid #dbe6f2;
-          border-top-color: #003366;
-          animation: stpSpin 0.8s linear infinite;
-          flex-shrink: 0;
-        }
-        @keyframes stpSpin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-
-        /* ══ BREAKPOINTS ═══════════════════════════════════════ */
-
-        /* Tablet trở lên: done layout ngang */
-        @media (min-width: 768px) {
-          .stp-done-wrap {
-            flex-direction: row;
+      <style jsx>{`
+        @keyframes serviceTicketSpin {
+          from {
+            transform: rotate(0deg);
           }
-          .stp-done-main { width: 78%; }
-          .stp-done-side { width: 22%; }
-          .stp-done-inner {
-            flex-direction: row;
-            min-height: 360px;
+          to {
+            transform: rotate(360deg);
           }
-          .stp-done-info { text-align: left; }
-        }
-
-        /* Desktop */
-        @media (min-width: 1200px) {
-          .stp-root { padding: 0 20px 20px; }
-        }
-
-        /* Mobile nhỏ: thu padding */
-        @media (max-width: 480px) {
-          .stp-root { padding: 10px; min-height: unset; }
-          .stp-done-number { font-size: clamp(64px, 22vw, 120px); }
         }
       `}</style>
     </div>
