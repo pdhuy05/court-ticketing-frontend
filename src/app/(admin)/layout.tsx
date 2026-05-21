@@ -21,15 +21,9 @@ import { IconType } from "react-icons";
 type NavItem = { href: string; label: string; icon: IconType };
 
 const getCachedAdminUser = (): AdminProfile | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
+  if (typeof window === "undefined") return null;
   const cached = localStorage.getItem("adminUser");
-  if (!cached) {
-    return null;
-  }
-
+  if (!cached) return null;
   try {
     return JSON.parse(cached) as AdminProfile;
   } catch {
@@ -58,9 +52,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const routerRef = useRef(router);
 
   const [isLoggedIn,         setIsLoggedIn        ] = useState(hasAdminToken);
-  const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(
-    getCachedAdminUser,
-  );
+  const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(getCachedAdminUser);
   const [showLogoutConfirm,  setShowLogoutConfirm  ] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed ] = useState(false);
 
@@ -77,7 +69,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Refresh ngầm
     getMyProfile()
       .then((profile) => {
         if (!mounted) return;
@@ -119,7 +110,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* ================= SIDEBAR ================= */}
         <div
           className="relative flex h-full flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300"
-          style={{ width: isSidebarCollapsed ? "82px" : "280px" }}
+          style={{ width: isSidebarCollapsed ? "72px" : "280px" }}
         >
           {/* Logo */}
           <div className="border-b border-gray-100 pt-8 pb-6">
@@ -128,8 +119,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 className="bg-contain bg-center bg-no-repeat transition-all duration-300"
                 style={{
                   backgroundImage: "url(/assets/logotoaan.png)",
-                  width:  isSidebarCollapsed ? "72px" : "56px",
-                  height: isSidebarCollapsed ? "72px" : "56px",
+                  width:  isSidebarCollapsed ? "44px" : "56px",
+                  height: isSidebarCollapsed ? "44px" : "56px",
                 }}
               />
             </div>
@@ -150,7 +141,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </button>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto px-3 py-6">
+          <nav className="flex-1 overflow-y-auto py-6" style={{ paddingLeft: "10px", paddingRight: "10px" }}>
             <ul className="space-y-2">
               {navItems.map((item) => {
                 const Icon   = item.icon;
@@ -160,15 +151,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     <Link
                       href={item.href}
                       prefetch={true}
-                      className={`flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium transition-all ${
+                      className={`flex items-center rounded-2xl py-3 text-sm font-medium transition-all ${
+                        isSidebarCollapsed
+                          ? "justify-center px-0"
+                          : "gap-3 px-4"
+                      } ${
                         active
                           ? "bg-blue-600 text-white shadow-sm"
                           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     >
-                      <div className={`flex items-center justify-center ${isSidebarCollapsed ? "w-full" : "w-8"}`}>
-                        <Icon size={isSidebarCollapsed ? 28 : 22} />
-                      </div>
+                      <Icon size={22} className="flex-shrink-0" />
                       {!isSidebarCollapsed && <span>{item.label}</span>}
                     </Link>
                   </li>
@@ -178,8 +171,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </nav>
 
           {/* User Info */}
-          <div className="mt-auto border-t border-gray-100 p-5">
-            <div className={`flex items-center rounded-2xl bg-gray-50 px-3 py-3 ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
+          <div className="mt-auto border-t border-gray-100 p-4">
+            <div
+              className={`flex items-center rounded-2xl bg-gray-50 py-3 ${
+                isSidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"
+              }`}
+            >
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-600">
                 <span className="translate-y-[-1px] text-lg font-bold leading-none text-white">
                   {adminUser?.fullName?.charAt(0)?.toUpperCase() ?? "A"}
