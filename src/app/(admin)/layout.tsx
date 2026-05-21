@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ConfirmModal from "@/components/ConfirmModal";
 import NewTicketGlobalSocket from "@/components/NewTicketGlobalSocket";
 import NotificationPermissionButton from "@/components/NotificationPermissionButton";
 import { clearAdminSession } from "@/lib/admin-auth";
-import { AdminProfile, getMyProfile } from "@/services/auth.service";
+import { getMyProfile } from "@/services/auth.service";
+import type { AdminProfile } from "@/services/auth.service";
 
 import {
   FiActivity, FiFileText, FiLogOut, FiPrinter,
@@ -18,6 +19,26 @@ import { TbBuildingBank, TbLayoutGrid } from "react-icons/tb";
 import { IconType } from "react-icons";
 
 type NavItem = { href: string; label: string; icon: IconType };
+
+const getCachedAdminUser = (): AdminProfile | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const cached = localStorage.getItem("adminUser");
+  if (!cached) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(cached) as AdminProfile;
+  } catch {
+    return null;
+  }
+};
+
+const hasAdminToken = () =>
+  typeof window !== "undefined" && Boolean(localStorage.getItem("adminToken"));
 
 const navItems: NavItem[] = [
   { href: "/admin",          label: "Thống kê",   icon: FiActivity     },
@@ -32,47 +53,58 @@ const navItems: NavItem[] = [
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const router   = useRouter();
-  const pathname = usePathname();
+  const router    = useRouter();
+  const pathname  = usePathname();
+  const routerRef = useRef(router);
 
-  const [isLoggedIn,         setIsLoggedIn        ] = useState(false);
-  const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(null);
+  const [isLoggedIn,         setIsLoggedIn        ] = useState(hasAdminToken);
+  const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(
+    getCachedAdminUser,
+  );
   const [showLogoutConfirm,  setShowLogoutConfirm  ] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed ] = useState(false);
 
   const isLoginPage = pathname === "/login" || pathname === "/admin/login";
 
   useEffect(() => {
-    if (isLoginPage) return;
+    if (pathname === "/login" || pathname === "/admin/login") return;
+
+    let mounted = true;
 
     const token = localStorage.getItem("adminToken");
-    if (!token) { router.replace("/admin/login"); return; }
-
-    const cached = localStorage.getItem("adminUser");
-    if (cached) {
-      try { setAdminUser(JSON.parse(cached)); } catch { /* ignore */ }
+    if (!token) {
+      routerRef.current.replace("/admin/login");
+      return;
     }
-    setIsLoggedIn(true);
 
+    // Refresh ngầm
     getMyProfile()
       .then((profile) => {
+        if (!mounted) return;
         localStorage.setItem("adminUser", JSON.stringify(profile));
         setAdminUser(profile);
+        setIsLoggedIn(true);
       })
       .catch(() => {
+        if (!mounted) return;
         clearAdminSession();
-        router.replace("/admin/login?reason=session_expired");
+        setIsLoggedIn(false);
+        routerRef.current.replace("/admin/login?reason=session_expired");
       });
-  }, []); 
+
+    return () => { mounted = false; };
+  }, [pathname]);
 
   const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
+    href === "/admin"
+      ? pathname === "/admin"
+      : pathname === href || pathname.startsWith(`${href}/`);
 
   const handleLogout        = () => setShowLogoutConfirm(true);
   const handleConfirmLogout = () => {
     setShowLogoutConfirm(false);
     clearAdminSession();
-    router.replace("/admin/login");
+    routerRef.current.replace("/admin/login");
   };
 
   if (isLoginPage) return <>{children}</>;
@@ -83,6 +115,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <NewTicketGlobalSocket />
 
       <div className="flex h-screen overflow-hidden bg-gray-50">
+
         {/* ================= SIDEBAR ================= */}
         <div
           className="relative flex h-full flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300"
@@ -125,7 +158,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 return (
                   <li key={item.href}>
                     <Link
-                      href={item.href} prefetch={true} 
+                      href={item.href}
+                      prefetch={true}
                       className={`flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium transition-all ${
                         active
                           ? "bg-blue-600 text-white shadow-sm"
@@ -148,7 +182,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className={`flex items-center rounded-2xl bg-gray-50 px-3 py-3 ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-600">
                 <span className="translate-y-[-1px] text-lg font-bold leading-none text-white">
-                  {adminUser?.fullName?.charAt(0)?.toUpperCase() || "A"}
+                  {adminUser?.fullName?.charAt(0)?.toUpperCase() ?? "A"}
                 </span>
               </div>
               {!isSidebarCollapsed && (
@@ -165,14 +199,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* ================= MAIN ================= */}
         <div className="flex flex-1 flex-col overflow-hidden">
+
           {/* Header */}
           <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200/80 bg-white px-6">
             <div className="flex items-center gap-3">
               <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-md ring-1 ring-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.4)] transition hover:scale-105">
                 <div className="absolute inset-0 -skew-x-6 bg-gradient-to-br from-gray-800 via-gray-900 to-black" />
-                <span className="relative z-10 bg-gradient-to-br from-gray-200 via-white to-gray-400 bg-clip-text text-lg font-black leading-none text-transparent">T</span>
+                <span className="relative z-10 bg-gradient-to-br from-gray-200 via-white to-gray-400 bg-clip-text text-lg font-black leading-none text-transparent">
+                  T
+                </span>
               </div>
-              <h1 className="text-sm font-semibold tracking-tight text-gray-800">HỆ THỐNG QUẢN LÝ VÉ ĐIỆN TỬ</h1>
+              <h1 className="text-sm font-semibold tracking-tight text-gray-800">
+                HỆ THỐNG QUẢN LÝ VÉ ĐIỆN TỬ
+              </h1>
             </div>
 
             <div className="flex items-center gap-3">
@@ -180,14 +219,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <div className="h-6 w-px bg-gray-200" />
               <div className="flex items-center gap-2.5">
                 <div className="hidden text-right leading-tight sm:block">
-                  <p className="text-sm font-medium text-gray-700">{adminUser?.fullName || "Admin"}</p>
+                  <p className="text-sm font-medium text-gray-700">{adminUser?.fullName ?? "Admin"}</p>
                   <p className="text-[11px] text-gray-400">
                     {adminUser?.role === "admin" ? "Quản trị viên" : "Nhân viên"}
                   </p>
                 </div>
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 ring-2 ring-gray-100">
                   <span className="translate-y-[-1px] text-lg font-bold leading-none text-white">
-                    {adminUser?.fullName?.charAt(0)?.toUpperCase() || "A"}
+                    {adminUser?.fullName?.charAt(0)?.toUpperCase() ?? "A"}
                   </span>
                 </div>
               </div>
