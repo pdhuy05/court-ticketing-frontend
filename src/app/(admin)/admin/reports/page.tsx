@@ -85,77 +85,39 @@ export default function ReportsPage() {
 
   return (
     <div className={styles.page}>
-      {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.title}>
-            <FiFileText className={styles.titleIcon} />
-            Xuất báo cáo
-          </h1>
-          <p className={styles.subtitle}>
-            Xuất dữ liệu thống kê ra file Excel (.xlsx)
-          </p>
-        </div>
+
+      {/* Sheet info cards — full width trên cùng */}
+      <div className={styles.sheetCards}>
+        {[
+          { icon: <FiList size={20} />, label: "Chi tiết vé", desc: "Toàn bộ vé trong kỳ, đầy đủ trạng thái và thời gian", color: "#3b82f6" },
+          { icon: <FiBarChart2 size={20} />, label: "Theo ngày", desc: "Tổng vé, tỷ lệ hoàn thành, thời gian chờ trung bình mỗi ngày", color: "#10b981" },
+          { icon: <FiGrid size={20} />, label: "Theo dịch vụ", desc: "So sánh hiệu suất và lượng vé từng dịch vụ", color: "#f59e0b" },
+          { icon: <FiCalendar size={20} />, label: "Theo quầy", desc: "Hiệu suất xử lý của từng phòng/quầy", color: "#8b5cf6" },
+        ].map((s) => (
+          <div key={s.label} className={styles.sheetCard}>
+            <div className={styles.sheetCardIcon} style={{ background: `${s.color}20`, color: s.color }}>
+              {s.icon}
+            </div>
+            <div>
+              <div className={styles.sheetCardLabel}>{s.label}</div>
+              <div className={styles.sheetCardDesc}>{s.desc}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
+      {/* Body 2 cột */}
       <div className={styles.body}>
-        {/* Sheet info cards */}
-        <div className={styles.sheetCards}>
-          {[
-            {
-              icon: <FiList size={20} />,
-              label: "Chi tiết vé",
-              desc: "Toàn bộ vé trong kỳ, đầy đủ trạng thái và thời gian",
-              color: "#3b82f6",
-            },
-            {
-              icon: <FiBarChart2 size={20} />,
-              label: "Theo ngày",
-              desc: "Tổng vé, tỷ lệ hoàn thành, thời gian chờ trung bình mỗi ngày",
-              color: "#10b981",
-            },
-            {
-              icon: <FiGrid size={20} />,
-              label: "Theo dịch vụ",
-              desc: "So sánh hiệu suất và lượng vé từng dịch vụ",
-              color: "#f59e0b",
-            },
-            {
-              icon: <FiCalendar size={20} />,
-              label: "Theo quầy",
-              desc: "Hiệu suất xử lý của từng phòng/quầy",
-              color: "#8b5cf6",
-            },
-          ].map((s) => (
-            <div key={s.label} className={styles.sheetCard}>
-              <div
-                className={styles.sheetCardIcon}
-                style={{ background: `${s.color}20`, color: s.color }}
-              >
-                {s.icon}
-              </div>
-              <div>
-                <div className={styles.sheetCardLabel}>{s.label}</div>
-                <div className={styles.sheetCardDesc}>{s.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
 
-        {/* Export form */}
+        {/* Cột trái — form xuất */}
         <div className={styles.formCard}>
-          <div className={styles.formTitle}>Chọn khoảng thời gian</div>
+          <div className={styles.formTitle}>Chọn khoảng thời gian xuất báo cáo</div>
 
-          {/* Presets */}
           <div className={styles.presets}>
             {PRESETS.map((p) => (
               <button
                 key={p.label}
-                className={`${styles.presetBtn} ${
-                  startDate === p.start && endDate === p.end
-                    ? styles.presetBtnActive
-                    : ""
-                }`}
+                className={`${styles.presetBtn} ${startDate === p.start && endDate === p.end ? styles.presetBtnActive : ""}`}
                 onClick={() => handlePreset(p.start, p.end)}
               >
                 {p.label}
@@ -163,70 +125,67 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          {/* Date inputs */}
           <div className={styles.dateRow}>
             <div className={styles.dateField}>
               <label className={styles.label}>Từ ngày</label>
-              <input
-                type="date"
-                className={styles.input}
-                value={startDate}
-                max={endDate || today()}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setStatus("idle");
-                }}
-              />
+              <input type="date" className={styles.input} value={startDate} max={endDate || today()}
+                onChange={(e) => { setStartDate(e.target.value); setStatus("idle"); }} />
             </div>
             <div className={styles.dateSep}>→</div>
             <div className={styles.dateField}>
               <label className={styles.label}>Đến ngày</label>
-              <input
-                type="date"
-                className={styles.input}
-                value={endDate}
-                min={startDate}
-                max={today()}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setStatus("idle");
-                }}
-              />
+              <input type="date" className={styles.input} value={endDate} min={startDate} max={today()}
+                onChange={(e) => { setEndDate(e.target.value); setStatus("idle"); }} />
             </div>
           </div>
 
-          {/* Feedback */}
           {status === "error" && (
-            <div className={styles.alertError}>
-              <FiAlertCircle size={16} />
-              {errorMsg}
-            </div>
+            <div className={styles.alertError}><FiAlertCircle size={16} />{errorMsg}</div>
           )}
           {status === "success" && (
-            <div className={styles.alertSuccess}>
-              <FiCheckCircle size={16} />
-              Xuất thành công! File đang được tải về máy.
-            </div>
+            <div className={styles.alertSuccess}><FiCheckCircle size={16} />Xuất thành công! File đang được tải về máy.</div>
           )}
 
-          {/* Export button */}
-          <button
-            className={styles.exportBtn}
-            onClick={handleExport}
-            disabled={status === "loading"}
-          >
+          <button className={styles.exportBtn} onClick={handleExport} disabled={status === "loading"}>
             {status === "loading" ? (
-              <>
-                <FiLoader className={styles.spin} size={18} />
-                Đang xuất...
-              </>
+              <><FiLoader className={styles.spin} size={18} />Đang xuất...</>
             ) : (
-              <>
-                <FiDownload size={18} />
-                Xuất Excel
-              </>
+              <><FiDownload size={18} />Xuất Excel</>
             )}
           </button>
+        </div>
+
+        {/* Cột phải — thông tin */}
+        <div className={styles.infoPanel}>
+          <div className={styles.infoPanelCard}>
+            <div className={styles.infoPanelTitle}>Kỳ đã chọn</div>
+            <div className={styles.infoRow}>
+              <span>Từ ngày</span>
+              <span className={styles.infoRowValue}>{startDate || "—"}</span>
+            </div>
+            <div className={styles.infoRow}>
+              <span>Đến ngày</span>
+              <span className={styles.infoRowValue}>{endDate || "—"}</span>
+            </div>
+            <div className={styles.infoRow}>
+              <span>Số ngày</span>
+              <span className={styles.infoRowValue}>
+                {startDate && endDate
+                  ? Math.max(0, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1) + " ngày"
+                  : "—"}
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.infoPanelCard}>
+            <div className={styles.infoPanelTitle}>File xuất gồm</div>
+            {["Chi tiết vé", "Thống kê theo ngày", "Thống kê theo dịch vụ", "Thống kê theo quầy"].map((s) => (
+              <div key={s} className={styles.infoRow}>
+                <span>{s}</span>
+                <span style={{ color: "#10b981", fontSize: 13, fontWeight: 600 }}>✓ Sheet</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -10,129 +10,72 @@ import { clearAdminSession } from "@/lib/admin-auth";
 import { AdminProfile, getMyProfile } from "@/services/auth.service";
 
 import {
-  FiActivity,
-  FiFileText,
-  FiLogOut,
-  FiPrinter,
-  FiSearch,
-  FiSettings,
-  FiUsers,
-  FiChevronLeft,
-  FiChevronRight,
-  FiUser,
+  FiActivity, FiFileText, FiLogOut, FiPrinter,
+  FiSearch, FiSettings, FiUsers, FiChevronLeft,
+  FiChevronRight, FiUser,
 } from "react-icons/fi";
-
-import {
-  TbBuildingBank,
-  TbLayoutGrid,
-} from "react-icons/tb";
-
+import { TbBuildingBank, TbLayoutGrid } from "react-icons/tb";
 import { IconType } from "react-icons";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: IconType;
-};
+type NavItem = { href: string; label: string; icon: IconType };
 
 const navItems: NavItem[] = [
-  { href: "/admin", label: "Thống kê", icon: FiActivity },
-  { href: "/admin/users", label: "Nhân viên", icon: FiUsers },
-  { href: "/admin/counter", label: "Phòng", icon: TbBuildingBank },
-  { href: "/admin/services", label: "Quầy", icon: TbLayoutGrid },
-  { href: "/admin/printers", label: "Máy in", icon: FiPrinter },
-  { href: "/admin/settings", label: "Cài đặt", icon: FiSettings },
-  { href: "/admin/reports", label: "Báo cáo", icon: FiFileText },
-  { href: "/admin/search", label: "Tra cứu vé", icon: FiSearch },
-  { href: "/admin/profile", label: "Hồ sơ", icon: FiUser },
+  { href: "/admin",          label: "Thống kê",   icon: FiActivity     },
+  { href: "/admin/users",    label: "Nhân viên",  icon: FiUsers        },
+  { href: "/admin/counter",  label: "Phòng",      icon: TbBuildingBank },
+  { href: "/admin/services", label: "Quầy",       icon: TbLayoutGrid   },
+  { href: "/admin/printers", label: "Máy in",     icon: FiPrinter      },
+  { href: "/admin/settings", label: "Cài đặt",    icon: FiSettings     },
+  { href: "/admin/reports",  label: "Báo cáo",    icon: FiFileText     },
+  { href: "/admin/search",   label: "Tra cứu vé", icon: FiSearch       },
+  { href: "/admin/profile",  label: "Hồ sơ",      icon: FiUser         },
 ];
 
-export default function AdminLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const router = useRouter();
+export default function AdminLayout({ children }: { children: ReactNode }) {
+  const router   = useRouter();
   const pathname = usePathname();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [adminUser, setAdminUser] = useState<AdminProfile | null>(null);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isLoggedIn,         setIsLoggedIn        ] = useState(false);
+  const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(null);
+  const [showLogoutConfirm,  setShowLogoutConfirm  ] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed ] = useState(false);
 
-  const isLoginPage =
-    pathname === "/login" || pathname === "/admin/login";
+  const isLoginPage = pathname === "/login" || pathname === "/admin/login";
 
   useEffect(() => {
     if (isLoginPage) return;
 
-    let isMounted = true;
+    const token = localStorage.getItem("adminToken");
+    if (!token) { router.replace("/admin/login"); return; }
 
-    const hydrateAdminUser = async () => {
-      const token = localStorage.getItem("adminToken");
+    const cached = localStorage.getItem("adminUser");
+    if (cached) {
+      try { setAdminUser(JSON.parse(cached)); } catch { /* ignore */ }
+    }
+    setIsLoggedIn(true);
 
-      if (!token) {
-        router.replace("/admin/login");
-        return;
-      }
-
-      try {
-        const cached = localStorage.getItem("adminUser");
-
-        if (cached) {
-          setAdminUser(JSON.parse(cached));
-        }
-
-        const profile = await getMyProfile();
-
-        localStorage.setItem(
-          "adminUser",
-          JSON.stringify(profile)
-        );
-
-        if (isMounted) {
-          setAdminUser(profile);
-        }
-
-        setIsLoggedIn(true);
-      } catch {
+    getMyProfile()
+      .then((profile) => {
+        localStorage.setItem("adminUser", JSON.stringify(profile));
+        setAdminUser(profile);
+      })
+      .catch(() => {
         clearAdminSession();
-        router.replace(
-          "/admin/login?reason=session_expired"
-        );
-      }
-    };
+        router.replace("/admin/login?reason=session_expired");
+      });
+  }, []); 
 
-    void hydrateAdminUser();
+  const isActive = (href: string) =>
+    href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isLoginPage, router]);
-
-  const handleLogout = () => {
-    setShowLogoutConfirm(true);
-  };
-
+  const handleLogout        = () => setShowLogoutConfirm(true);
   const handleConfirmLogout = () => {
     setShowLogoutConfirm(false);
     clearAdminSession();
     router.replace("/admin/login");
   };
 
-  const isActive = (href: string) => {
-    if (href === "/admin") {
-      return pathname === "/admin";
-    }
-
-    return (
-      pathname === href ||
-      pathname.startsWith(`${href}/`)
-    );
-  };
-
   if (isLoginPage) return <>{children}</>;
-
   if (!isLoggedIn) return null;
 
   return (
@@ -143,9 +86,7 @@ export default function AdminLayout({
         {/* ================= SIDEBAR ================= */}
         <div
           className="relative flex h-full flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300"
-          style={{
-            width: isSidebarCollapsed ? "82px" : "280px",
-          }}
+          style={{ width: isSidebarCollapsed ? "82px" : "280px" }}
         >
           {/* Logo */}
           <div className="border-b border-gray-100 pt-8 pb-6">
@@ -153,88 +94,48 @@ export default function AdminLayout({
               <div
                 className="bg-contain bg-center bg-no-repeat transition-all duration-300"
                 style={{
-                  backgroundImage:
-                    "url(/assets/logotoaan.png)",
-                  width: isSidebarCollapsed
-                    ? "72px"
-                    : "56px",
-                  height: isSidebarCollapsed
-                    ? "72px"
-                    : "56px",
+                  backgroundImage: "url(/assets/logotoaan.png)",
+                  width:  isSidebarCollapsed ? "72px" : "56px",
+                  height: isSidebarCollapsed ? "72px" : "56px",
                 }}
               />
             </div>
-
             {!isSidebarCollapsed && (
               <div className="mt-5 px-2 text-center">
-                <div className="text-lg font-bold tracking-tight text-gray-900">
-                  TÒA ÁN NHÂN DÂN
-                </div>
-
-                <div className="text-xs text-gray-500">
-                  KHU VỰC 1 - TP.HCM
-                </div>
+                <div className="text-lg font-bold tracking-tight text-gray-900">TÒA ÁN NHÂN DÂN</div>
+                <div className="text-xs text-gray-500">KHU VỰC 1 - TP.HCM</div>
               </div>
             )}
           </div>
 
           {/* Toggle */}
           <button
-            onClick={() =>
-              setIsSidebarCollapsed(
-                !isSidebarCollapsed
-              )
-            }
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="absolute top-28 -right-3 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 bg-white shadow-md transition-all hover:scale-110 hover:shadow-lg"
           >
-            {isSidebarCollapsed ? (
-              <FiChevronRight size={18} />
-            ) : (
-              <FiChevronLeft size={18} />
-            )}
+            {isSidebarCollapsed ? <FiChevronRight size={18} /> : <FiChevronLeft size={18} />}
           </button>
 
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto px-3 py-6">
             <ul className="space-y-2">
               {navItems.map((item) => {
-                const Icon = item.icon;
-
+                const Icon   = item.icon;
                 const active = isActive(item.href);
-
                 return (
                   <li key={item.href}>
                     <Link
-                      href={item.href}
-                      className={`flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium transition-all
-                      
-                      ${
+                      href={item.href} prefetch={true} 
+                      className={`flex items-center gap-3 rounded-2xl px-5 py-3.5 text-sm font-medium transition-all ${
                         active
                           ? "bg-blue-600 text-white shadow-sm"
                           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                      }
-                      
-                      `}
+                      }`}
                     >
-                      <div
-                        className={`flex items-center justify-center ${
-                          isSidebarCollapsed
-                            ? "w-full"
-                            : "w-8"
-                        }`}
-                      >
-                        <Icon
-                          size={
-                            isSidebarCollapsed
-                              ? 28
-                              : 22
-                          }
-                        />
+                      <div className={`flex items-center justify-center ${isSidebarCollapsed ? "w-full" : "w-8"}`}>
+                        <Icon size={isSidebarCollapsed ? 28 : 22} />
                       </div>
-
-                      {!isSidebarCollapsed && (
-                        <span>{item.label}</span>
-                      )}
+                      {!isSidebarCollapsed && <span>{item.label}</span>}
                     </Link>
                   </li>
                 );
@@ -244,33 +145,17 @@ export default function AdminLayout({
 
           {/* User Info */}
           <div className="mt-auto border-t border-gray-100 p-5">
-            <div
-              className={`flex items-center rounded-2xl bg-gray-50 px-3 py-3 ${
-                isSidebarCollapsed
-                  ? "justify-center"
-                  : "gap-3"
-              }`}
-            >
-              {/* Avatar */}
+            <div className={`flex items-center rounded-2xl bg-gray-50 px-3 py-3 ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-600">
                 <span className="translate-y-[-1px] text-lg font-bold leading-none text-white">
-                  {adminUser?.fullName
-                    ?.charAt(0)
-                    ?.toUpperCase() || "A"}
+                  {adminUser?.fullName?.charAt(0)?.toUpperCase() || "A"}
                 </span>
               </div>
-
-              {/* Info */}
               {!isSidebarCollapsed && (
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-800">
-                    {adminUser?.fullName}
-                  </p>
-
+                  <p className="truncate font-semibold text-gray-800">{adminUser?.fullName}</p>
                   <p className="text-xs text-gray-500">
-                    {adminUser?.role === "admin"
-                      ? "Quản trị viên"
-                      : "Nhân viên"}
+                    {adminUser?.role === "admin" ? "Quản trị viên" : "Nhân viên"}
                   </p>
                 </div>
               )}
@@ -282,70 +167,30 @@ export default function AdminLayout({
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
           <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200/80 bg-white px-6">
-            {/* Left */}
             <div className="flex items-center gap-3">
-              <div
-                className="
-                  relative
-                  flex h-9 w-9 items-center justify-center
-                  overflow-hidden
-                  rounded-md
-                  ring-1 ring-white/10
-                  shadow-[0_4px_12px_rgba(0,0,0,0.4)]
-                  transition
-                  hover:scale-105
-                "
-              >
+              <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-md ring-1 ring-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.4)] transition hover:scale-105">
                 <div className="absolute inset-0 -skew-x-6 bg-gradient-to-br from-gray-800 via-gray-900 to-black" />
-
-                <span
-                  className="
-                    relative z-10
-                    bg-gradient-to-br from-gray-200 via-white to-gray-400
-                    bg-clip-text
-                    text-lg font-black leading-none text-transparent
-                  "
-                >
-                  T
-                </span>
+                <span className="relative z-10 bg-gradient-to-br from-gray-200 via-white to-gray-400 bg-clip-text text-lg font-black leading-none text-transparent">T</span>
               </div>
-
-              <h1 className="text-sm font-semibold tracking-tight text-gray-800">
-                HỆ THỐNG QUẢN LÝ VÉ ĐIỆN TỬ
-              </h1>
+              <h1 className="text-sm font-semibold tracking-tight text-gray-800">HỆ THỐNG QUẢN LÝ VÉ ĐIỆN TỬ</h1>
             </div>
 
-            {/* Right */}
             <div className="flex items-center gap-3">
               <NotificationPermissionButton variant="admin" />
-
               <div className="h-6 w-px bg-gray-200" />
-
-              {/* User */}
               <div className="flex items-center gap-2.5">
                 <div className="hidden text-right leading-tight sm:block">
-                  <p className="text-sm font-medium text-gray-700">
-                    {adminUser?.fullName || "Admin"}
-                  </p>
-
+                  <p className="text-sm font-medium text-gray-700">{adminUser?.fullName || "Admin"}</p>
                   <p className="text-[11px] text-gray-400">
-                    {adminUser?.role === "admin"
-                      ? "Quản trị viên"
-                      : "Nhân viên"}
+                    {adminUser?.role === "admin" ? "Quản trị viên" : "Nhân viên"}
                   </p>
                 </div>
-
-                {/* Fixed avatar */}
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 ring-2 ring-gray-100">
                   <span className="translate-y-[-1px] text-lg font-bold leading-none text-white">
-                    {adminUser?.fullName
-                      ?.charAt(0)
-                      ?.toUpperCase() || "A"}
+                    {adminUser?.fullName?.charAt(0)?.toUpperCase() || "A"}
                   </span>
                 </div>
               </div>
-
-              {/* Logout */}
               <button
                 onClick={handleLogout}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-500"
@@ -356,22 +201,16 @@ export default function AdminLayout({
             </div>
           </header>
 
-          {/* Content */}
-          <main className="flex-1 overflow-auto bg-gray-50 p-8">
-            {children}
-          </main>
+          <main className="flex-1 overflow-auto bg-gray-50 p-8">{children}</main>
         </div>
       </div>
 
-      {/* Logout Modal */}
       <ConfirmModal
         isOpen={showLogoutConfirm}
         title="Xác nhận đăng xuất"
         message="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?"
         onConfirm={handleConfirmLogout}
-        onCancel={() =>
-          setShowLogoutConfirm(false)
-        }
+        onCancel={() => setShowLogoutConfirm(false)}
       />
     </>
   );

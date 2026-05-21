@@ -1097,7 +1097,7 @@ export default function StaffTable() {
                         <div style={{ fontWeight: 700, fontSize: 13, color: formData.isActive ? C.greenText : C.redText }}>
                           {formData.isActive ? "Tài khoản hoạt động" : "Tài khoản bị khóa"}
                         </div>
-                        <div style={{ fontSize: 12, color: formData.isActive ? "#86efac" : "#fca5a5", marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: formData.isActive ? "#2ebf63" : "#fca5a5", marginTop: 2 }}>
                           {formData.isActive
                             ? "Nhân viên có thể đăng nhập và làm việc"
                             : "Nhân viên không thể đăng nhập vào hệ thống"}
