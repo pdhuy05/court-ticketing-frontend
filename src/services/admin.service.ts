@@ -859,3 +859,88 @@ export async function exportReport(startDate: string, endDate: string): Promise<
   a.remove();
   URL.revokeObjectURL(url);
 }
+// ==================== TICKET SEARCH ====================
+export interface TicketSearchResult {
+  _id: string;
+  ticketNumber: string;
+  displayNumber: string | null;
+  formattedNumber: string;
+  date: string;
+  status: "waiting" | "processing" | "completed" | "skipped";
+  name: string;
+  phone: string;
+  service: { id: string; name: string; code: string } | null;
+  counter: { id: string; name: string; number: number } | null;
+  queueCounter: { id: string; name: string; number: number } | null;
+  staff: { id: string; name: string } | null;
+  skipCount: number;
+  note: string | null;
+  waitingDuration: number;
+  processingDuration: number;
+  totalDuration: number;
+  createdAt: string;
+  calledAt: string | null;
+  completedAt: string | null;
+  skippedAt: string | null;
+}
+
+export interface TicketSearchPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface TicketSearchFilters {
+  phone?: string;
+  name?: string;
+  ticketNumber?: string;
+  date?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  status?: string;
+  serviceId?: string;
+  counterId?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface TicketSearchResponse {
+  tickets: TicketSearchResult[];
+  pagination: TicketSearchPagination;
+}
+
+export async function searchTickets(
+  filters: TicketSearchFilters,
+): Promise<TicketSearchResponse> {
+  const params = new URLSearchParams();
+  if (filters.phone) params.set("phone", filters.phone);
+  if (filters.name) params.set("name", filters.name);
+  if (filters.ticketNumber) params.set("ticketNumber", filters.ticketNumber);
+  if (filters.date) params.set("date", filters.date);
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.serviceId) params.set("serviceId", filters.serviceId);
+  if (filters.counterId) params.set("counterId", filters.counterId);
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.limit) params.set("limit", String(filters.limit));
+
+  const response = await fetch(
+    `${API_BASE}/admin/tickets/search?${params.toString()}`,
+    { headers: getAuthHeaders() },
+  );
+  const data = await parseJsonResponse<{
+    success: boolean;
+    data: TicketSearchResult[];
+    pagination: TicketSearchPagination;
+    message?: string;
+  }>(response);
+
+  if (data.success) {
+    return { tickets: data.data, pagination: data.pagination };
+  }
+  throw new Error(getApiErrorMessage(data, "Lỗi tra cứu vé"));
+}

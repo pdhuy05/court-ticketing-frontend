@@ -32,7 +32,7 @@ export default function HomePage() {
             border: "2px solid #003366",
           }}
         >
-          <h2 style={{ color: "#003366", marginBottom: 15 }}>👤 Người Dùng</h2>
+          <h2 style={{ color: "#003366", marginBottom: 15 }}>Người Dùng</h2>
           <p style={{ marginBottom: 15, color: "#666" }}>
             Người dân lấy số thứ tự
           </p>

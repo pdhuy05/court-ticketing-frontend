@@ -1,6 +1,6 @@
   "use client";
 
-  import { useCallback, useEffect, useState } from "react";
+  import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
   import { useParams } from "next/navigation";
   import { formatServiceName, formatStaffName } from "@/lib/formatter";
   import {
@@ -70,6 +70,8 @@
     const [resolvedCounterId, setResolvedCounterId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const rowElementsRef = useRef(new Map<string, HTMLDivElement>());
+    const previousRowRectsRef = useRef(new Map<string, DOMRect>());
 
     const applySnapshot = (snapshot: StaffDisplaySnapshot) => {
       setData({
@@ -181,6 +183,79 @@
       };
     }, [resolvedCounterId]);
 
+    const displayTickets: Ticket[] = useMemo(() => {
+      if (!data) {
+        return [];
+      }
+
+      const allTickets: Ticket[] = [];
+
+      if (data.currentTicket) {
+        allTickets.push(data.currentTicket);
+      }
+
+      if (data.processingTickets) {
+        allTickets.push(...data.processingTickets);
+      }
+
+      allTickets.push(...data.waitingTickets);
+
+      const uniqueTickets = Array.from(
+        new Map(allTickets.map((ticket) => [ticket.id, ticket])).values(),
+      );
+
+      return uniqueTickets.slice(0, 5);
+    }, [data]);
+
+    useLayoutEffect(() => {
+      const previousRects = previousRowRectsRef.current;
+      const nextRects = new Map<string, DOMRect>();
+
+      displayTickets.forEach((ticket) => {
+        const element = rowElementsRef.current.get(ticket.id);
+
+        if (!element) {
+          return;
+        }
+
+        const nextRect = element.getBoundingClientRect();
+        const previousRect = previousRects.get(ticket.id);
+        nextRects.set(ticket.id, nextRect);
+
+        if (previousRect) {
+          const moveY = previousRect.top - nextRect.top;
+
+          if (Math.abs(moveY) > 1) {
+            element.animate(
+              [
+                { transform: `translate3d(0, ${moveY}px, 0)` },
+                { transform: "translate3d(0, 0, 0)" },
+              ],
+              {
+                duration: 460,
+                easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+              },
+            );
+          }
+
+          return;
+        }
+
+        element.animate(
+          [
+            { opacity: 0, transform: "translate3d(0, 18px, 0)" },
+            { opacity: 1, transform: "translate3d(0, 0, 0)" },
+          ],
+          {
+            duration: 360,
+            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          },
+        );
+      });
+
+      previousRowRectsRef.current = nextRects;
+    }, [displayTickets]);
+
     if (loading) {
       return (
         <div
@@ -218,23 +293,6 @@
         </div>
       );
     }
-
-    const allTickets: Ticket[] = [];
-
-    if (data.currentTicket) {
-      allTickets.push(data.currentTicket);
-    }
-
-    if (data.processingTickets) {
-      allTickets.push(...data.processingTickets);
-    }
-
-    allTickets.push(...data.waitingTickets);
-
-    const uniqueTickets = Array.from(
-      new Map(allTickets.map((ticket) => [ticket.id, ticket])).values(),
-    );
-    const displayTickets = uniqueTickets.slice(0, 5);
 
     return (
       <div
@@ -517,6 +575,17 @@
                     return (
                       <div
                         key={ticket.id}
+                        className={`ticketDisplayRow ${
+                          isProcessing ? "ticketDisplayRowProcessing" : ""
+                        }`}
+                        ref={(element) => {
+                          if (element) {
+                            rowElementsRef.current.set(ticket.id, element);
+                            return;
+                          }
+
+                          rowElementsRef.current.delete(ticket.id);
+                        }}
                         style={{
                           display: "grid",
                           gridTemplateColumns: "28% 50% 22%",
@@ -533,12 +602,15 @@
                           // minHeight: TABLE_ROW_HEIGHT,
                           // maxHeight: TABLE_ROW_HEIGHT,
                           boxSizing: "border-box",
+                          position: "relative",
+                          overflow: "hidden",
                           boxShadow: isProcessing
-                            ? "inset 0 0 0 3px rgba(77, 208, 109, 0.85)"
+                            ? "inset 0 0 0 8px rgba(77, 208, 109, 0.96), 0 0 22px rgba(77, 208, 109, 0.22)"
                             : "none",
                           animation: isProcessing
                             ? "processingRowPulse 1.8s ease-in-out infinite"
                             : "none",
+                          willChange: "transform, box-shadow",
                           // flex: "0 0 auto",
                         }}
                       >
@@ -646,27 +718,22 @@
                           <span
                             style={{
                               color: statusColor,
-                              padding:
-                                "clamp(4px, 0.45vh, 8px) clamp(8px, 0.9vw, 12px)",
-                              borderRadius: 999,
+                              padding: 0,
+                              borderRadius: 0,
                               fontWeight: 900,
                               display: "inline-flex",
                               alignItems: "center",
                               justifyContent: "center",
                               minWidth: 0,
                               maxWidth: "100%",
-                              fontSize: "clamp(28px, 2.5vw, 40px)",
-                              whiteSpace: "normal",
-                              wordBreak: "break-word",
-                              overflowWrap: "anywhere",
-                              lineHeight: 1.02,
+                              fontSize: "clamp(24px, 2.1vw, 34px)",
+                              whiteSpace: "nowrap",
+                              wordBreak: "normal",
+                              overflowWrap: "normal",
+                              lineHeight: 1,
                               textAlign: "center",
-                              background: isProcessing
-                                ? "rgba(77, 208, 109, 0.14)"
-                                : "transparent",
-                              boxShadow: isProcessing
-                                ? "0 0 18px rgba(77, 208, 109, 0.18)"
-                                : "none",
+                              background: "transparent",
+                              boxShadow: "none",
                             }}
                           >
                             {statusDisplay}
@@ -766,10 +833,56 @@
 
           @keyframes processingRowPulse {
             0%, 100% {
-              box-shadow: inset 0 0 0 3px rgba(77, 208, 109, 0.78);
+              box-shadow: inset 0 0 0 8px rgba(77, 208, 109, 0.88), 0 0 18px rgba(77, 208, 109, 0.18);
             }
             50% {
-              box-shadow: inset 0 0 0 5px rgba(77, 208, 109, 1);
+              box-shadow: inset 0 0 0 12px rgba(77, 208, 109, 1), 0 0 34px rgba(77, 208, 109, 0.32);
+            }
+          }
+
+          .ticketDisplayRow > div {
+            position: relative;
+            z-index: 3;
+          }
+
+          @property --processing-border-angle {
+            syntax: "<angle>";
+            inherits: false;
+            initial-value: 0deg;
+          }
+
+          .ticketDisplayRowProcessing::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            padding: 12px;
+            background: conic-gradient(
+              from var(--processing-border-angle),
+              rgba(77, 208, 109, 0.22) 0deg,
+              rgba(77, 208, 109, 0.22) 52deg,
+              rgba(163, 255, 190, 0.78) 72deg,
+              rgba(255, 255, 255, 0.98) 88deg,
+              rgba(163, 255, 190, 0.78) 104deg,
+              rgba(77, 208, 109, 0.22) 124deg,
+              rgba(77, 208, 109, 0.22) 360deg
+            );
+            filter: drop-shadow(0 0 16px rgba(77, 208, 109, 0.95));
+            -webkit-mask:
+              linear-gradient(#000 0 0) content-box,
+              linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask:
+              linear-gradient(#000 0 0) content-box,
+              linear-gradient(#000 0 0);
+            mask-composite: exclude;
+            animation: processingBorderRun 2.8s linear infinite;
+          }
+
+          @keyframes processingBorderRun {
+            to {
+              --processing-border-angle: 360deg;
             }
           }
   @keyframes pulseScale {

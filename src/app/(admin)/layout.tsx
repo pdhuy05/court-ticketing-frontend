@@ -12,16 +12,20 @@ import { AdminProfile, getMyProfile } from "@/services/auth.service";
 import {
   FiActivity,
   FiFileText,
-  FiGrid,
   FiLogOut,
   FiPrinter,
+  FiSearch,
   FiSettings,
-  FiTool,
   FiUsers,
   FiChevronLeft,
   FiChevronRight,
   FiUser,
 } from "react-icons/fi";
+
+import {
+  TbBuildingBank,
+  TbLayoutGrid,
+} from "react-icons/tb";
 
 import { IconType } from "react-icons";
 
@@ -33,12 +37,13 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "/admin", label: "Thống kê", icon: FiActivity },
-  { href: "/admin/users", label: "Người dùng", icon: FiUsers },
-  { href: "/admin/counter", label: "Quản lý phòng", icon: FiGrid },
-  { href: "/admin/services", label: "Quản lý quầy", icon: FiTool },
+  { href: "/admin/users", label: "Nhân viên", icon: FiUsers },
+  { href: "/admin/counter", label: "Phòng", icon: TbBuildingBank },
+  { href: "/admin/services", label: "Quầy", icon: TbLayoutGrid },
   { href: "/admin/printers", label: "Máy in", icon: FiPrinter },
   { href: "/admin/settings", label: "Cài đặt", icon: FiSettings },
   { href: "/admin/reports", label: "Báo cáo", icon: FiFileText },
+  { href: "/admin/search", label: "Tra cứu vé", icon: FiSearch },
   { href: "/admin/profile", label: "Hồ sơ", icon: FiUser },
 ];
 

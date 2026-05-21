@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { FiEdit2, FiSearch, FiTrash2, FiX } from "react-icons/fi";
-import { TbPlus, TbBuildingHospital } from "react-icons/tb";
+import { TbPlus, TbBuildingBank } from "react-icons/tb";
 import {
   getCounters,
   createCounter,
@@ -347,7 +347,7 @@ export default function CounterTable() {
                 flexShrink: 0,
               }}
             >
-              <TbBuildingHospital size={20} color="#fff" />
+              <TbBuildingBank size={20} color="#fff" />
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: C.gray900 }}>
@@ -493,7 +493,7 @@ export default function CounterTable() {
             </div>
           ) : filteredCounters.length === 0 ? (
             <div style={{ padding: "60px 0", textAlign: "center" }}>
-              <TbBuildingHospital size={42} style={{ color: C.gray200, marginBottom: 12 }} />
+              <TbBuildingBank size={42} style={{ color: C.gray200, marginBottom: 12 }} />
               <div style={{ fontSize: 14, color: C.gray400 }}>Không có phòng nào</div>
               <div style={{ marginTop: 6, fontSize: 12, color: C.gray300 }}>
                 Nhấn &quot;Thêm mới&quot; để tạo phòng đầu tiên

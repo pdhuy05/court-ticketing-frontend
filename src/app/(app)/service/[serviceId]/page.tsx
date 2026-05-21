@@ -771,11 +771,11 @@ function ServiceTicketContent() {
       <ConfirmModal
         isOpen={confirmSubmitOpen}
         title="Xác nhận thông tin"
-        message={`Họ và tên: ${name.toLocaleUpperCase("vi-VN")}\nSố điện thoại: ${phoneNumber.trim()}\nBạn có muốn lấy số không?`}
-        onConfirm={() => {
-          setConfirmSubmitOpen(false);
-          void submitTicket();
-        }}
+        fields={[
+          { label: "Họ và tên", value: name.toLocaleUpperCase("vi-VN") },
+          { label: "Số điện thoại", value: phoneNumber.trim() },
+        ]}
+        onConfirm={() => { setConfirmSubmitOpen(false); void submitTicket(); }}
         onCancel={() => setConfirmSubmitOpen(false)}
       />
 

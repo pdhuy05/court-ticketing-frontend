@@ -651,11 +651,13 @@ export default function StaffCounterPage() {
         display: "flex",
         flexDirection: "column",
         width: "min(1420px, 100%)",
-        height: "100%",
+        minHeight: "100dvh",
+        height: "auto",
         maxWidth: "100%",
         padding: "0 clamp(16px, 2.4vw, 36px)",
         boxSizing: "border-box",
         margin: "0 auto",
+        overflowY: "auto",
       }}
     >
       <div
@@ -856,7 +858,12 @@ export default function StaffCounterPage() {
 
       <div
         className="staff-page__content"
-        style={{ display: "flex", gap: "clamp(16px, 2vw, 28px)", flex: 1 }}
+        style={{
+          display: "flex",
+          gap: "clamp(16px, 2vw, 28px)",
+          flex: 1,
+          minHeight: 0,
+        }}
       >
         <div
           className="staff-page__queue"
@@ -864,8 +871,8 @@ export default function StaffCounterPage() {
             flex: 0.6,
             overflowY: "auto",
             minWidth: 0,
-            height: "75vh",
-            maxHeight: "75vh",
+            height: "min(75vh, 720px)",
+            maxHeight: "min(75vh, 720px)",
           }}
         >
           <div
@@ -1168,7 +1175,7 @@ export default function StaffCounterPage() {
               flex: "0 0 auto",
               marginTop: "clamp(24px, 4vh, 52px)",
               boxShadow: "0 10px 24px rgba(0, 61, 130, 0.08)",
-              minHeight: "35vh",
+              minHeight: "clamp(220px, 35vh, 360px)",
               overflowY: "auto",
             }}
           >
@@ -1475,8 +1482,16 @@ export default function StaffCounterPage() {
         }
 
         @media (max-width: 1180px) {
+          .staff-page {
+            height: auto !important;
+            min-height: 100dvh !important;
+            overflow-y: auto !important;
+            padding-bottom: 24px !important;
+          }
+
           .staff-page__content {
             flex-direction: column !important;
+            gap: 14px !important;
           }
 
           .staff-page__queue,
@@ -1485,8 +1500,34 @@ export default function StaffCounterPage() {
             width: 100% !important;
           }
 
+          .staff-page__queue {
+            height: min(46dvh, 520px) !important;
+            max-height: min(46dvh, 520px) !important;
+          }
+
+          .staff-page__actions {
+            gap: 12px !important;
+          }
+
           .staff-page__current-ticket {
             margin-top: 0 !important;
+            min-height: 180px !important;
+            max-height: 32dvh !important;
+            padding: 14px !important;
+          }
+
+          .staff-page__current-ticket h2 {
+            margin-bottom: 12px !important;
+            font-size: 28px !important;
+          }
+
+          .staff-page__button-group {
+            gap: 10px !important;
+          }
+
+          .staff-page__button-group button {
+            padding: 12px 16px !important;
+            font-size: 19px !important;
           }
         }
 
@@ -1506,6 +1547,16 @@ export default function StaffCounterPage() {
 
           .staff-page__call-row {
             flex-direction: column;
+          }
+
+          .staff-page__queue {
+            height: 42dvh !important;
+            max-height: 42dvh !important;
+          }
+
+          .staff-page__current-ticket {
+            min-height: 150px !important;
+            max-height: none !important;
           }
         }
       `}</style>
