@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   FiVolume2, FiRefreshCw, FiClock, FiSave, FiLayout,
   FiMapPin, FiAlignLeft, FiSun, FiImage, FiUpload, FiX,
-  FiCheck, FiAlertCircle, FiSettings,
+  FiCheck, FiAlertCircle, FiSettings, FiMonitor,
 } from "react-icons/fi";
 import ToastContainer from "@/components/ToastContainer";
 import { useToast } from "@/hooks/useToast";
@@ -20,7 +20,10 @@ import {
   getSiteConfig,
   updateSiteConfig,
   uploadLogo,
+  getDisplayMode,
+  updateDisplayMode,
   type SiteConfig,
+  type DisplayMode,
 } from "@/services/admin.service";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -280,6 +283,51 @@ const STYLES = `
   }
   .sp-badge-on  { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
   .sp-badge-off { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+
+  /* ── Display Mode Cards ── */
+  .sp-display-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 640px) { .sp-display-grid { grid-template-columns: 1fr; } }
+
+  .sp-display-card {
+    position: relative;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 18px 16px 16px;
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+    background: #f8fafc;
+    overflow: hidden;
+  }
+  .sp-display-card:hover { border-color: #94a3b8; background: #fff; }
+  .sp-display-card.selected {
+    border-color: #0f2744;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(15,39,68,0.10);
+  }
+  .sp-display-card-check {
+    position: absolute; top: 10px; right: 10px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #0f2744; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    opacity: 0; transform: scale(0.7); transition: opacity 0.18s, transform 0.18s;
+  }
+  .sp-display-card.selected .sp-display-card-check { opacity: 1; transform: scale(1); }
+  .sp-display-card-preview {
+    width: 100%; aspect-ratio: 16/10;
+    border-radius: 9px; border: 1px solid #e2e8f0;
+    background: #e8edf5;
+    overflow: hidden;
+    margin-bottom: 12px;
+    display: flex; flex-direction: column;
+  }
+  .sp-display-card-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
+  .sp-display-card-desc { font-size: 11.5px; color: #64748b; line-height: 1.5; }
 `;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -297,12 +345,13 @@ function Toggle({ checked, disabled, onChange }: { checked: boolean; disabled: b
 }
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
-type TabId = "brand" | "tts" | "reset";
+type TabId = "brand" | "display" | "tts" | "reset";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "brand", label: "Giao diện", icon: <FiLayout size={13} /> },
-  { id: "tts",   label: "Giọng nói", icon: <FiVolume2 size={13} /> },
-  { id: "reset", label: "Tự động reset", icon: <FiRefreshCw size={13} /> },
+  { id: "brand",   label: "Giao diện",       icon: <FiLayout size={13} /> },
+  { id: "display", label: "Màn hình quầy",   icon: <FiMonitor size={13} /> },
+  { id: "tts",     label: "Giọng nói",        icon: <FiVolume2 size={13} /> },
+  { id: "reset",   label: "Tự động reset",    icon: <FiRefreshCw size={13} /> },
 ];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -317,6 +366,8 @@ export default function SettingsPage() {
   const [ttsEnabled,       setTtsEnabled]       = useState(false);
   const [autoResetEnabled, setAutoResetEnabled] = useState(false);
   const [autoResetTime,    setAutoResetTime]    = useState("00:00");
+  const [displayMode,      setDisplayMode]      = useState<DisplayMode>("service");
+  const [savingDisplay,    setSavingDisplay]    = useState(false);
   const [siteConfig, setSiteConfig] = useState<SiteConfig>({
     branchName: "", logoUrl: "", primaryColor: "#1a3c6e",
     tickerText: "", workingHours: "", address: "", announcement: "",
@@ -335,14 +386,15 @@ export default function SettingsPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const [tts, reset, site] = await Promise.all([
-          getTtsSettings(), getAutoResetSettings(), getSiteConfig(),
+        const [tts, reset, site, display] = await Promise.all([
+          getTtsSettings(), getAutoResetSettings(), getSiteConfig(), getDisplayMode(),
         ]);
         setTtsEnabled(tts.enabled);
         setAutoResetEnabled(reset.enabled);
         setAutoResetTime(reset.time);
         setSiteConfig(site);
         setSiteDraft(site);
+        setDisplayMode(display);
       } catch (err) {
         error(err instanceof Error ? err.message : "Không lấy được cấu hình hệ thống");
       } finally { setLoading(false); }
@@ -405,6 +457,18 @@ export default function SettingsPage() {
     } catch (err) {
       error(err instanceof Error ? err.message : "Cập nhật giao diện thất bại");
     } finally { setSavingSite(false); }
+  };
+
+  const handleSaveDisplayMode = async (mode: DisplayMode) => {
+    if (savingDisplay) return;
+    setSavingDisplay(true);
+    try {
+      const updated = await updateDisplayMode(mode);
+      setDisplayMode(updated);
+      success(updated === "service" ? "Màn hình quầy: hiển thị theo Yêu Cầu" : "Màn hình quầy: hiển thị Danh Sách Chờ");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Cập nhật chế độ màn hình thất bại");
+    } finally { setSavingDisplay(false); }
   };
 
   const handleResetSite = () => setSiteDraft({ ...siteConfig });
@@ -622,6 +686,105 @@ export default function SettingsPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* ══ TAB: MÀN HÌNH QUẦY ══ */}
+        {activeTab === "display" && (
+          <div className="sp-card">
+            <div className="sp-card-title">Chế độ hiển thị màn hình quầy</div>
+
+            <div className="sp-display-grid">
+              {/* Option: Service mode */}
+              <div
+                className={`sp-display-card${displayMode === "service" ? " selected" : ""}`}
+                onClick={() => !savingDisplay && void handleSaveDisplayMode("service")}
+              >
+                <div className="sp-display-card-check"><FiCheck size={11} /></div>
+                {/* Mini preview: service layout */}
+                <div className="sp-display-card-preview">
+                  <div style={{ background: "#003366", height: "22%", display: "flex", alignItems: "center", padding: "0 6px", gap: 4 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 2, background: "rgba(255,255,255,0.3)" }} />
+                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.25)" }} />
+                    <div style={{ width: 28, height: 10, borderRadius: 9, background: "#ffc233" }} />
+                  </div>
+                  <div style={{ flex: 1, display: "grid", gridTemplateRows: "repeat(3,1fr)", padding: "2px 4px", gap: 2 }}>
+                    {[["#e8edf5","#003366"],["#003366","#fff"],["#e8edf5","#003366"]].map(([bg, fg], i) => (
+                      <div key={i} style={{ background: bg, borderRadius: 4, display: "grid", gridTemplateColumns: "35% 1fr", overflow: "hidden" }}>
+                        <div style={{ borderRight: `1px solid ${fg === "#fff" ? "rgba(255,255,255,0.2)" : "#ccc"}`, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>
+                          <div style={{ width: "70%", height: 5, borderRadius: 2, background: fg === "#fff" ? "rgba(255,255,255,0.6)" : "rgba(0,51,102,0.35)" }} />
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+                          <div style={{ width: 18, height: 10, borderRadius: 2, background: fg === "#fff" ? "rgba(255,255,255,0.8)" : "rgba(0,51,102,0.4)", fontFamily: "monospace", fontSize: 7, display: "flex", alignItems: "center", justifyContent: "center", color: fg }} />
+                          <div style={{ width: "55%", height: 3, borderRadius: 1, background: fg === "#fff" ? "rgba(255,255,255,0.4)" : "rgba(0,51,102,0.2)" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ background: "#c0392b", height: "16%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "60%", height: 5, borderRadius: 2, background: "rgba(255,255,255,0.6)" }} />
+                  </div>
+                </div>
+                <div className="sp-display-card-title">Theo Yêu Cầu</div>
+                <div className="sp-display-card-desc">
+                  Mỗi hàng là một loại yêu cầu, hiển thị số phiếu + tên đương sự đang xử lý cho từng yêu cầu.
+                </div>
+              </div>
+
+              {/* Option: Queue mode */}
+              <div
+                className={`sp-display-card${displayMode === "queue" ? " selected" : ""}`}
+                onClick={() => !savingDisplay && void handleSaveDisplayMode("queue")}
+              >
+                <div className="sp-display-card-check"><FiCheck size={11} /></div>
+                {/* Mini preview: queue layout */}
+                <div className="sp-display-card-preview">
+                  <div style={{ background: "#003366", height: "22%", display: "flex", alignItems: "center", padding: "0 6px", gap: 4 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 2, background: "rgba(255,255,255,0.3)" }} />
+                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.25)" }} />
+                    <div style={{ width: 28, height: 10, borderRadius: 9, background: "#ffc233" }} />
+                  </div>
+                  <div style={{ background: "#003366", height: "14%", display: "grid", gridTemplateColumns: "28% 50% 22%", borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
+                    {["", "", ""].map((_, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", borderRight: i < 2 ? "1px solid rgba(255,255,255,0.15)" : "none" }}>
+                        <div style={{ width: "60%", height: 4, borderRadius: 1, background: "rgba(255,255,255,0.5)" }} />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ flex: 1, display: "grid", gridTemplateRows: "repeat(4,1fr)", padding: "2px 4px", gap: 1 }}>
+                    {[0,1,2,3].map((i) => {
+                      const isEven = i % 2 === 0;
+                      const isFirst = i === 0;
+                      return (
+                        <div key={i} style={{ background: isFirst ? (isEven ? "linear-gradient(90deg,#164b87,#0a3d78)" : "#f3fbf5") : (isEven ? "#e8edf5" : "#fff"), borderRadius: 3, display: "grid", gridTemplateColumns: "28% 50% 22%", overflow: "hidden", boxShadow: isFirst ? "inset 0 0 0 2px rgba(77,208,109,0.7)" : "none" }}>
+                          {[0,1,2].map((j) => (
+                            <div key={j} style={{ display: "flex", alignItems: "center", justifyContent: "center", borderRight: j < 2 ? "1px solid rgba(0,0,0,0.08)" : "none" }}>
+                              <div style={{ width: j === 1 ? 16 : "50%", height: j === 1 ? 10 : 4, borderRadius: 2, background: isFirst ? (isEven ? "rgba(255,255,255,0.7)" : "rgba(0,51,102,0.4)") : "rgba(0,51,102,0.2)" }} />
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ background: "#c0392b", height: "12%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "55%", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.6)" }} />
+                  </div>
+                </div>
+                <div className="sp-display-card-title">Danh Sách Chờ</div>
+                <div className="sp-display-card-desc">
+                  Hiển thị danh sách tối đa 5 vé (đang xử lý + đang chờ), có cột Yêu Cầu, Thông Tin và Trạng Thái.
+                </div>
+              </div>
+            </div>
+
+            <div className="sp-status">
+              <span className="sp-status-dot" style={{ background: "#0f2744" }} />
+              {savingDisplay
+                ? "Đang cập nhật..."
+                : displayMode === "service"
+                  ? "Đang dùng: Màn hình theo Yêu Cầu"
+                  : "Đang dùng: Màn hình Danh Sách Chờ"}
+            </div>
+          </div>
         )}
 
         {/* ══ TAB: GIỌNG NÓI ══ */}

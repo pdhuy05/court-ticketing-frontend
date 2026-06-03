@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { RiVolumeMuteLine, RiVolumeUpLine } from "react-icons/ri";
 import { Ticket, Counter, Service } from "@/types/queue";
@@ -30,32 +30,157 @@ import { useNewTicketAlerts } from "@/hooks/useNewTicketAlerts";
 import type { NewTicketSocketPayload } from "@/types/new-ticket";
 import NotificationPermissionButton from "@/components/NotificationPermissionButton";
 
+/* ─── helpers ─────────────────────────────────────────────────────────── */
 const getTicketDisplayNumber = (ticket?: Ticket | null) =>
   ticket?.displayNumber ||
   ticket?.formattedNumber ||
   String(ticket?.number ?? "").padStart(3, "0");
 
-const buildTicketCallConfirmMessage = (
-  ticket: Ticket,
-  actionLabel: "gọi" | "gọi lại",
-) =>
-  [
-    `Xác nhận ${actionLabel} người này?`,
-    "",
-    `Số phiếu: ${getTicketDisplayNumber(ticket)}`,
-    `Đương sự: ${ticket.customerName || "Chưa có thông tin"}`,
-    `Quầy: ${ticket.serviceName || "Chưa có thông tin"}`,
-  ].join("\n");
+// Rút gọn họ tên dài: giữ nguyên tên cuối, viết tắt các từ trước
+// "Nguyễn Như Thùy Dung Hoàng" → "N.N.T.D. Hoàng"
+const abbreviateName = (name: string, maxLen = 18): string => {
+  if (!name || name.length <= maxLen) return name;
+  const parts = name.trim().split(/\s+/);
+  if (parts.length <= 1) return name.slice(0, maxLen) + "…";
+  const last = parts[parts.length - 1];
+  const initials = parts.slice(0, -1).map(p => p.charAt(0).toUpperCase() + ".").join("");
+  return `${initials} ${last}`;
+};
 
+const buildConfirmFields = (ticket: Ticket) => [
+  { label: "Số phiếu", value: getTicketDisplayNumber(ticket) },
+  { label: "Đương sự",  value: ticket.customerName || "Chưa có thông tin" },
+  { label: "Quầy",     value: ticket.serviceName  || "Chưa có thông tin" },
+];
+
+function useWaitMinutes(createdAt?: string | number | Date | null) {
+  const [mins, setMins] = useState(0);
+  useEffect(() => {
+    if (!createdAt) return;
+    const update = () => {
+      const diff = Date.now() - new Date(createdAt).getTime();
+      setMins(Math.floor(diff / 60000));
+    };
+    update();
+    const id = setInterval(update, 30000);
+    return () => clearInterval(id);
+  }, [createdAt]);
+  return mins;
+}
+
+/* ─── sub-components ──────────────────────────────────────────────────── */
+
+function KeyHint({ k, label }: { k: string; label: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--muted)" }}>
+      <kbd style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border2)",
+        borderRadius: 4, padding: "1px 6px", fontFamily: "monospace",
+        fontSize: 11, color: "var(--text2)", lineHeight: "18px",
+      }}>{k}</kbd>
+      {label}
+    </span>
+  );
+}
+
+function WaitBadge({ mins }: { mins: number }) {
+  const color = mins >= 20 ? "var(--red)" : mins >= 10 ? "var(--orange)" : "var(--muted)";
+  return (
+    <span style={{ fontSize: 11, color, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+      {mins}p
+    </span>
+  );
+}
+
+function StatCard({ value, label, accent }: { value: string | number; label: string; accent?: string }) {
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 10,
+      padding: "14px 18px",
+      minWidth: 90,
+      flex: 1,
+      boxShadow: "var(--shadow-sm)",
+    }}>
+      <div style={{
+        fontSize: 26, fontWeight: 800,
+        color: accent || "var(--text1)",
+        fontVariantNumeric: "tabular-nums",
+        letterSpacing: -1,
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: 11, color: "var(--muted)", marginTop: 2,
+        textTransform: "uppercase", letterSpacing: "0.08em",
+      }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function ActionBtn({
+  label, sublabel, onClick, disabled, variant, kbd,
+}: {
+  label: string; sublabel?: string; onClick: () => void;
+  disabled?: boolean; variant: "primary" | "success" | "warning" | "ghost" | "back";
+  kbd?: string;
+}) {
+  const [hov, setHov] = useState(false);
+  const map = {
+    primary: { bg: "#3b5bdb", hov: "#2f4ac4", text: "#fff",      border: "#3b5bdb" },
+    success: { bg: "#2f9e44", hov: "#276b35", text: "#fff",      border: "#2f9e44" },
+    warning: { bg: "#e8590c", hov: "#c24a09", text: "#fff",      border: "#e8590c" },
+    ghost:   { bg: "transparent", hov: "#f0f2f8", text: "#4a5070", border: "#e2e6f0" },
+    back:    { bg: "#eef1fd", hov: "#dde3fb", text: "#3b5bdb",   border: "#c5d0f5" },
+  };
+  const c = map[variant];
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        flex: 1, padding: "16px 12px",
+        background: disabled ? "var(--surface2)" : hov ? c.hov : c.bg,
+        color: disabled ? "var(--muted)" : c.text,
+        border: `1.5px solid ${disabled ? "var(--border)" : c.border}`,
+        borderRadius: 10, cursor: disabled ? "not-allowed" : "pointer",
+        fontWeight: 700, fontSize: 15,
+        transition: "all 0.15s",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        position: "relative",
+      }}
+    >
+      <span>{label}</span>
+      {sublabel && <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.75 }}>{sublabel}</span>}
+      {kbd && !disabled && (
+        <kbd style={{
+          position: "absolute", top: 6, right: 8,
+          background: "rgba(0,0,0,0.12)", borderRadius: 3,
+          padding: "0 5px", fontSize: 10, fontFamily: "monospace",
+          color: variant === "ghost" || variant === "back" ? "var(--muted)" : "rgba(255,255,255,0.8)",
+          border: "none",
+        }}>{kbd}</kbd>
+      )}
+    </button>
+  );
+}
+
+/* ─── main page ───────────────────────────────────────────────────────── */
 export default function StaffCounterPage() {
   const params = useParams();
   const router = useRouter();
   const counterId = params.counterId as string;
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [, setCounter] = useState<Counter | null>(null);
-  const [staffName, setStaffName] = useState<string>("");
-  const [staffId, setStaffId] = useState<string>("");
-  const [restricted, setRestricted] = useState<boolean>(false);
+
+  const [counter, setCounter] = useState<Counter | null>(null);
+  const [staffName, setStaffName] = useState("");
+  const [staffId, setStaffId] = useState("");
+  const [restricted, setRestricted] = useState(false);
   const [assignedServices, setAssignedServices] = useState<Service[]>([]);
   const [waitingTickets, setWaitingTickets] = useState<Ticket[]>([]);
   const [recallTickets, setRecallTickets] = useState<Ticket[]>([]);
@@ -65,33 +190,17 @@ export default function StaffCounterPage() {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [toast, setToast] = useState<{
-    isOpen: boolean;
-    message: string;
-    type: "success" | "error" | "warning" | "info";
-  }>({
-    isOpen: false,
-    message: "",
-    type: "info",
-  });
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({
-    isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: () => {},
-  });
+  const [doneToday, setDoneToday] = useState(0);
+  const [socketOk, setSocketOk] = useState(true);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 7;
 
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "warning" | "info" = "info",
-  ) => {
+  const [toast, setToast] = useState<{ isOpen: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ isOpen: false, message: "", type: "info" });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message?: string; fields?: { label: string; value: string }[]; onConfirm: () => void }>({ isOpen: false, title: "", onConfirm: () => {} });
+
+  const showToast = (message: string, type: "success" | "error" | "warning" | "info" = "info") =>
     setToast({ isOpen: true, message, type });
-  };
 
   const handleSessionExpired = useCallback(() => {
     if (typeof window !== "undefined") {
@@ -103,1479 +212,727 @@ export default function StaffCounterPage() {
   }, [router]);
 
   const applySnapshot = (snapshot: {
-    counter: Counter;
-    services: Service[];
-    currentTicket: Ticket | null;
-    waitingTickets: Ticket[];
-    totalWaiting?: number;
-    staffName?: string;
+    counter: Counter; services: Service[]; currentTicket: Ticket | null;
+    waitingTickets: Ticket[]; totalWaiting?: number; staffName?: string;
   }) => {
     setCounter(snapshot.counter);
     setCurrentTicket(snapshot.currentTicket);
     setWaitingTickets(snapshot.waitingTickets);
     setTotalWaiting(snapshot.totalWaiting ?? snapshot.waitingTickets.length);
-    if (snapshot.staffName) {
-      setStaffName(snapshot.staffName);
-    }
-  };
-
-  const applyAdditionalInfo = (info: {
-    staffId?: string;
-    serviceRestrictionConfigured?: boolean;
-    assignedServices?: Service[];
-  }) => {
-    if (info.staffId) setStaffId(info.staffId);
-    if (info.serviceRestrictionConfigured !== undefined) {
-      setRestricted(info.serviceRestrictionConfigured);
-    }
-    if (info.assignedServices) {
-      setAssignedServices(info.assignedServices);
-    }
+    if (snapshot.staffName) setStaffName(snapshot.staffName);
   };
 
   const handleRecallListRefresh = useCallback(async () => {
     try {
       const res = await getRecallList();
-      if (res.success) {
-        setRecallTickets(res.data || []);
-      }
-    } catch (err) {
-      console.error("Failed to refresh recall list:", err);
-    }
+      if (res.success) setRecallTickets(res.data || []);
+    } catch (err) { console.error(err); }
   }, []);
 
   const onNewTicketAlert = useNewTicketAlerts();
 
   useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? sessionStorage.getItem("staffToken") : null;
-    if (!token) {
-      router.push("/staff/login");
-      return;
-    }
-
-    const loadInitialData = async () => {
+    const token = typeof window !== "undefined" ? sessionStorage.getItem("staffToken") : null;
+    if (!token) { router.push("/staff/login"); return; }
+    const load = async () => {
       try {
         setLoading(true);
         const response = await getStaffDisplay();
         if (response.success) {
-          const {
-            counter,
-            services,
-            currentTicket,
-            waitingTickets,
-            totalWaiting,
-            staffName,
-            staffId,
-            serviceRestrictionConfigured,
-            assignedServices,
-          } = response.data;
-
-          if (counter.id !== counterId) {
-            sessionStorage.removeItem("staffToken");
-            router.push("/staff/login?error=unauthorized");
-            return;
-          }
-
-          applySnapshot({
-            counter,
-            services,
-            currentTicket,
-            waitingTickets,
-            totalWaiting,
-            staffName,
-          });
-          applyAdditionalInfo({
-            staffId,
-            serviceRestrictionConfigured,
-            assignedServices,
-          });
+          const { counter, services, currentTicket, waitingTickets, totalWaiting, staffName, staffId, serviceRestrictionConfigured, assignedServices } = response.data;
+          if (counter.id !== counterId) { sessionStorage.removeItem("staffToken"); router.push("/staff/login?error=unauthorized"); return; }
+          applySnapshot({ counter, services, currentTicket, waitingTickets, totalWaiting, staffName });
+          if (staffId) setStaffId(staffId);
+          if (serviceRestrictionConfigured !== undefined) setRestricted(serviceRestrictionConfigured);
+          if (assignedServices) setAssignedServices(assignedServices);
           setAuthenticated(true);
           void handleRecallListRefresh();
-        } else {
-          sessionStorage.removeItem("staffToken");
-          router.push("/staff/login?error=session_expired");
-        }
+        } else { sessionStorage.removeItem("staffToken"); router.push("/staff/login?error=session_expired"); }
       } catch (error) {
-        console.error("Failed to fetch staff display data:", error);
-        if (error instanceof Error && error.message === AUTH_EXPIRED_ERROR) {
-          handleSessionExpired();
-          return;
-        }
-        sessionStorage.removeItem("staffToken");
-        router.push("/staff/login?error=fetch_failed");
-      } finally {
-        setLoading(false);
-      }
+        if (error instanceof Error && error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; }
+        sessionStorage.removeItem("staffToken"); router.push("/staff/login?error=fetch_failed");
+      } finally { setLoading(false); }
     };
-
-    void loadInitialData();
+    void load();
   }, [counterId, handleRecallListRefresh, handleSessionExpired, router]);
 
   useEffect(() => {
-    if (!authenticated) {
-      return;
-    }
-
+    if (!authenticated) return;
     const socket = createStaffSocket();
-
-    const unsubscribe = onStaffDisplayUpdated(
-      socket,
-      (payload: StaffDisplayUpdatedPayload) => {
-        if (payload.staffId !== staffId) {
-          return;
-        }
-
-        applySnapshot({
-          counter: payload.data.counter as Counter,
-          services: payload.data.services as Service[],
-          currentTicket: payload.data.currentTicket as Ticket | null,
-          waitingTickets: payload.data.waitingTickets as Ticket[],
-          totalWaiting: payload.data.totalWaiting,
-        });
-
-        if (payload.data.recallTickets) {
-          setRecallTickets(payload.data.recallTickets as Ticket[]);
-        }
-      },
-    );
-
-    const unsubscribeJoined = onJoinedCounterRoom(socket, (payload) => {
-      console.log("Joined counter room on staff screen:", payload);
+    const unsub = onStaffDisplayUpdated(socket, (payload: StaffDisplayUpdatedPayload) => {
+      if (payload.staffId !== staffId) return;
+      applySnapshot({ counter: payload.data.counter as Counter, services: payload.data.services as Service[], currentTicket: payload.data.currentTicket as Ticket | null, waitingTickets: payload.data.waitingTickets as Ticket[], totalWaiting: payload.data.totalWaiting });
+      if (payload.data.recallTickets) setRecallTickets(payload.data.recallTickets as Ticket[]);
     });
-
-    const unsubscribeSocketError = onSocketError(socket, (payload) => {
-      console.error("Staff socket room error:", payload);
-    });
-    socket.on("connect", () => {
-      joinCounterRoom(socket, counterId, staffId);
-      console.log("Socket connected on staff screen");
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.log("Socket disconnected on staff screen:", reason);
-    });
-
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection failed on staff screen:", error);
-    });
-
-    const handleNewTicket = (payload: NewTicketSocketPayload) => {
-      onNewTicketAlert(payload);
-    };
-    socket.on("new_ticket", handleNewTicket);
-
-    return () => {
-      socket.off("new_ticket", handleNewTicket);
-      unsubscribe();
-      unsubscribeJoined();
-      unsubscribeSocketError();
-      socket.disconnect();
-    };
+    const unsubJoined = onJoinedCounterRoom(socket, () => {});
+    const unsubErr = onSocketError(socket, () => setSocketOk(false));
+    socket.on("connect", () => { setSocketOk(true); joinCounterRoom(socket, counterId, staffId); });
+    socket.on("disconnect", () => setSocketOk(false));
+    socket.on("connect_error", () => setSocketOk(false));
+    const handleNew = (p: NewTicketSocketPayload) => onNewTicketAlert(p);
+    socket.on("new_ticket", handleNew);
+    return () => { socket.off("new_ticket", handleNew); unsub(); unsubJoined(); unsubErr(); socket.disconnect(); };
   }, [authenticated, counterId, staffId, onNewTicketAlert]);
 
   useEffect(() => {
-    if (!authenticated) {
-      return;
-    }
-
+    if (!authenticated) return;
     let active = true;
-
-    const syncTtsStatus = async () => {
-      try {
-        const enabled = await getTtsEnabledStatus();
-        if (active) {
-          setTtsEnabled(enabled);
-        }
-      } catch (error) {
-        console.error("Failed to load TTS status:", error);
-        if (active) {
-          setTtsEnabled(false);
-        }
-      }
-    };
-
-    void syncTtsStatus();
-    const intervalId = window.setInterval(() => {
-      void syncTtsStatus();
-    }, 3000);
-
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-    };
+    const sync = async () => { try { const e = await getTtsEnabledStatus(); if (active) setTtsEnabled(e); } catch { if (active) setTtsEnabled(false); } };
+    void sync();
+    const id = window.setInterval(() => void sync(), 3000);
+    return () => { active = false; window.clearInterval(id); };
   }, [authenticated]);
 
+  // useRef giữ handlers mới nhất → tránh stale closure, không cần re-attach listener
+  const kbdHandlersRef = useRef({
+    handleConfirmCallNext: () => {},
+    handleComplete: () => {},
+    handleSkip: () => {},
+    handleBackToWaiting: () => {},
+    setActiveTab,
+  });
+
+  useEffect(() => {
+    kbdHandlersRef.current.handleConfirmCallNext = handleConfirmCallNext;
+    kbdHandlersRef.current.handleComplete = handleComplete;
+    kbdHandlersRef.current.handleSkip = handleSkip;
+    kbdHandlersRef.current.handleBackToWaiting = handleBackToWaiting;
+  });
+
+  useEffect(() => {
+    if (!authenticated) return;
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey) return;
+      const h = kbdHandlersRef.current;
+      if (e.key === " " || e.key === "n") { e.preventDefault(); h.handleConfirmCallNext(); }
+      if (e.key === "c") h.handleComplete();
+      if (e.key === "s") h.handleSkip();
+      if (e.key === "r") h.handleBackToWaiting();
+      if (e.key === "1") h.setActiveTab("waiting");
+      if (e.key === "2") h.setActiveTab("recall");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [authenticated]);
+
+  /* ── actions ── */
   const handleCallNext = async () => {
     if (currentTicket) {
       try {
-        const response = await recallProcessingTicketApi(currentTicket.id);
-        if (response.success) {
-          showToast("Đang gọi lại!", "info");
-        } else {
-          showToast(response.message || "Không thể gọi lại vé!", "error");
-        }
+        const res = await recallProcessingTicketApi(currentTicket.id);
+        res.success ? showToast("Đang gọi lại!", "info") : showToast(res.message || "Không thể gọi lại!", "error");
       } catch (error) {
-        if (error instanceof Error) {
-          if (error.message === AUTH_EXPIRED_ERROR) {
-            handleSessionExpired();
-            return;
-          }
-          showToast(error.message, "error");
-          return;
-        }
-        showToast("Lỗi hệ thống khi gọi lại vé!", "error");
+        if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+        else showToast("Lỗi hệ thống!", "error");
       }
       return;
     }
-
     try {
       if (activeTab === "recall") {
-        const nextRecallTicket = recallTickets[0];
-        if (!nextRecallTicket) {
-          showToast("Không có vé nào trong danh sách bỏ qua!", "warning");
-          return;
-        }
-
-        const response = await recallTicket(
-          nextRecallTicket.id || (nextRecallTicket as Ticket & { _id?: string })._id || "",
-        );
-        if (response.success) {
-          showToast("Đang gọi lại!", "success");
-          void handleRecallListRefresh();
-        } else {
-          showToast(response.message || "Không thể gọi lại vé!", "error");
-        }
+        const next = recallTickets[0];
+        if (!next) { showToast("Không có vé bỏ qua!", "warning"); return; }
+        const res = await recallTicket(next.id || (next as Ticket & { _id?: string })._id || "");
+        if (res.success) { showToast("Đang gọi lại!", "success"); void handleRecallListRefresh(); }
+        else showToast(res.message || "Không thể gọi lại!", "error");
         return;
       }
-
-      const nextWaitingTicket = waitingTickets[0];
-      if (!nextWaitingTicket) {
-        showToast("Không có vé nào trong hàng chờ!", "warning");
-        return;
-      }
-
-      const response = await callTicketById(nextWaitingTicket.id, counterId);
-      if (response.success) {
-        showToast(response.message || "Đang gọi vé!", "success");
-      } else {
-        showToast(response.message || "Không thể gọi vé!", "error");
-      }
+      const next = waitingTickets[0];
+      if (!next) { showToast("Không có vé chờ!", "warning"); return; }
+      const res = await callTicketById(next.id, counterId);
+      res.success ? showToast(res.message || "Đang gọi!", "success") : showToast(res.message || "Không thể gọi!", "error");
     } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === AUTH_EXPIRED_ERROR) {
-          handleSessionExpired();
-          return;
-        }
-        showToast(error.message, "error");
-        return;
-      }
-      console.error("Call ticket error:", error);
-      showToast(
-        activeTab === "recall"
-          ? "Lỗi hệ thống khi đang gọi lại vé!"
-          : "Lỗi hệ thống khi đang gọi vé!",
-        "error",
-      );
-    }
-  };
-
-  const handleCallWaitingTicket = async (ticketId: string) => {
-    try {
-      const response = await callTicketById(ticketId, counterId);
-      if (response.success) {
-        showToast(response.message || "Đang gọi vé!", "success");
-      } else {
-        showToast(response.message || "Không thể gọi vé!", "error");
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === AUTH_EXPIRED_ERROR) {
-          handleSessionExpired();
-          return;
-        }
-        showToast(error.message, "error");
-        return;
-      }
-      showToast("Lỗi hệ thống khi đang gọi vé!", "error");
-    }
-  };
-
-  const handleRecallTicketAction = async (ticketId: string) => {
-    try {
-      const response = await recallTicket(ticketId);
-      if (response.success) {
-        showToast("Đang gọi lại!", "success");
-        void handleRecallListRefresh();
-      } else {
-        showToast(response.message || "Không thể gọi lại vé!", "error");
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === AUTH_EXPIRED_ERROR) {
-          handleSessionExpired();
-          return;
-        }
-        showToast(error.message, "error");
-        return;
-      }
-      showToast("Lỗi hệ thống khi gọi lại vé!", "error");
+      if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+      else showToast("Lỗi hệ thống!", "error");
     }
   };
 
   const handleConfirmCallNext = () => {
     if (currentTicket) {
-      setConfirmModal({
-        isOpen: true,
-        title: "Xác nhận gọi lại",
-        message: buildTicketCallConfirmMessage(currentTicket, "gọi lại"),
-        onConfirm: async () => {
-          try {
-            await handleCallNext();
-          } finally {
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-          }
-        },
-      });
+      setConfirmModal({ isOpen: true, title: "Gọi lại", fields: buildConfirmFields(currentTicket), onConfirm: async () => { try { await handleCallNext(); } finally { setConfirmModal(p => ({ ...p, isOpen: false })); } } });
       return;
     }
-
     if (activeTab === "recall") {
-      const nextRecallTicket = recallTickets[0];
-
-      if (!nextRecallTicket) {
-        showToast("Không có vé nào trong danh sách bỏ qua!", "warning");
-        return;
-      }
-
-      setConfirmModal({
-        isOpen: true,
-        title: "Xác nhận gọi lại",
-        message: buildTicketCallConfirmMessage(nextRecallTicket, "gọi lại"),
-        onConfirm: async () => {
-          try {
-            await handleCallNext();
-          } finally {
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-          }
-        },
-      });
+      const next = recallTickets[0];
+      if (!next) { showToast("Không có vé bỏ qua!", "warning"); return; }
+      setConfirmModal({ isOpen: true, title: "Gọi lại", fields: buildConfirmFields(next), onConfirm: async () => { try { await handleCallNext(); } finally { setConfirmModal(p => ({ ...p, isOpen: false })); } } });
       return;
     }
-
-    const nextWaitingTicket = waitingTickets[0];
-
-    if (!nextWaitingTicket) {
-      showToast("Không có vé nào trong hàng chờ!", "warning");
-      return;
-    }
-
-    setConfirmModal({
-      isOpen: true,
-      title: "Xác nhận gọi người tiếp theo",
-      message: buildTicketCallConfirmMessage(nextWaitingTicket, "gọi"),
-      onConfirm: async () => {
-        try {
-          await handleCallNext();
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
-      },
-    });
-  };
-
-  const handleConfirmCallWaitingTicket = (ticket: Ticket) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "Xác nhận gọi vé",
-      message: buildTicketCallConfirmMessage(ticket, "gọi"),
-      onConfirm: async () => {
-        try {
-          await handleCallWaitingTicket(ticket.id);
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
-      },
-    });
-  };
-
-  const handleConfirmRecallTicketAction = (ticket: Ticket) => {
-    const ticketId = ticket.id || (ticket as Ticket & { _id?: string })._id || "";
-
-    setConfirmModal({
-      isOpen: true,
-      title: "Xác nhận gọi lại",
-      message: buildTicketCallConfirmMessage(ticket, "gọi lại"),
-      onConfirm: async () => {
-        try {
-          await handleRecallTicketAction(ticketId);
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
-      },
-    });
+    const next = waitingTickets[0];
+    if (!next) { showToast("Không có vé chờ!", "warning"); return; }
+    setConfirmModal({ isOpen: true, title: "Gọi người tiếp theo", fields: buildConfirmFields(next), onConfirm: async () => { try { await handleCallNext(); } finally { setConfirmModal(p => ({ ...p, isOpen: false })); } } });
   };
 
   const handleComplete = async () => {
-    if (!currentTicket) {
-      showToast("Không có vé nào đang được xử lý!", "error");
-      return;
-    }
-
+    if (!currentTicket) { showToast("Không có vé đang xử lý!", "error"); return; }
     setConfirmModal({
-      isOpen: true,
-      title: "Xác nhận hoàn thành",
-      message: `Xác nhận hoàn thành vé số ${getTicketDisplayNumber(currentTicket)}?`,
+      isOpen: true, title: "Hoàn thành",
+      fields: buildConfirmFields(currentTicket),
       onConfirm: async () => {
         try {
-          const response = await completeTicketApi(currentTicket.id);
-          if (response.success) {
-            showToast(response.message, "success");
-          } else {
-            showToast(response.message || "Không thể hoàn thành vé!", "error");
-          }
+          const res = await completeTicketApi(currentTicket.id);
+          if (res.success) { showToast(res.message, "success"); setDoneToday(d => d + 1); }
+          else showToast(res.message || "Không thể hoàn thành!", "error");
         } catch (error) {
-          if (error instanceof Error) {
-            if (error.message === AUTH_EXPIRED_ERROR) {
-              handleSessionExpired();
-              return;
-            }
-            showToast(error.message, "error");
-          } else {
-            showToast("Lỗi hệ thống khi hoàn thành vé!", "error");
-          }
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          else showToast("Lỗi hệ thống!", "error");
+        } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
     });
   };
 
   const handleSkip = async () => {
-    if (!currentTicket) {
-      showToast("Không có vé nào đang được xử lý!", "error");
-      return;
-    }
-
+    if (!currentTicket) { showToast("Không có vé đang xử lý!", "error"); return; }
     setConfirmModal({
-      isOpen: true,
-      title: "Xác nhận bỏ qua",
-      message: `Xác nhận bỏ qua vé số ${getTicketDisplayNumber(currentTicket)}?`,
+      isOpen: true, title: "Bỏ qua",
+      fields: buildConfirmFields(currentTicket),
       onConfirm: async () => {
         try {
-          const response = await skipTicketApi(currentTicket.id);
-          if (response.success) {
-            showToast(response.message, "success");
-            void handleRecallListRefresh();
-          } else {
-            showToast(response.message || "Không thể bỏ qua vé!", "error");
-          }
+          const res = await skipTicketApi(currentTicket.id);
+          if (res.success) { showToast(res.message, "success"); void handleRecallListRefresh(); }
+          else showToast(res.message || "Không thể bỏ qua!", "error");
         } catch (error) {
-          if (error instanceof Error) {
-            if (error.message === AUTH_EXPIRED_ERROR) {
-              handleSessionExpired();
-              return;
-            }
-            showToast(error.message, "error");
-          } else {
-            showToast("Lỗi hệ thống khi bỏ qua vé!", "error");
-          }
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          else showToast("Lỗi hệ thống!", "error");
+        } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
     });
   };
 
   const handleBackToWaiting = async () => {
-    if (!currentTicket) {
-      showToast("Không có vé nào đang được xử lý!", "error");
-      return;
-    }
-
+    if (!currentTicket) { showToast("Không có vé đang xử lý!", "error"); return; }
     setConfirmModal({
-      isOpen: true,
-      title: "Xác nhận trả lại",
-      message: `Xác nhận trả số ${getTicketDisplayNumber(currentTicket)} về hàng chờ?\nVé sẽ được đưa lên đầu hàng chờ.`,
+      isOpen: true, title: "Trả về hàng chờ",
+      fields: buildConfirmFields(currentTicket),
       onConfirm: async () => {
         try {
-          const response = await backTicketToWaitingApi(currentTicket.id, "front");
-          if (response.success) {
-            showToast(response.message || "Đã trả vé về hàng chờ", "success");
-          } else {
-            showToast(response.message || "Không thể trả vé về hàng chờ!", "error");
-          }
+          const res = await backTicketToWaitingApi(currentTicket.id, "front");
+          res.success ? showToast(res.message || "Đã trả về hàng chờ", "success") : showToast(res.message || "Không thể trả về!", "error");
         } catch (error) {
-          if (error instanceof Error) {
-            if (error.message === AUTH_EXPIRED_ERROR) {
-              handleSessionExpired();
-              return;
-            }
-            showToast(error.message, "error");
-          } else {
-            showToast("Lỗi hệ thống khi trả vé về hàng chờ!", "error");
-          }
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          else showToast("Lỗi hệ thống!", "error");
+        } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
+      },
+    });
+  };
+
+  const handleCallSpecific = (ticket: Ticket) => {
+    setConfirmModal({
+      isOpen: true, title: "Gọi vé", fields: buildConfirmFields(ticket),
+      onConfirm: async () => {
+        try {
+          const res = await callTicketById(ticket.id, counterId);
+          res.success ? showToast(res.message || "Đang gọi!", "success") : showToast(res.message || "Không thể gọi!", "error");
+        } catch (error) {
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          else showToast("Lỗi hệ thống!", "error");
+        } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
+      },
+    });
+  };
+
+  const handleRecallSpecific = (ticket: Ticket) => {
+    const id = ticket.id || (ticket as Ticket & { _id?: string })._id || "";
+    setConfirmModal({
+      isOpen: true, title: "Gọi lại", fields: buildConfirmFields(ticket),
+      onConfirm: async () => {
+        try {
+          const res = await recallTicket(id);
+          if (res.success) { showToast("Đang gọi lại!", "success"); void handleRecallListRefresh(); }
+          else showToast(res.message || "Không thể gọi lại!", "error");
+        } catch (error) {
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          else showToast("Lỗi hệ thống!", "error");
+        } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
     });
   };
 
   const handleLogout = () => {
     setConfirmModal({
-      isOpen: true,
-      title: "Xác nhận đăng xuất",
-      message: "Bạn có chắc chắn muốn đăng xuất?",
-      onConfirm: () => {
-        sessionStorage.removeItem("staffToken");
-        sessionStorage.removeItem("staffName");
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        router.push("/staff/login");
-      },
+      isOpen: true, title: "Đăng xuất", message: "Bạn có chắc muốn đăng xuất?",
+      onConfirm: () => { sessionStorage.removeItem("staffToken"); sessionStorage.removeItem("staffName"); setConfirmModal(p => ({ ...p, isOpen: false })); router.push("/staff/login"); },
     });
   };
 
+  useEffect(() => { setPage(1); }, [activeTab, search]);
+
+  const allTickets = activeTab === "waiting" ? waitingTickets : recallTickets;
+  const filteredTickets = search.trim()
+    ? allTickets.filter(t =>
+        getTicketDisplayNumber(t).toLowerCase().includes(search.toLowerCase()) ||
+        (t.customerName || "").toLowerCase().includes(search.toLowerCase()) ||
+        (t.serviceName || "").toLowerCase().includes(search.toLowerCase())
+      )
+    : allTickets;
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const displayTickets = filteredTickets.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   if (!authenticated || loading) {
     return (
-      <div style={{ padding: 20 }}>
-        <p>Đang tải...</p>
-      </div>
+      <>
+        <style>{CSS}</style>
+        <div className="sp-loading">
+          <div className="sp-loading__spinner" />
+          <span>Đang tải...</span>
+        </div>
+      </>
     );
   }
 
   return (
-    <div
-      className="staff-page"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "min(1420px, 100%)",
-        minHeight: "100dvh",
-        height: "auto",
-        maxWidth: "100%",
-        padding: "0 clamp(16px, 2.4vw, 36px)",
-        boxSizing: "border-box",
-        margin: "0 auto",
-        overflowY: "auto",
-      }}
-    >
-      <div
-        className="staff-page__topbar"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "clamp(6px, 1vh, 12px)",
-          fontSize: "clamp(14px, 1.2vw, 20px)",
-          gap: "12px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "12px",
-    padding: "8px 0",
-  }}
->
-  {staffName && (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "10px",
-    }}
-  >
-    <div
-      style={{
-        width: "36px",
-        height: "36px",
-        borderRadius: "50%",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "white",
-        fontWeight: 600,
-        fontSize: "16px",
-        boxShadow: "0 2px 8px rgba(102, 126, 234, 0.25)",
-      }}
-    >
-      {staffName.charAt(0).toUpperCase()}
-    </div>
-    <div>
-      <div
-        style={{
-          fontSize: "clamp(13px, 0.9vw, 14px)",
-          fontWeight: 400,
-          color: "#94a3b8",
-          letterSpacing: "0.3px",
-        }}
-      >
-        Chào mừng trở lại
-      </div>
-      <div
-        style={{
-          fontSize: "clamp(16px, 1.3vw, 22px)",
-          fontWeight: 600,
-          color: "#1e293b",
-          lineHeight: 1.3,
-        }}
-      >
-        {staffName}
-      </div>
-    </div>
-  </div>
-)}
+    <>
+      <style>{CSS}</style>
+      <div className="sp">
 
-  {/* Restriction Badge */}
-  {restricted && (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "8px",
-        background: "#fef9e6",
-        border: "1px solid #ffe5b4",
-        borderRadius: "40px",
-        padding: "4px 14px 4px 12px",
-        fontSize: "0.85rem",
-        fontWeight: 500,
-        color: "#b85c00",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-        backdropFilter: "blur(2px)",
-      }}
-    >
-      <span style={{ whiteSpace: "nowrap" }}>Giới hạn quầy:</span>
-      <span
-        style={{
-          padding: "2px 10px",
-          borderRadius: "30px",
-          fontSize: "0.8rem",
-          fontWeight: 400,
-          color: "#a64b00",
-        }}
-      >
-        {restricted && (
-  <div
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "8px",
-      background: "#fef9e6",
-      borderRadius: "40px",
-      padding: "4px 14px 4px 12px",
-      fontSize: "0.85rem",
-      fontWeight: 500,
-      color: "#b85c00",
-    }}
-  >
-    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-      {assignedServices.map((s, idx) => (
-        <span
-          key={idx}
-          style={{
-            background: "#fcdfb7",
-            padding: "2px 10px",
-            borderRadius: "30px",
-            fontSize: "0.8rem",
-            fontWeight: 400,
-            color: "#a64b00",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {s.name}
-        </span>
-      ))}
-    </div>
-  </div>
-)}
-      </span>
-    </div>
-  )}
-</div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginLeft: "auto",
-          }}
-        >
-          <NotificationPermissionButton variant="staff" />
-          <div
-            title={ttsEnabled ? "Loa đang bật" : "Loa đang tắt"}
-            aria-label={ttsEnabled ? "Loa đang bật" : "Loa đang tắt"}
-            style={{
-              position: "relative",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              border: `2px solid ${ttsEnabled ? "#16a34a" : "#dc2626"}`,
-              background: ttsEnabled ? "#f0fdf4" : "#fef2f2",
-              color: ttsEnabled ? "#15803d" : "#dc2626",
-              flexShrink: 0,
-            }}
-          >
-            {ttsEnabled ? <RiVolumeUpLine size={24} /> : <RiVolumeMuteLine size={24} />}
-            {!ttsEnabled && (
-              <span
-                style={{
-                  position: "absolute",
-                  width: 30,
-                  height: 3,
-                  background: "#dc2626",
-                  transform: "rotate(-45deg)",
-                  borderRadius: 999,
-                }}
-              />
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className="staff-page__logout"
-            style={{
-              padding: "clamp(10px, 1vh, 12px) clamp(16px, 1.4vw, 22px)",
-              fontSize: "clamp(14px, 1.1vw, 18px)",
-              fontWeight: 600,
-              background: "#dc3545",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-          >
-            {"Đăng xuất"}
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="staff-page__content"
-        style={{
-          display: "flex",
-          gap: "clamp(16px, 2vw, 28px)",
-          flex: 1,
-          minHeight: 0,
-        }}
-      >
-        <div
-          className="staff-page__queue"
-          style={{
-            flex: 0.6,
-            overflowY: "auto",
-            minWidth: 0,
-            height: "min(75vh, 720px)",
-            maxHeight: "min(75vh, 720px)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: "16px",
-              marginBottom: "clamp(12px, 1.6vh, 18px)",
-              borderBottom: "2px solid #eee",
-            }}
-          >
-            <h3
-              onClick={() => setActiveTab("waiting")}
-              style={{
-                margin: 0,
-                paddingBottom: "8px",
-                color: activeTab === "waiting" ? "#003366" : "#999",
-                fontSize: "clamp(20px, 2vw, 28px)",
-                fontWeight: 700,
-                cursor: "pointer",
-                borderBottom:
-                  activeTab === "waiting"
-                    ? "3px solid #003366"
-                    : "3px solid transparent",
-                transition: "all 0.2s",
-              }}
-            >
-              Đang chờ ({totalWaiting})
-            </h3>
-            <h3
-              onClick={() => setActiveTab("recall")}
-              style={{
-                margin: 0,
-                paddingBottom: "8px",
-                color: activeTab === "recall" ? "#003366" : "#999",
-                fontSize: "clamp(20px, 2vw, 28px)",
-                fontWeight: 700,
-                cursor: "pointer",
-                borderBottom:
-                  activeTab === "recall"
-                    ? "3px solid #003366"
-                    : "3px solid transparent",
-                transition: "all 0.2s",
-              }}
-            >
-              Bỏ qua ({recallTickets.length})
-            </h3>
-          </div>
-
-          <table
-            className="staff-page__table"
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              background: "#ffffff",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-              fontSize: "clamp(14px, 1.1vw, 20px)",
-              textAlign: "center",
-              tableLayout: "fixed",
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#003366", color: "white" }}>
-                <th
-                  style={{
-                    width: "10%",
-                    padding: "clamp(8px, 1vh, 12px) 10px",
-                    borderRight: "1px solid #ddd",
-                    fontSize: "clamp(12px, 0.9vw, 16px)",
-                  }}
-                >
-                  STT
-                </th>
-                <th
-                  style={{
-                    width: "20%",
-                    padding: "clamp(8px, 1vh, 12px) 10px",
-                    borderRight: "1px solid #ddd",
-                    fontSize: "clamp(12px, 0.9vw, 16px)",
-                  }}
-                >
-                  SỐ PHIẾU
-                </th>
-                <th
-                  style={{
-                    width: activeTab === "recall" ? "30%" : "28%",
-                    padding: "clamp(8px, 1vh, 12px) 10px",
-                    borderRight: "1px solid #ddd",
-                    fontSize: "clamp(12px, 0.9vw, 16px)",
-                  }}
-                >
-                  HỌ VÀ TÊN
-                </th>
-                <th
-                  style={{
-                    width: activeTab === "recall" ? "20%" : "22%",
-                    padding: "clamp(8px, 1vh, 12px) 10px",
-                    borderRight: "1px solid #ddd",
-                    fontSize: "clamp(12px, 0.9vw, 16px)",
-                  }}
-                >
-                  QUẦY
-                </th>
-                <th
-                  style={{
-                    width: "20%",
-                    padding: "clamp(8px, 1vh, 12px) 10px",
-                    fontSize: "clamp(12px, 0.9vw, 16px)",
-                  }}
-                >
-                  HÀNH ĐỘNG
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeTab === "waiting" ? (
-                waitingTickets.length > 0 ? (
-                  waitingTickets.slice(0, 10).map((ticket, index) => (
-                    <tr key={ticket.id} style={{ borderBottom: "1px solid #e0e0e0" }}>
-                      <td
-                        style={{
-                          padding: "clamp(8px, 0.95vh, 12px) 10px",
-                          borderRight: "1px solid #ddd",
-                          fontSize: "clamp(14px, 1vw, 18px)",
-                        }}
-                      >
-                        {index + 1}
-                      </td>
-                      <td
-                        style={{
-                          padding: "clamp(8px, 0.95vh, 12px) 10px",
-                          color: "#003366",
-                          fontWeight: 700,
-                          fontSize: "clamp(16px, 1.25vw, 20px)",
-                          borderRight: "1px solid #ddd",
-                        }}
-                      >
-                        {getTicketDisplayNumber(ticket)}
-                      </td>
-                      <td
-                        style={{
-                          padding: "clamp(8px, 0.95vh, 12px) 10px",
-                          borderRight: "1px solid #ddd",
-                          fontSize: "clamp(14px, 1vw, 17px)",
-                          lineHeight: 1.2,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {ticket.customerName}
-                      </td>
-                      <td
-                        style={{
-                          padding: "clamp(8px, 0.95vh, 12px) 10px",
-                          borderRight: "1px solid #ddd",
-                          fontSize: "clamp(14px, 1vw, 17px)",
-                          fontWeight: 600,
-                          lineHeight: 1.2,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {ticket.serviceName}
-                      </td>
-                      <td style={{ padding: "clamp(8px, 0.95vh, 12px) 10px" }}>
-                        <button
-                          onClick={() => handleConfirmCallWaitingTicket(ticket)}
-                          style={{
-                            padding: "6px 12px",
-                            background: "#003366",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "clamp(13px, 0.9vw, 15px)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Gọi
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      style={{
-                        padding: "24px 16px",
-                        color: "#6b7280",
-                        fontStyle: "italic",
-                        fontSize: 22,
-                      }}
-                    >
-                      Không có vé chờ
-                    </td>
-                  </tr>
-                )
-              ) : recallTickets.length > 0 ? (
-                recallTickets.map((ticket, index) => (
-                  <tr
-                    key={ticket.id || (ticket as Ticket & { _id?: string })._id}
-                    style={{ borderBottom: "1px solid #e0e0e0" }}
-                  >
-                    <td
-                      style={{
-                        padding: "clamp(8px, 0.95vh, 12px) 10px",
-                        borderRight: "1px solid #ddd",
-                        fontSize: "clamp(14px, 1vw, 18px)",
-                      }}
-                    >
-                      {index + 1}
-                    </td>
-                    <td
-                      style={{
-                        padding: "clamp(8px, 0.95vh, 12px) 10px",
-                        color: "#003366",
-                        fontWeight: 700,
-                        fontSize: "clamp(16px, 1.25vw, 20px)",
-                        borderRight: "1px solid #ddd",
-                      }}
-                    >
-                      {getTicketDisplayNumber(ticket)}
-                    </td>
-                    <td
-                      style={{
-                        padding: "clamp(8px, 0.95vh, 12px) 10px",
-                        borderRight: "1px solid #ddd",
-                        fontSize: "clamp(14px, 1vw, 17px)",
-                        lineHeight: 1.2,
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {ticket.customerName}
-                    </td>
-                    <td
-                      style={{
-                        padding: "clamp(8px, 0.95vh, 12px) 10px",
-                        borderRight: "1px solid #ddd",
-                        fontSize: "clamp(14px, 1vw, 17px)",
-                        fontWeight: 600,
-                        lineHeight: 1.2,
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {ticket.serviceName}
-                    </td>
-                    <td style={{ padding: "clamp(8px, 0.95vh, 12px) 10px" }}>
-                      <button
-                        onClick={() => handleConfirmRecallTicketAction(ticket)}
-                        style={{
-                          padding: "6px 12px",
-                          background: "#003366",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          fontSize: "clamp(13px, 0.9vw, 15px)",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Gọi lại
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={5}
-                    style={{
-                      padding: "24px 16px",
-                      color: "#6b7280",
-                      fontStyle: "italic",
-                      fontSize: 22,
-                    }}
-                  >
-                    Không có vé bỏ qua
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div
-          className="staff-page__actions"
-          style={{
-            flex: 0.4,
-            display: "flex",
-            flexDirection: "column",
-            gap: "clamp(16px, 1.8vh, 24px)",
-            minWidth: 0,
-          }}
-        >
-          <div
-            className="staff-page__current-ticket"
-            style={{
-              background: "white",
-              border: "2px solid #003366",
-              borderRadius: 12,
-              padding: "clamp(16px, 1.8vw, 24px)",
-              flex: "0 0 auto",
-              marginTop: "clamp(24px, 4vh, 52px)",
-              boxShadow: "0 10px 24px rgba(0, 61, 130, 0.08)",
-              minHeight: "clamp(220px, 35vh, 360px)",
-              overflowY: "auto",
-            }}
-          >
-            <h2
-              style={{
-                margin: "0 0 20px 0",
-                color: "#003366",
-                fontSize: "clamp(32px, 3vw, 48px)",
-                fontWeight: 700,
-                textAlign: "center",
-              }}
-            >
-              Vé đang xử lý
-            </h2>
-            {currentTicket ? (
-              <div
-                style={{
-                  fontSize: "clamp(18px, 1.8vw, 30px)",
-                  marginLeft: 16,
-                  lineHeight: 1.45,
-                }}
-              >
-                <div style={{ marginBottom: 12 }}>
-                  <span style={{ fontWeight: 700, color: "#333" }}>Số phiếu: </span>
-                  <span
-                    style={{
-                      color: "#003366",
-                      fontWeight: 700,
-                      fontSize: "clamp(22px, 2vw, 34px)",
-                    }}
-                  >
-                    {getTicketDisplayNumber(currentTicket)}
-                  </span>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <span style={{ fontWeight: 700, color: "#333" }}>Đương sự: </span>
-                  <span style={{ color: "#555" }}>{currentTicket.customerName}</span>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <span style={{ fontWeight: 700, color: "#333" }}>Quầy: </span>
-                  <span style={{ color: "#555" }}>{currentTicket.serviceName}</span>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  color: "#999",
-                  fontSize: "clamp(15px, 1.2vw, 22px)",
-                  fontStyle: "italic",
-                  textAlign: "center",
-                }}
-              >
-                Chờ gọi người tiếp theo
+        {/* ── TOPBAR ── */}
+        <header className="sp__topbar">
+          <div className="sp__identity">
+            <div className="sp__avatar">{staffName.charAt(0).toUpperCase()}</div>
+            <div>
+              <div className="sp__greeting">Chào mừng trở lại</div>
+              <div className="sp__name">{staffName}</div>
+            </div>
+            {restricted && (
+              <div className="sp__restrict-badge">
+                <span className="sp__restrict-dot" />
+                Giới hạn:{" "}
+                {assignedServices.map((s, i) => (
+                  <span key={i} className="sp__service-tag">{s.name}</span>
+                ))}
               </div>
             )}
           </div>
 
-          <div
-            className="staff-page__button-group"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "clamp(10px, 1.2vh, 14px)",
-              flex: 0.5,
-            }}
-          >
-            <div
-              className="staff-page__call-row"
-              style={{ display: "flex", gap: "clamp(10px, 1vw, 14px)" }}
-            >
-              <button
-                type="button"
-                onClick={handleBackToWaiting}
-                disabled={!currentTicket || activeTab === "recall"}
-                onMouseEnter={() => setHovered("back")}
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  flex: 1,
-                  padding: "clamp(12px, 1.5vh, 18px) 20px",
-                  fontSize: "clamp(18px, 1.8vw, 28px)",
-                  fontWeight: 700,
-                  background:
-                    hovered === "back" && currentTicket && activeTab !== "recall"
-                      ? "#003366"
-                      : currentTicket && activeTab !== "recall"
-                        ? "#f3f4f6"
-                        : "#f0f0f0",
-                  color:
-                    hovered === "back" && currentTicket && activeTab !== "recall"
-                      ? "white"
-                      : currentTicket && activeTab !== "recall"
-                        ? "#000000"
-                        : "#000000",
-                  border: `2px solid ${currentTicket && activeTab !== "recall" ? "#003366" : "#ccc"}`,
-                  borderRadius: 10,
-                  cursor: currentTicket && activeTab !== "recall" ? "pointer" : "not-allowed",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                Trả lại
+          <div className="sp__topbar-right">
+
+            <NotificationPermissionButton variant="staff" />
+
+            <button className="sp__logout" onClick={handleLogout}>Đăng xuất</button>
+          </div>
+        </header>
+
+        {/* ── STATS ── */}
+        <div className="sp__stats">
+          <StatCard value={totalWaiting} label="Đang chờ" accent={totalWaiting > 10 ? "var(--red)" : totalWaiting > 5 ? "var(--orange)" : undefined} />
+          <StatCard value={recallTickets.length} label="Bỏ qua" accent={recallTickets.length > 0 ? "var(--orange)" : undefined} />
+          <StatCard value={doneToday} label="Hôm nay" accent="var(--green)" />
+          <StatCard value={counter?.name || "—"} label="Quầy" />
+        </div>
+
+        {/* ── MAIN GRID ── */}
+        <div className="sp__grid">
+
+          {/* LEFT — queue */}
+          <section className="sp__queue">
+            <div className="sp__tabs">
+              <button className={`sp__tab ${activeTab === "waiting" ? "sp__tab--active" : ""}`} onClick={() => setActiveTab("waiting")}>
+                Đang chờ
+                <span className="sp__tab-count">{totalWaiting}</span>
+                <KeyHint k="1" label="" />
               </button>
-
-              <button
-                onClick={handleConfirmCallNext}
-                onMouseEnter={() => setHovered("call")}
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  flex: 1,
-                  padding: "clamp(12px, 1.5vh, 18px) 20px",
-                  fontSize: "clamp(18px, 1.8vw, 28px)",
-                  fontWeight: 700,
-                  background: hovered === "call" ? "#003366" : "green",
-                  color: "white",
-                  border: "2px solid #003366",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {currentTicket ? "Gọi lại" : "Người tiếp theo"}
+              <button className={`sp__tab ${activeTab === "recall" ? "sp__tab--active sp__tab--recall" : ""}`} onClick={() => setActiveTab("recall")}>
+                Bỏ qua
+                <span className={`sp__tab-count ${recallTickets.length > 0 ? "sp__tab-count--warn" : ""}`}>{recallTickets.length}</span>
+                <KeyHint k="2" label="" />
               </button>
             </div>
 
-            <button
-              onClick={handleComplete}
-              disabled={!currentTicket}
-              onMouseEnter={() => setHovered("complete")}
-              onMouseLeave={() => setHovered(null)}
-              style={{
-                padding: "clamp(12px, 1.5vh, 18px) 20px",
-                fontSize: "clamp(18px, 1.8vw, 28px)",
-                fontWeight: 700,
-                background:
-                  hovered === "complete" && currentTicket
-                    ? "#003366"
-                    : currentTicket
-                      ? "#007bff"
-                      : "#f0f0f0",
-                color: currentTicket ? "white" : "black",
-                border: `2px solid ${currentTicket ? "#003366" : "#ccc"}`,
-                borderRadius: 10,
-                cursor: currentTicket ? "pointer" : "not-allowed",
-                transition: "all 0.2s ease",
-              }}
-            >
-              Hoàn thành
-            </button>
+            <div className="sp__search-bar">
+              <span className="sp__search-icon">⌕</span>
+              <input
+                className="sp__search-input"
+                type="text"
+                placeholder="Tìm số phiếu, tên, quầy..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              {search && (
+                <button className="sp__search-clear" onClick={() => setSearch("")}>✕</button>
+              )}
+            </div>
 
-            <button
-              onClick={handleSkip}
-              disabled={!currentTicket}
-              onMouseEnter={() => setHovered("skip")}
-              onMouseLeave={() => setHovered(null)}
-              style={{
-                padding: "clamp(12px, 1.5vh, 18px) 20px",
-                fontSize: "clamp(18px, 1.8vw, 28px)",
-                fontWeight: 700,
-                background:
-                  hovered === "skip" && currentTicket
-                    ? "#003366"
-                    : currentTicket
-                      ? "#ff9800"
-                      : "#f0f0f0",
-                color: currentTicket ? "white" : "black",
-                border: `2px solid ${currentTicket ? "#003366" : "#ccc"}`,
-                borderRadius: 10,
-                cursor: currentTicket ? "pointer" : "not-allowed",
-                transition: "all 0.2s ease",
-              }}
-            >
-              Bỏ qua
-            </button>
-          </div>
+            <div className="sp__table-wrap">
+              <table className="sp__table">
+                <thead>
+                  <tr>
+                    <th style={{ width: "7%" }}>#</th>
+                    <th style={{ width: "18%" }}>Số phiếu</th>
+                    <th style={{ width: "32%" }}>Họ và tên</th>
+                    <th style={{ width: "24%" }}>Quầy</th>
+                    <th style={{ width: "11%" }}>Chờ</th>
+                    <th style={{ width: "8%" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayTickets.length > 0 ? (
+                    displayTickets.map((ticket, index) => (
+                      <TicketRow
+                        key={ticket.id || (ticket as Ticket & { _id?: string })._id}
+                        ticket={ticket}
+                        index={(safePage - 1) * PAGE_SIZE + index}
+                        isRecall={activeTab === "recall"}
+                        onCall={() => activeTab === "waiting" ? handleCallSpecific(ticket) : handleRecallSpecific(ticket)}
+                      />
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="sp__empty">
+                        {search ? "Không tìm thấy kết quả" : activeTab === "waiting" ? "Không có vé chờ" : "Không có vé bỏ qua"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="sp__pagination">
+                <button
+                  className="sp__page-btn"
+                  disabled={safePage === 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >←</button>
+                <div className="sp__page-nums">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(n => n === 1 || n === totalPages || Math.abs(n - safePage) <= 1)
+                    .reduce<(number | "...")[]>((acc, n, i, arr) => {
+                      if (i > 0 && n - (arr[i - 1] as number) > 1) acc.push("...");
+                      acc.push(n);
+                      return acc;
+                    }, [])
+                    .map((n, i) =>
+                      n === "..."
+                        ? <span key={"e" + i} className="sp__page-ellipsis">…</span>
+                        : <button
+                            key={n}
+                            className={"sp__page-num" + (n === safePage ? " sp__page-num--active" : "")}
+                            onClick={() => setPage(n as number)}
+                          >{n}</button>
+                    )
+                  }
+                </div>
+                <button
+                  className="sp__page-btn"
+                  disabled={safePage === totalPages}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                >→</button>
+                <span className="sp__page-info">{filteredTickets.length} vé</span>
+              </div>
+            )}
+          </section>
+
+          {/* RIGHT — current + actions */}
+          <aside className="sp__panel">
+            <div className={`sp__current ${currentTicket ? "sp__current--active" : ""}`}>
+              <div className="sp__current-label">VÉ ĐANG XỬ LÝ</div>
+              {currentTicket ? (
+                <>
+                  <div className="sp__current-number">{getTicketDisplayNumber(currentTicket)}</div>
+                  <div className="sp__current-meta">
+                    <div className="sp__meta-card">
+                      <span className="sp__meta-label">Đương sự</span>
+                      <span className="sp__meta-val" title={currentTicket.customerName || undefined}>
+                        {abbreviateName(currentTicket.customerName || "—")}
+                      </span>
+                    </div>
+                    <div className="sp__meta-card">
+                      <span className="sp__meta-label">Quầy</span>
+                      <span className="sp__meta-val">{currentTicket.serviceName || "—"}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="sp__current-empty">
+                  <div className="sp__current-empty-icon">○</div>
+                  <div>Chờ gọi người tiếp theo</div>
+                </div>
+              )}
+            </div>
+
+            <div className="sp__actions">
+              <div className="sp__actions-row">
+                <ActionBtn label="Trả lại" sublabel="Về lại hàng" onClick={handleBackToWaiting} disabled={!currentTicket || activeTab === "recall"} variant="back" kbd="R" />
+                <ActionBtn label={currentTicket ? "Gọi lại" : "Tiếp theo"} sublabel={currentTicket ? "Gọi lại vé này" : "gọi vé kế"} onClick={handleConfirmCallNext} variant="success" kbd="Space" />
+              </div>
+              <ActionBtn label="Hoàn thành" sublabel="Lưu và xong" onClick={handleComplete} disabled={!currentTicket} variant="primary" kbd="C" />
+              <ActionBtn label="Bỏ qua" sublabel="Chuyển sang bỏ qua" onClick={handleSkip} disabled={!currentTicket} variant="warning" kbd="S" />
+            </div>
+
+            <div className="sp__hints">
+              <KeyHint k="Space" label="Gọi" />
+              <KeyHint k="C" label="Hoàn thành" />
+              <KeyHint k="S" label="Bỏ qua" />
+              <KeyHint k="R" label="Trả lại" />
+            </div>
+          </aside>
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 1600px) and (max-height: 900px) {
-          .staff-page {
-            width: min(1280px, 100%) !important;
-            padding: 0 20px !important;
-          }
-
-          .staff-page__topbar {
-            margin-bottom: 14px !important;
-          }
-
-          .staff-page__content {
-            gap: 16px !important;
-          }
-
-          .staff-page__queue {
-            flex: 0.62 !important;
-          }
-
-          .staff-page__actions {
-            flex: 0.38 !important;
-            gap: 14px !important;
-          }
-
-          .staff-page__title {
-            margin-bottom: 12px !important;
-            font-size: 24px !important;
-            line-height: 1.15 !important;
-          }
-
-          .staff-page__table {
-            font-size: 15px !important;
-          }
-
-          .staff-page__table th {
-            padding: 8px 8px !important;
-            font-size: 12px !important;
-          }
-
-          .staff-page__table td {
-            padding: 9px 8px !important;
-          }
-
-          .staff-page__current-ticket {
-            margin-top: 12px !important;
-            padding: 16px !important;
-          }
-
-          .staff-page__button-group {
-            gap: 10px !important;
-          }
-
-          .staff-page__button-group button {
-            padding: 12px 16px !important;
-            font-size: 20px !important;
-          }
-        }
-
-        @media (max-width: 1366px) {
-          .staff-page__content {
-            gap: 16px !important;
-          }
-
-          .staff-page__queue {
-            flex: 0.58 !important;
-          }
-
-          .staff-page__actions {
-            flex: 0.42 !important;
-          }
-
-          .staff-page__current-ticket {
-            margin-top: 24px !important;
-          }
-        }
-
-        @media (max-width: 1366px) and (max-height: 800px) {
-          .staff-page {
-            padding: 0 16px !important;
-          }
-
-          .staff-page__topbar {
-            margin-bottom: 10px !important;
-          }
-
-          .staff-page__queue {
-            flex: 0.64 !important;
-          }
-
-          .staff-page__actions {
-            flex: 0.36 !important;
-            gap: 12px !important;
-          }
-
-          .staff-page__title {
-            font-size: 22px !important;
-          }
-
-          .staff-page__table th {
-            font-size: 11px !important;
-            padding: 7px 6px !important;
-          }
-
-          .staff-page__table td {
-            padding: 8px 6px !important;
-            font-size: 14px !important;
-          }
-
-          .staff-page__current-ticket h2 {
-            font-size: 30px !important;
-            margin-bottom: 14px !important;
-          }
-
-          .staff-page__current-ticket > div {
-            font-size: 18px !important;
-            margin-left: 4px !important;
-            line-height: 1.35 !important;
-          }
-
-          .staff-page__current-ticket > div span {
-            word-break: break-word;
-          }
-
-          .staff-page__button-group button {
-            font-size: 18px !important;
-            padding: 11px 14px !important;
-          }
-        }
-
-        @media (max-width: 1180px) {
-          .staff-page {
-            height: auto !important;
-            min-height: 100dvh !important;
-            overflow-y: auto !important;
-            padding-bottom: 24px !important;
-          }
-
-          .staff-page__content {
-            flex-direction: column !important;
-            gap: 14px !important;
-          }
-
-          .staff-page__queue,
-          .staff-page__actions {
-            flex: 1 1 auto !important;
-            width: 100% !important;
-          }
-
-          .staff-page__queue {
-            height: min(46dvh, 520px) !important;
-            max-height: min(46dvh, 520px) !important;
-          }
-
-          .staff-page__actions {
-            gap: 12px !important;
-          }
-
-          .staff-page__current-ticket {
-            margin-top: 0 !important;
-            min-height: 180px !important;
-            max-height: 32dvh !important;
-            padding: 14px !important;
-          }
-
-          .staff-page__current-ticket h2 {
-            margin-bottom: 12px !important;
-            font-size: 28px !important;
-          }
-
-          .staff-page__button-group {
-            gap: 10px !important;
-          }
-
-          .staff-page__button-group button {
-            padding: 12px 16px !important;
-            font-size: 19px !important;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .staff-page__topbar {
-            align-items: stretch !important;
-          }
-
-          .staff-page__logout {
-            width: 100%;
-            justify-content: center;
-          }
-
-          .staff-page__button-group button {
-            width: 100%;
-          }
-
-          .staff-page__call-row {
-            flex-direction: column;
-          }
-
-          .staff-page__queue {
-            height: 42dvh !important;
-            max-height: 42dvh !important;
-          }
-
-          .staff-page__current-ticket {
-            min-height: 150px !important;
-            max-height: none !important;
-          }
-        }
-      `}</style>
-
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-      />
-
-      <Toast
-        isOpen={toast.isOpen}
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast((prev) => ({ ...prev, isOpen: false }))}
-        duration={3000}
-      />
-    </div>
+      <ConfirmModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} fields={confirmModal.fields} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(p => ({ ...p, isOpen: false }))} />
+      <Toast isOpen={toast.isOpen} message={toast.message} type={toast.type} onClose={() => setToast(p => ({ ...p, isOpen: false }))} duration={3000} />
+    </>
   );
 }
+
+/* ─── ticket row ── */
+function TicketRow({ ticket, index, isRecall, onCall }: { ticket: Ticket; index: number; isRecall: boolean; onCall: () => void }) {
+  const mins = useWaitMinutes((ticket as Ticket & { createdAt?: string }).createdAt);
+  return (
+    <tr className={`sp__tr ${index === 0 ? "sp__tr--first" : ""}`}>
+      <td className="sp__td sp__td--idx">{index + 1}</td>
+      <td className="sp__td sp__td--num">{getTicketDisplayNumber(ticket)}</td>
+      <td className="sp__td sp__td--name" title={ticket.customerName || undefined}>
+        {abbreviateName(ticket.customerName || "—")}
+      </td>
+      <td className="sp__td sp__td--service">{ticket.serviceName || "—"}</td>
+      <td className="sp__td"><WaitBadge mins={mins} /></td>
+      <td className="sp__td sp__td--action">
+        <button onClick={onCall} className={`sp__call-btn ${isRecall ? "sp__call-btn--recall" : ""}`}>
+          {isRecall ? "Gọi lại" : "Gọi"}
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+/* ─── CSS ── */
+const CSS = `
+  :root {
+    --surface:    #ffffff;
+    --surface2:   #f0f2f8;
+    --border:     #e2e6f0;
+    --border2:    #c8cfe8;
+    --text1:      #1a1d2e;
+    --text2:      #4a5070;
+    --muted:      #8890b0;
+    --accent:     #3b5bdb;
+    --accent-bg:  #eef1fd;
+    --accent2:    #2f4ac4;
+    --green:      #2f9e44;
+    --green-bg:   #ebfbee;
+    --green-bdr:  #b2f2bb;
+    --orange:     #e8590c;
+    --orange-bg:  #fff4e6;
+    --orange-bdr: #ffd8a8;
+    --red:        #c92a2a;
+    --red-bg:     #fff5f5;
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md:  0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+    --radius:     10px;
+    --font:       'DM Mono', 'Fira Code', 'Courier New', monospace;
+    --font-sans:  'Inter', 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  .sp {
+    min-height: 100dvh; background: var(--bg); color: var(--text1);
+    font-family: var(--font-sans); display: flex; flex-direction: column;
+    gap: 16px; padding: 16px clamp(16px, 2.5vw, 36px) 28px;
+  }
+  .sp__topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 20px; box-shadow: var(--shadow-sm);
+  }
+  .sp__identity { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .sp__avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--accent-bg); border: 1.5px solid #c5d0f5;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 17px; color: var(--accent); flex-shrink: 0;
+  }
+  .sp__greeting { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .sp__name { font-size: 17px; font-weight: 700; color: var(--text1); }
+  .sp__restrict-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--orange-bg); border: 1px solid var(--orange-bdr);
+    border-radius: 99px; padding: 4px 12px; font-size: 12px; color: var(--orange); flex-wrap: wrap;
+  }
+  .sp__restrict-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+  .sp__service-tag { background: #ffe8d6; border-radius: 99px; padding: 1px 9px; font-size: 11px; color: var(--orange); }
+  .sp__topbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+  .sp__socket {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 99px; padding: 5px 12px; font-size: 12px; font-weight: 600;
+  }
+  .sp__socket--ok  { background: var(--green-bg);  border: 1px solid var(--green-bdr); color: var(--green); }
+  .sp__socket--err { background: var(--red-bg);    border: 1px solid #ffc9c9;          color: var(--red); }
+  .sp__socket-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sp__socket--ok  .sp__socket-dot { background: var(--green); animation: blink 1.8s ease-in-out infinite; }
+  .sp__socket--err .sp__socket-dot { background: var(--red); }
+  .sp__tts {
+    display: inline-flex; align-items: center; gap: 7px;
+    border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid;
+  }
+  .sp__tts--on  { background: var(--green-bg);  border-color: var(--green-bdr); color: var(--green); }
+  .sp__tts--off { background: var(--red-bg);    border-color: #ffc9c9;          color: var(--red); }
+  .sp__logout {
+    padding: 8px 18px; background: var(--red); color: #fff;
+    border: none; border-radius: 8px; cursor: pointer;
+    font-weight: 700; font-size: 14px; font-family: var(--font-sans); transition: opacity .15s;
+  }
+  .sp__logout:hover { opacity: .85; }
+  .sp__stats { display: flex; gap: 12px; flex-wrap: wrap; }
+  .sp__grid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; flex: 1; min-height: 0; align-items: start; }
+  .sp__queue {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: var(--shadow-sm);
+  }
+  .sp__tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .sp__tab {
+    display: flex; align-items: center; gap: 8px; padding: 14px 22px;
+    font-size: 14px; font-weight: 600; color: var(--muted);
+    background: transparent; border: none; cursor: pointer; font-family: var(--font-sans);
+    border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s;
+  }
+  .sp__tab:hover { color: var(--text2); }
+  .sp__tab--active { color: var(--accent); border-bottom-color: var(--accent); }
+  .sp__tab--recall.sp__tab--active { color: var(--orange); border-bottom-color: var(--orange); }
+  .sp__tab-count {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 99px; padding: 1px 9px; font-size: 12px;
+    min-width: 28px; text-align: center; color: var(--text2);
+  }
+  .sp__tab-count--warn { background: var(--orange-bg); border-color: var(--orange-bdr); color: var(--orange); }
+  .sp__table-wrap { overflow-y: auto; flex: 1; }
+  .sp__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
+  .sp__table thead tr { background: var(--surface2); position: sticky; top: 0; z-index: 1; }
+  .sp__table th {
+    padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700;
+    color: var(--muted); text-transform: uppercase; letter-spacing: .07em;
+    border-bottom: 1px solid var(--border);
+  }
+  .sp__tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  .sp__tr:hover { background: var(--surface2); }
+  .sp__tr--first { background: var(--accent-bg); }
+  .sp__tr--first:hover { background: #e4e9fb; }
+  .sp__td { padding: 12px 14px; color: var(--text2); vertical-align: middle; }
+  .sp__td--idx     { color: var(--muted); font-size: 12px; }
+  .sp__td--num     { font-weight: 700; color: var(--accent); font-family: var(--font); font-size: 15px; }
+  .sp__td--name    { color: var(--text1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp__td--service { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp__td--action  { text-align: right; }
+  .sp__search-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .sp__search-icon { font-size: 18px; color: var(--muted); flex-shrink: 0; line-height: 1; }
+  .sp__search-input {
+    flex: 1; border: none; outline: none; font-size: 14px;
+    color: var(--text1); background: transparent; font-family: var(--font-sans);
+  }
+  .sp__search-input::placeholder { color: var(--muted); }
+  .sp__search-clear {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 13px; padding: 2px 6px; border-radius: 4px; line-height: 1;
+    transition: color .15s, background .15s;
+  }
+  .sp__search-clear:hover { color: var(--text2); background: var(--surface2); }
+  .sp__empty { padding: 48px; text-align: center; color: var(--muted); font-style: italic; font-size: 14px; }
+  .sp__pagination {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px; border-top: 1px solid var(--border);
+    background: var(--surface); flex-wrap: wrap;
+  }
+  .sp__page-btn {
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+    color: var(--text2); font-size: 13px; cursor: pointer; transition: all .15s;
+    font-family: var(--font-sans);
+  }
+  .sp__page-btn:disabled { color: var(--muted); cursor: not-allowed; opacity: .5; }
+  .sp__page-btn:not(:disabled):hover { background: var(--surface2); border-color: var(--border2); }
+  .sp__page-nums { display: flex; align-items: center; gap: 4px; }
+  .sp__page-num {
+    min-width: 30px; height: 30px; padding: 0 6px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+    color: var(--text2); font-size: 13px; cursor: pointer; transition: all .15s;
+    font-family: var(--font-sans);
+  }
+  .sp__page-num:hover { background: var(--surface2); border-color: var(--border2); }
+  .sp__page-num--active { background: var(--accent-bg); border-color: #c5d0f5; color: var(--accent); font-weight: 700; }
+  .sp__page-ellipsis { color: var(--muted); font-size: 13px; padding: 0 2px; }
+  .sp__page-info { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .sp__call-btn {
+    padding: 5px 14px; background: var(--accent-bg); color: var(--accent2);
+    border: 1px solid #c5d0f5; border-radius: 6px; cursor: pointer;
+    font-weight: 600; font-size: 12px; font-family: var(--font-sans);
+    transition: background .15s, border-color .15s;
+  }
+  .sp__call-btn:hover { background: #dde3fb; border-color: var(--accent2); }
+  .sp__call-btn--recall { background: var(--orange-bg); color: var(--orange); border-color: var(--orange-bdr); }
+  .sp__call-btn--recall:hover { background: #ffe0c2; }
+  .sp__panel { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── current ticket card ── */
+  .sp__current {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 20px; flex-shrink: 0;
+    box-shadow: var(--shadow-sm); transition: border-color .3s, box-shadow .3s;
+  }
+  .sp__current--active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg), var(--shadow-md); }
+  .sp__current-label { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+
+  /* số vé: căn giữa, to hơn */
+  .sp__current-number {
+    font-family: var(--font);
+    font-size: clamp(64px, 8vw, 88px);
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -3px;
+    line-height: 1;
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 8px 0;
+  }
+
+  /* metadata: 2 thẻ lưới song song */
+  .sp__current-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sp__meta-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 4px;
+    overflow: hidden;
+  }
+  .sp__meta-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+  .sp__meta-val { font-size: 15px; color: var(--text1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .sp__current-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 0; color: var(--muted); font-size: 16px; text-align: center; }
+  .sp__current-empty-icon { font-size: 52px; opacity: .2; }
+
+  .sp__actions { display: flex; flex-direction: column; gap: 10px; }
+  .sp__actions-row { display: flex; gap: 10px; }
+  .sp__hints {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .sp-loading {
+    min-height: 100dvh; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px; background: var(--bg); color: var(--text2);
+    font-family: var(--font-sans);
+  }
+  .sp-loading__spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+  @keyframes spin  { to{transform:rotate(360deg);} }
+  @media (max-width: 1100px) {
+    .sp__grid { grid-template-columns: 1fr; }
+    .sp__panel { flex-direction: row; flex-wrap: wrap; }
+    .sp__current { flex: 1 1 300px; }
+    .sp__actions { flex: 1 1 260px; }
+    .sp__hints { width: 100%; }
+  }
+  @media (max-width: 640px) {
+    .sp__stats { gap: 8px; }
+    .sp__panel { flex-direction: column; }
+    .sp__actions-row { flex-direction: column; }
+    .sp__current-meta { grid-template-columns: 1fr 1fr; }
+  }
+`;

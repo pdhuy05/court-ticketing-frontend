@@ -43,7 +43,7 @@ const SiteConfigContext = createContext<SiteConfigContextValue>({
 
 async function fetchSiteConfig(): Promise<SiteConfig> {
   const API_BASE = getPublicApiBase();
-  const res = await fetch(`${API_BASE}/settings/site-config`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/settings/site-config`, { next: { revalidate: 60 } });
   if (!res.ok) return DEFAULT_CONFIG;
   const data = await res.json();
   return data?.success && data?.data ? (data.data as SiteConfig) : DEFAULT_CONFIG;
@@ -60,7 +60,6 @@ export function SiteConfigProvider({ children }: { children: ReactNode }) {
       const config = await fetchSiteConfig();
       setSiteConfig(config);
     } catch {
-      // giữ nguyên config hiện tại nếu lỗi
     } finally {
       setIsLoading(false);
     }

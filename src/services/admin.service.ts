@@ -1124,3 +1124,29 @@ export async function toggleAdminActive(id: string): Promise<AdminAccount> {
   if (data.success) return data.data;
   throw new Error(getApiErrorMessage(data, "Cập nhật trạng thái thất bại"));
 }
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH — Thêm vào CUỐI file:
+//   /src/services/admin.service.ts
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DisplayMode = 'service' | 'queue';
+
+export async function getDisplayMode(): Promise<DisplayMode> {
+  const response = await fetch(`${API_BASE}/admin/settings/display-mode`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: { display_mode: DisplayMode } }>(response);
+  if (data.success) return data.data.display_mode;
+  throw new Error('Không lấy được chế độ màn hình');
+}
+
+export async function updateDisplayMode(mode: DisplayMode): Promise<DisplayMode> {
+  const response = await fetch(`${API_BASE}/admin/settings/display-mode`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ mode }),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: { display_mode: DisplayMode }; message?: string }>(response);
+  if (data.success) return data.data.display_mode;
+  throw new Error(getApiErrorMessage(data, 'Cập nhật chế độ màn hình thất bại'));
+}
