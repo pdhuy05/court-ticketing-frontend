@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FiEdit2, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import { FiRepeat } from "react-icons/fi";
 import { TbPlus, TbUsers } from "react-icons/tb";
@@ -27,15 +27,13 @@ import AdminTableFilter from "./AdminTableFilter";
 import { getSequentialTagColorStyle } from "@/lib/adminTagColors";
 
 /* ─────────────────────────────────────────────────────── */
-/* Design tokens (giống CounterTable)                      */
+/* Design tokens                                           */
 /* ─────────────────────────────────────────────────────── */
 
 const C = {
   navy: "#0f2544",
   navyHover: "#17345f",
-
   white: "#ffffff",
-
   gray50: "#f8fafc",
   gray100: "#f1f5f9",
   gray200: "#e2e8f0",
@@ -44,21 +42,16 @@ const C = {
   gray500: "#64748b",
   gray700: "#334155",
   gray900: "#0f172a",
-
   border: "#edf2f7",
-
   blue: "#2563eb",
   blueSoft: "#f5f8ff",
   blueText: "#1d4ed8",
-
   green: "#16a34a",
   greenSoft: "#f0fdf4",
   greenText: "#166534",
-
   red: "#dc2626",
   redSoft: "#fff5f5",
   redText: "#991b1b",
-
   amber: "#d97706",
   amberSoft: "#fffbeb",
   amberText: "#92400e",
@@ -459,17 +452,19 @@ export default function StaffTable() {
           border: `1px solid ${C.border}`,
           borderRadius: 26,
           overflow: "hidden",
+          minWidth: 0,
         }}
       >
         {/* ── HEADER ── */}
         <div
           style={{
-            padding: "20px 22px",
+            padding: "16px 20px",
             borderBottom: `1px solid ${C.border}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 16,
+            gap: 12,
+            flexWrap: "wrap",
           }}
         >
           {/* Left */}
@@ -489,17 +484,13 @@ export default function StaffTable() {
               <TbUsers size={20} color="#fff" />
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: C.gray900 }}>
-                Quản lý nhân viên
-              </div>
-              <div style={{ marginTop: 3, fontSize: 12, color: C.gray400 }}>
-                {staffList.length} nhân viên
-              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.gray900 }}>Quản lý nhân viên</div>
+              <div style={{ marginTop: 3, fontSize: 12, color: C.gray400 }}>{staffList.length} nhân viên</div>
             </div>
           </div>
 
           {/* Right */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <AdminTableFilter
               activeCount={
                 (filterCounterIds.includes("all") ? 0 : filterCounterIds.length) +
@@ -554,7 +545,7 @@ export default function StaffTable() {
             <div
               style={{
                 height: 38,
-                width: 240,
+                width: "clamp(160px, 20vw, 240px)",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
@@ -618,7 +609,7 @@ export default function StaffTable() {
         </div>
 
         {/* ── BODY ── */}
-        <div style={{ padding: 22 }}>
+        <div style={{ padding: 22, overflowX: "auto" }}>
           {loading ? (
             <div style={{ padding: "60px 0", textAlign: "center", fontSize: 14, color: C.gray400 }}>
               Đang tải dữ liệu...
@@ -646,6 +637,7 @@ export default function StaffTable() {
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: C.gray400,
+                  minWidth: 900,
                 }}
               >
                 <div style={{ textAlign: "center" }}>TT</div>
@@ -669,6 +661,7 @@ export default function StaffTable() {
                       alignItems: "center",
                       columnGap: 16,
                       minHeight: 68,
+                      minWidth: 900,
                       padding: "12px 18px",
                       border: `1px solid ${C.border}`,
                       borderRadius: 20,
@@ -716,7 +709,7 @@ export default function StaffTable() {
                     </div>
 
                     {/* Họ và tên */}
-                    <div style={{ display: "flex", alignItems: "center", fontSize: 14, fontWeight: 700, color: C.gray900, lineHeight: 1.3 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.gray900, lineHeight: 1.3 }}>
                       {staff.fullName || (
                         <span style={{ color: C.gray400, fontStyle: "italic", fontWeight: 400 }}>Chưa cập nhật</span>
                       )}
@@ -793,7 +786,7 @@ export default function StaffTable() {
                     </div>
 
                     {/* Trạng thái */}
-                    <div style={{ display: "flex", alignItems: "center" }}>
+                    <div>
                       <span
                         style={{
                           display: "inline-flex",
@@ -822,7 +815,7 @@ export default function StaffTable() {
                     </div>
 
                     {/* Đăng nhập gần nhất */}
-                    <div style={{ display: "flex", alignItems: "center", fontSize: 12, color: C.gray400 }}>
+                    <div style={{ fontSize: 12, color: C.gray400 }}>
                       {staff.lastLoginAt ? (
                         new Date(staff.lastLoginAt).toLocaleString("vi-VN")
                       ) : (
@@ -920,11 +913,13 @@ export default function StaffTable() {
         {!loading && filteredStaff.length > 0 && (
           <div
             style={{
-              padding: "18px 22px",
+              padding: "14px 20px",
               borderTop: `1px solid ${C.border}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 8,
             }}
           >
             <div style={{ fontSize: 12, color: C.gray400 }}>
@@ -994,14 +989,13 @@ export default function StaffTable() {
               </button>
             </div>
 
-            {/* Modal body */}
+            {/* Modal body — auto-fit grid, xuống 1 cột trên màn nhỏ */}
             <div style={{ padding: "24px 28px", overflowY: "auto", flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 28 }}>
 
                 {/* ── Left column ── */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
-                  {/* Tên đăng nhập */}
                   <div>
                     <Label>Tên đăng nhập <span style={{ color: C.red }}>*</span></Label>
                     <input
@@ -1021,7 +1015,6 @@ export default function StaffTable() {
                     />
                   </div>
 
-                  {/* Mật khẩu */}
                   <div>
                     <Label>
                       Mật khẩu {!editingId && <span style={{ color: C.red }}>*</span>}
@@ -1042,7 +1035,6 @@ export default function StaffTable() {
                     />
                   </div>
 
-                  {/* Họ và tên */}
                   <div>
                     <Label>Họ và tên <span style={{ color: C.red }}>*</span></Label>
                     <input
@@ -1056,7 +1048,6 @@ export default function StaffTable() {
                     />
                   </div>
 
-                  {/* Gán phòng */}
                   <div>
                     <Label>Gán phòng</Label>
                     <select
@@ -1075,16 +1066,19 @@ export default function StaffTable() {
                     </select>
                   </div>
 
-                  {/* Trạng thái */}
                   <div>
                     <Label>Trạng thái</Label>
                     <label
                       style={{
-                        display: "flex", alignItems: "center", gap: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
                         padding: "14px 16px",
                         background: formData.isActive ? C.greenSoft : C.redSoft,
                         border: `1px solid ${formData.isActive ? "#bbf7d0" : "#fecaca"}`,
-                        borderRadius: 14, cursor: "pointer", transition: "all .15s ease",
+                        borderRadius: 14,
+                        cursor: "pointer",
+                        transition: "all .15s ease",
                       }}
                     >
                       <input
@@ -1253,7 +1247,7 @@ export default function StaffTable() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/* MODAL PHÂN QUYỀN QUẦY (standalone)                     */}
+      {/* MODAL PHÂN QUYỀN QUẦY                                  */}
       {/* ─────────────────────────────────────────────────────── */}
 
       {showServiceModal && serviceModalStaff && (

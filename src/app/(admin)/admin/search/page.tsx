@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   searchTickets,
   getServices,
@@ -21,7 +22,8 @@ import {
   FiChevronLeft,
   FiChevronRight,
 } from "react-icons/fi";
-import { useEffect } from "react";
+import { hasPermission } from "@/lib/admin-permissions";
+import type { AdminProfile } from "@/services/auth.service";
 import styles from "./search.module.css";
 
 const STATUS_OPTIONS = [
@@ -72,6 +74,7 @@ const EMPTY_FILTERS: TicketSearchFilters = {
 };
 
 export default function TicketSearchPage() {
+  const router = useRouter();
   const [filters, setFilters] = useState<TicketSearchFilters>({ ...EMPTY_FILTERS });
   const [tickets, setTickets] = useState<TicketSearchResult[]>([]);
   const [pagination, setPagination] = useState<TicketSearchPagination | null>(null);
@@ -80,11 +83,24 @@ export default function TicketSearchPage() {
 
   const [services, setServices] = useState<Service[]>([]);
   const [counters, setCounters] = useState<Counter[]>([]);
+  // null = chưa kiểm tra, true = có quyền, false = bị chặn
+  const accessAllowed = useMemo<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      const cached = localStorage.getItem("adminUser");
+      if (!cached) return true;
+      const user = JSON.parse(cached) as AdminProfile;
+      return hasPermission(user, "search");
+    } catch {
+      return true;
+    }
+  }, []);
 
   useEffect(() => {
+    if (!accessAllowed) return;
     getServices().then(setServices).catch(() => {});
     getCounters().then(setCounters).catch(() => {});
-  }, []);
+  }, [accessAllowed]);
 
   const set = (key: keyof TicketSearchFilters, value: string | number) =>
     setFilters((prev) => ({ ...prev, [key]: value, page: key !== "page" ? 1 : (value as number) }));
@@ -93,7 +109,6 @@ export default function TicketSearchPage() {
     async (overrideFilters?: TicketSearchFilters) => {
       const f = overrideFilters ?? filters;
 
-      // At least one criterion
       const hasCriteria = [
         f.phone, f.name, f.ticketNumber, f.date,
         f.dateFrom, f.dateTo, f.status, f.serviceId, f.counterId,
@@ -135,6 +150,31 @@ export default function TicketSearchPage() {
   };
 
   const isLoading = loadState === "loading";
+
+  // Không có quyền
+  if (!accessAllowed) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.resultsCard} style={{ textAlign: "center", padding: "60px 24px" }}>
+          <FiAlertCircle size={48} style={{ color: "#ef4444", margin: "0 auto 16px" }} />
+          <div style={{ fontSize: "18px", fontWeight: 600, color: "#111827", marginBottom: 8 }}>
+            Không có quyền truy cập
+          </div>
+          <div style={{ color: "#6b7280", fontSize: "14px", marginBottom: 24 }}>
+            Tài khoản của bạn không có quyền sử dụng tính năng Tra cứu vé.
+            <br />Vui lòng liên hệ quản trị viên để được cấp quyền.
+          </div>
+          <button
+            className={styles.resetBtn}
+            onClick={() => router.push("/admin")}
+            style={{ margin: "0 auto" }}
+          >
+            Quay về Thống kê
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>

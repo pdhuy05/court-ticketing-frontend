@@ -19,7 +19,6 @@ interface DisplayTicket extends Ticket {
   formattedNumber?: string;
 }
 
-const MAX_FULL_NAME_LENGTH = 35;
 const FULL_NAME_ALLOWED_PATTERN = /^[\p{L}\s]+$/u;
 const FULL_NAME_REPEATED_CHAR_PATTERN = /([\p{L}])\1{2,}/u;
 
@@ -144,10 +143,6 @@ function ServiceTicketContent() {
       return false;
     }
 
-    if (normalizedName.length > MAX_FULL_NAME_LENGTH) {
-      showToast("Họ và tên không được vượt quá 35 ký tự", "error");
-      return false;
-    }
     if (FULL_NAME_REPEATED_CHAR_PATTERN.test(normalizedName)) {
       showToast("Họ và tên không được có ký tự lặp liên tiếp từ 3 lần trở lên", "error");
       return false;

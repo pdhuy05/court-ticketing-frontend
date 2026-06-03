@@ -1,10 +1,42 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Clock from "../components/Clock";
 import NewTicketGlobalSocket from "@/components/NewTicketGlobalSocket";
 import NotificationPermissionButton from "@/components/NotificationPermissionButton";
+import { getPublicApiBase } from "@/lib/runtime-config";
+
+interface SiteConfig {
+  branchName: string;
+  logoUrl: string;
+  primaryColor: string;
+  tickerText: string;
+  workingHours: string;
+  address: string;
+  announcement: string;
+}
+
+const DEFAULT_CONFIG: SiteConfig = {
+  branchName: "TÒA ÁN NHÂN DÂN KHU VỰC 1",
+  logoUrl: "/assets/logotoaan.png",
+  primaryColor: "#1a3c6e",
+  tickerText: "",
+  workingHours: "",
+  address: "Thành Phố Hồ Chí Minh",
+  announcement: "",
+};
+
+async function fetchSiteConfig(): Promise<SiteConfig> {
+  try {
+    const res = await fetch(`${getPublicApiBase()}/settings/site-config`, { cache: "no-store" });
+    if (!res.ok) return DEFAULT_CONFIG;
+    const data = await res.json();
+    return data?.success && data?.data ? (data.data as SiteConfig) : DEFAULT_CONFIG;
+  } catch {
+    return DEFAULT_CONFIG;
+  }
+}
 
 export default function AppLayout({
   children,
@@ -13,6 +45,11 @@ export default function AppLayout({
 }>) {
   const pathname = usePathname();
   const isStaffLogin = pathname === "/staff/login";
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
+
+  useEffect(() => {
+    void fetchSiteConfig().then(setSiteConfig);
+  }, []);
 
   return (
     <>
@@ -23,13 +60,13 @@ export default function AppLayout({
             {/* Logo + title */}
             <div className="app-header__brand">
               <img
-                src="/assets/logotoaan.png"
+                src={siteConfig.logoUrl || "/assets/logotoaan.png"}
                 alt="Logo"
                 className="app-header__logo"
               />
               <div className="app-header__titles">
-                <h1 className="app-header__h1">TÒA ÁN NHÂN DÂN KHU VỰC 1</h1>
-                <h4 className="app-header__h4">Thành Phố Hồ Chí Minh</h4>
+                <h1 className="app-header__h1">{siteConfig.branchName?.toUpperCase() || "TÒA ÁN NHÂN DÂN"}</h1>
+                <h4 className="app-header__h4">{siteConfig.address || "Thành Phố Hồ Chí Minh"}</h4>
               </div>
             </div>
 

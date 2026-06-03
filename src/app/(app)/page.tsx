@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import * as RiIcons from "react-icons/ri";
 import type { IconType } from "react-icons";
+import { getPublicApiBase } from "@/lib/runtime-config";
 
 interface Service {
   _id: string;
@@ -28,6 +29,24 @@ export default function HomePage() {
   const [servicesList, setServicesList] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tickerText, setTickerText] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const res = await fetch(`${getPublicApiBase()}/settings/site-config`, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.success && data?.data) {
+            setTickerText(data.data.tickerText || "");
+            setAnnouncement(data.data.announcement || "");
+          }
+        }
+      } catch { /* giữ nguyên default */ }
+    };
+    void loadConfig();
+  }, []);
 
   useEffect(() => {
     const loadServices = async () => {
@@ -308,16 +327,30 @@ export default function HomePage() {
               );
             })}
           </div>
+          {announcement && (
+            <p
+              style={{
+                textAlign: "center",
+                paddingTop: 16,
+                fontSize: "clamp(15px, 1.2vw, 20px)",
+                fontWeight: 600,
+                color: "#dc2626",
+                flexShrink: 0,
+              }}
+            >
+               {announcement}
+            </p>
+          )}
           <p
             style={{
               textAlign: "center",
-              paddingTop: 40,
+              paddingTop: announcement ? 8 : 40,
               fontSize: "clamp(15px, 1.2vw, 20px)",
               fontWeight: 500,
               flexShrink: 0,
             }}
           >
-            Thời gian làm việc từ thứ 2 đến thứ 6 hằng tuần - Sáng từ 8 giờ đến 12 giờ - Chiều từ 13 giờ 30 phút đến 16 giờ 30 phút.
+            {tickerText || "Thời gian làm việc từ thứ 2 đến thứ 6 hằng tuần - Sáng từ 8 giờ đến 12 giờ - Chiều từ 13 giờ 30 phút đến 16 giờ 30 phút."}
           </p>
         </div>
       )}

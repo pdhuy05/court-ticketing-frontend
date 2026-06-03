@@ -10,6 +10,7 @@ import {
   addServicesToCounter,
   deleteCounter,
   removeServiceFromCounter,
+  toggleCounterTts,
   Counter,
   getServices,
   Service,
@@ -22,15 +23,13 @@ import AdminTableFilter from "./AdminTableFilter";
 import { getSequentialTagColorStyle } from "@/lib/adminTagColors";
 
 /* ─────────────────────────────────────────────────────── */
-/* Design tokens                                           */
+/* Design tokens – giống ServiceTable                      */
 /* ─────────────────────────────────────────────────────── */
 
 const C = {
   navy: "#0f2544",
   navyHover: "#17345f",
-
   white: "#ffffff",
-
   gray50: "#f8fafc",
   gray100: "#f1f5f9",
   gray200: "#e2e8f0",
@@ -39,31 +38,28 @@ const C = {
   gray500: "#64748b",
   gray700: "#334155",
   gray900: "#0f172a",
-
   border: "#edf2f7",
-
   blue: "#2563eb",
   blueSoft: "#f5f8ff",
   blueText: "#1d4ed8",
-
   green: "#16a34a",
   greenSoft: "#f0fdf4",
   greenText: "#166534",
-
   red: "#dc2626",
   redSoft: "#fff5f5",
   redText: "#991b1b",
+  teal: "#0891b2",
 } as const;
 
 /* ─────────────────────────────────────────────────────── */
-/* Grid layout                                             */
+/* Grid layout – responsive, tổng min width ~990px        */
 /* ─────────────────────────────────────────────────────── */
 
 const GRID_TEMPLATE =
-  "44px minmax(80px,.6fr) minmax(160px,1.2fr) minmax(220px,2fr) minmax(120px,.8fr) minmax(160px,1fr) 90px";
+  "44px minmax(70px,0.5fr) minmax(140px,1.2fr) minmax(180px,1.5fr) minmax(100px,0.7fr) minmax(80px,0.5fr) minmax(130px,1fr) 90px";
 
 /* ─────────────────────────────────────────────────────── */
-/* Shared form-field helpers                               */
+/* Shared form-field style                                 */
 /* ─────────────────────────────────────────────────────── */
 
 const field: React.CSSProperties = {
@@ -80,16 +76,12 @@ const field: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const focusField = (
-  e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-) => {
+const focusField = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
   e.target.style.borderColor = "#bfdbfe";
   e.target.style.boxShadow = "0 0 0 4px rgba(37,99,235,.08)";
 };
 
-const blurField = (
-  e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-) => {
+const blurField = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
   e.target.style.borderColor = C.gray200;
   e.target.style.boxShadow = "none";
 };
@@ -136,6 +128,7 @@ export default function CounterTable() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<boolean | null>(null);
+  const [ttsTogglingId, setTtsTogglingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     code: "",
@@ -146,7 +139,6 @@ export default function CounterTable() {
   });
 
   /* ── Fetch ── */
-
   const fetchCounters = useCallback(async () => {
     setLoading(true);
     const data = await getCounters();
@@ -162,15 +154,13 @@ export default function CounterTable() {
   useEffect(() => {
     void fetchCounters();
     void fetchServices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchCounters, fetchServices]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterServiceIds, filterStatuses]);
 
-  /* ── Modal ── */
-
+  /* ── Modal logic ── */
   const handleOpenModal = (counter?: Counter) => {
     if (counter) {
       setEditingId(counter._id);
@@ -202,7 +192,6 @@ export default function CounterTable() {
   };
 
   /* ── Handlers ── */
-
   const handleServiceToggle = (serviceId: string) => {
     setSelectedServices((prev) =>
       prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId]
@@ -235,6 +224,24 @@ export default function CounterTable() {
     setPendingDeleteId(null);
   };
 
+  const handleToggleTts = async (counter: Counter) => {
+    if (ttsTogglingId) return;
+    setTtsTogglingId(counter._id);
+    try {
+      const updated = await toggleCounterTts(counter._id);
+      if (updated) {
+        setCounters((prev) =>
+          prev.map((c) => (c._id === counter._id ? { ...c, ttsEnabled: updated.ttsEnabled } : c))
+        );
+        success(updated.ttsEnabled ? `Đã bật loa cho ${counter.name}` : `Đã tắt loa cho ${counter.name}`);
+      }
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Lỗi thay đổi cài đặt loa");
+    } finally {
+      setTtsTogglingId(null);
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.code || !formData.name) {
       error("Vui lòng nhập mã và tên phòng");
@@ -249,14 +256,9 @@ export default function CounterTable() {
           note: formData.note,
           isActive: formData.isActive,
         });
-        const removedServiceIds = initialServices.filter(
-          (id) => !selectedServices.includes(id)
-        );
-        await Promise.all(
-          removedServiceIds.map((id) => removeServiceFromCounter(editingId, id))
-        );
-        if (selectedServices.length > 0)
-          await addServicesToCounter(editingId, selectedServices);
+        const removedServiceIds = initialServices.filter((id) => !selectedServices.includes(id));
+        await Promise.all(removedServiceIds.map((id) => removeServiceFromCounter(editingId, id)));
+        if (selectedServices.length > 0) await addServicesToCounter(editingId, selectedServices);
         success("Cập nhật phòng thành công");
       } else {
         const result = await createCounter({
@@ -267,8 +269,7 @@ export default function CounterTable() {
           isActive: formData.isActive,
           serviceIds: selectedServices.length > 0 ? selectedServices : "",
         });
-        if (selectedServices.length > 0)
-          await addServicesToCounter(result._id, selectedServices);
+        if (selectedServices.length > 0) await addServicesToCounter(result._id, selectedServices);
         success("Tạo phòng thành công");
       }
       void fetchCounters();
@@ -279,12 +280,10 @@ export default function CounterTable() {
   };
 
   /* ── Filtering ── */
-
   const filteredCounters = counters.filter((counter) => {
     const q = searchTerm.toLowerCase();
     return (
-      (counter.code.toLowerCase().includes(q) ||
-        counter.name.toLowerCase().includes(q)) &&
+      (counter.code.toLowerCase().includes(q) || counter.name.toLowerCase().includes(q)) &&
       (filterServiceIds.includes("all") ||
         counter.services.some((s) => filterServiceIds.includes(s._id))) &&
       (filterStatuses.includes("all") ||
@@ -313,27 +312,28 @@ export default function CounterTable() {
     <div>
       <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
 
-      {/* ── CARD ── */}
+      {/* CARD */}
       <div
         style={{
           background: C.white,
           border: `1px solid ${C.border}`,
           borderRadius: 26,
           overflow: "hidden",
+          minWidth: 0,
         }}
       >
-        {/* ── HEADER ── */}
+        {/* HEADER */}
         <div
           style={{
-            padding: "20px 22px",
+            padding: "16px 20px",
             borderBottom: `1px solid ${C.border}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 16,
+            gap: 12,
+            flexWrap: "wrap",
           }}
         >
-          {/* Left */}
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div
               style={{
@@ -350,17 +350,12 @@ export default function CounterTable() {
               <TbBuildingBank size={20} color="#fff" />
             </div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: C.gray900 }}>
-                Quản lý phòng
-              </div>
-              <div style={{ marginTop: 3, fontSize: 12, color: C.gray400 }}>
-                {counters.length} phòng dịch vụ
-              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.gray900 }}>Quản lý phòng</div>
+              <div style={{ marginTop: 3, fontSize: 12, color: C.gray400 }}>{counters.length} phòng dịch vụ</div>
             </div>
           </div>
 
-          {/* Right */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <AdminTableFilter
               activeCount={
                 (filterServiceIds.includes("all") ? 0 : filterServiceIds.length) +
@@ -379,15 +374,8 @@ export default function CounterTable() {
                   options: [
                     { label: "Tất cả quầy", value: "all" },
                     ...[...services]
-                      .sort(
-                        (a, b) =>
-                          a.displayOrder - b.displayOrder ||
-                          a.name.localeCompare(b.name)
-                      )
-                      .map((s) => ({
-                        label: `${s.name} (${s.code})`,
-                        value: s._id,
-                      })),
+                      .sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))
+                      .map((s) => ({ label: `${s.name} (${s.code})`, value: s._id })),
                   ],
                 },
                 {
@@ -404,11 +392,11 @@ export default function CounterTable() {
               ]}
             />
 
-            {/* Search */}
+            {/* Search box */}
             <div
               style={{
                 height: 38,
-                width: 240,
+                width: "clamp(160px, 20vw, 240px)",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
@@ -450,7 +438,6 @@ export default function CounterTable() {
               )}
             </div>
 
-            {/* Add button */}
             <button
               onClick={() => handleOpenModal()}
               style={{
@@ -469,8 +456,8 @@ export default function CounterTable() {
                 transition: "all .15s ease",
                 whiteSpace: "nowrap",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = C.navyHover; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = C.navy; }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = C.navyHover)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = C.navy)}
             >
               <TbPlus size={16} />
               Thêm mới
@@ -478,17 +465,10 @@ export default function CounterTable() {
           </div>
         </div>
 
-        {/* ── BODY ── */}
-        <div style={{ padding: 22 }}>
+        {/* BODY TABLE */}
+        <div style={{ padding: 22, overflowX: "auto" }}>
           {loading ? (
-            <div
-              style={{
-                padding: "60px 0",
-                textAlign: "center",
-                fontSize: 14,
-                color: C.gray400,
-              }}
-            >
+            <div style={{ padding: "60px 0", textAlign: "center", fontSize: 14, color: C.gray400 }}>
               Đang tải dữ liệu...
             </div>
           ) : filteredCounters.length === 0 ? (
@@ -501,7 +481,7 @@ export default function CounterTable() {
             </div>
           ) : (
             <>
-              {/* Column headers */}
+              {/* Header cột */}
               <div
                 style={{
                   display: "grid",
@@ -514,6 +494,7 @@ export default function CounterTable() {
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: C.gray400,
+                  minWidth: 820, // đảm bảo không bị bóp quá mức
                 }}
               >
                 <div>TT</div>
@@ -521,11 +502,12 @@ export default function CounterTable() {
                 <div>Tên phòng</div>
                 <div>Quầy phục vụ</div>
                 <div>Trạng thái</div>
+                <div>Loa</div>
                 <div>Mô tả</div>
                 <div>Hành động</div>
               </div>
 
-              {/* Rows */}
+              {/* Danh sách hàng */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {currentItems.map((counter, rowIndex) => (
                   <div
@@ -554,38 +536,17 @@ export default function CounterTable() {
                     }}
                   >
                     {/* TT */}
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: C.gray400,
-                        textAlign: "center",
-                      }}
-                    >
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.gray400, textAlign: "center" }}>
                       {(currentPage - 1) * itemsPerPage + rowIndex + 1}
                     </div>
 
                     {/* Mã phòng */}
-                    <div
-                      style={{
-                        fontFamily: "monospace",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: C.gray700,
-                      }}
-                    >
+                    <div style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: C.gray700 }}>
                       {counter.code}
                     </div>
 
                     {/* Tên phòng */}
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: C.gray900,
-                        lineHeight: 1.3,
-                      }}
-                    >
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.gray900, lineHeight: 1.3 }}>
                       {counter.name}
                     </div>
 
@@ -619,15 +580,7 @@ export default function CounterTable() {
                           );
                         })
                       ) : (
-                        <span
-                          style={{
-                            fontSize: 12,
-                            color: C.gray400,
-                            fontStyle: "italic",
-                          }}
-                        >
-                          —
-                        </span>
+                        <span style={{ fontSize: 12, color: C.gray400, fontStyle: "italic" }}>—</span>
                       )}
                     </div>
 
@@ -660,6 +613,34 @@ export default function CounterTable() {
                       </span>
                     </div>
 
+                    {/* Loa TTS */}
+                    <div>
+                      <button
+                        onClick={() => void handleToggleTts(counter)}
+                        disabled={ttsTogglingId === counter._id}
+                        title={counter.ttsEnabled ? "Tắt loa TTS cho phòng này" : "Bật loa TTS cho phòng này"}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          height: 30,
+                          padding: "0 12px",
+                          borderRadius: 999,
+                          border: counter.ttsEnabled ? "1px solid #86efac" : `1px solid ${C.gray200}`,
+                          background: counter.ttsEnabled ? "#dcfce7" : C.gray100,
+                          color: counter.ttsEnabled ? "#15803d" : C.gray400,
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          cursor: ttsTogglingId === counter._id ? "wait" : "pointer",
+                          transition: "all .15s ease",
+                          whiteSpace: "nowrap",
+                          opacity: ttsTogglingId === counter._id ? 0.6 : 1,
+                        }}
+                      >
+                        {ttsTogglingId === counter._id ? "" : counter.ttsEnabled ? "Bật" : "Tắt"}
+                      </button>
+                    </div>
+
                     {/* Mô tả */}
                     <div
                       style={{
@@ -677,14 +658,7 @@ export default function CounterTable() {
                     </div>
 
                     {/* Hành động */}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "flex-end",
-                        gap: 8,
-                      }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
                       <button
                         onClick={() => handleOpenModal(counter)}
                         style={{
@@ -750,31 +724,29 @@ export default function CounterTable() {
           )}
         </div>
 
-        {/* ── FOOTER ── */}
+        {/* FOOTER phân trang */}
         {!loading && filteredCounters.length > 0 && (
           <div
             style={{
-              padding: "18px 22px",
+              padding: "14px 20px",
               borderTop: `1px solid ${C.border}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 8,
             }}
           >
             <div style={{ fontSize: 12, color: C.gray400 }}>
               {currentItems.length} / {filteredCounters.length} phòng
             </div>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>
         )}
       </div>
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/* MODAL                                                   */}
+      {/* MODAL – responsive 2 cột tự động chuyển 1 cột          */}
       {/* ─────────────────────────────────────────────────────── */}
 
       {showModal && (
@@ -820,9 +792,7 @@ export default function CounterTable() {
                   {editingId ? "Chỉnh sửa phòng" : "Thêm phòng mới"}
                 </div>
                 <div style={{ marginTop: 3, fontSize: 12, color: C.gray400 }}>
-                  {editingId
-                    ? "Cập nhật thông tin phòng dịch vụ"
-                    : "Tạo phòng mới để quản lý các quầy dịch vụ"}
+                  {editingId ? "Cập nhật thông tin phòng dịch vụ" : "Tạo phòng mới để quản lý các quầy dịch vụ"}
                 </div>
               </div>
               <button
@@ -856,14 +826,17 @@ export default function CounterTable() {
               </button>
             </div>
 
-            {/* Modal body */}
+            {/* Modal body – grid tự động xuống 1 cột khi màn hình nhỏ */}
             <div style={{ padding: "24px 28px", overflowY: "auto", flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28 }}>
-
-                {/* ── Left column ── */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                  gap: 28,
+                }}
+              >
+                {/* Cột trái */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-
-                  {/* Mã phòng */}
                   <div>
                     <Label>Mã phòng <span style={{ color: C.red }}>*</span></Label>
                     <input
@@ -883,7 +856,6 @@ export default function CounterTable() {
                     />
                   </div>
 
-                  {/* Tên phòng */}
                   <div>
                     <Label>Tên phòng <span style={{ color: C.red }}>*</span></Label>
                     <input
@@ -897,7 +869,6 @@ export default function CounterTable() {
                     />
                   </div>
 
-                  {/* Số thứ tự */}
                   <div>
                     <Label>Số thứ tự</Label>
                     <div
@@ -913,9 +884,7 @@ export default function CounterTable() {
                     >
                       <button
                         type="button"
-                        onClick={() =>
-                          setFormData({ ...formData, number: (formData.number || 1) - 1 })
-                        }
+                        onClick={() => setFormData({ ...formData, number: (formData.number || 1) - 1 })}
                         style={{
                           width: 38,
                           height: 42,
@@ -933,9 +902,7 @@ export default function CounterTable() {
                       <input
                         type="number"
                         value={formData.number}
-                        onChange={(e) =>
-                          setFormData({ ...formData, number: parseInt(e.target.value) || 0 })
-                        }
+                        onChange={(e) => setFormData({ ...formData, number: parseInt(e.target.value) || 0 })}
                         style={{
                           flex: 1,
                           border: "none",
@@ -949,9 +916,7 @@ export default function CounterTable() {
                       />
                       <button
                         type="button"
-                        onClick={() =>
-                          setFormData({ ...formData, number: (formData.number || 0) + 1 })
-                        }
+                        onClick={() => setFormData({ ...formData, number: (formData.number || 0) + 1 })}
                         style={{
                           width: 38,
                           height: 42,
@@ -972,7 +937,6 @@ export default function CounterTable() {
                     </div>
                   </div>
 
-                  {/* Trạng thái */}
                   <div>
                     <Label>Trạng thái</Label>
                     <label
@@ -1016,15 +980,12 @@ export default function CounterTable() {
                             marginTop: 2,
                           }}
                         >
-                          {formData.isActive
-                            ? "Phòng đang hoạt động bình thường"
-                            : "Phòng tạm thời không sử dụng"}
+                          {formData.isActive ? "Phòng đang hoạt động bình thường" : "Phòng tạm thời không sử dụng"}
                         </div>
                       </div>
                     </label>
                   </div>
 
-                  {/* Mô tả */}
                   <div>
                     <Label>Mô tả</Label>
                     <textarea
@@ -1051,7 +1012,7 @@ export default function CounterTable() {
                   </div>
                 </div>
 
-                {/* ── Right column — Quầy phục vụ ── */}
+                {/* Cột phải – danh sách quầy */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <Label>
                     Quầy phục vụ{" "}
@@ -1059,7 +1020,6 @@ export default function CounterTable() {
                       ({services.length} quầy)
                     </span>
                   </Label>
-
                   <div
                     style={{
                       border: `1px solid ${C.gray200}`,
@@ -1072,14 +1032,7 @@ export default function CounterTable() {
                     }}
                   >
                     {services.length === 0 ? (
-                      <div
-                        style={{
-                          textAlign: "center",
-                          padding: "40px 20px",
-                          fontSize: 13,
-                          color: C.gray400,
-                        }}
-                      >
+                      <div style={{ textAlign: "center", padding: "40px 20px", fontSize: 13, color: C.gray400 }}>
                         Chưa có quầy nào
                       </div>
                     ) : (
@@ -1129,13 +1082,7 @@ export default function CounterTable() {
                                 }}
                               />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 7,
-                                  }}
-                                >
+                                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                                   <span
                                     style={{
                                       fontWeight: 700,
@@ -1166,9 +1113,7 @@ export default function CounterTable() {
                                     </span>
                                   )}
                                 </div>
-                                <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
-                                  {service.code}
-                                </div>
+                                <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>{service.code}</div>
                               </div>
                             </label>
                           );
@@ -1176,7 +1121,6 @@ export default function CounterTable() {
                       </div>
                     )}
                   </div>
-
                   {selectedServices.length > 0 && (
                     <div
                       style={{
@@ -1264,13 +1208,16 @@ export default function CounterTable() {
         </div>
       )}
 
-      {/* ── Confirm dialogs ── */}
+      {/* Confirm dialogs */}
       <AdminConfirmDialog
         isOpen={showStatusConfirm}
         title="Xác nhận thay đổi trạng thái"
         message={`Bạn có chắc chắn muốn chuyển trạng thái phòng thành ${pendingStatusChange ? "Hoạt động" : "Vô hiệu"}?`}
         onConfirm={handleConfirmStatus}
-        onCancel={() => { setShowStatusConfirm(false); setPendingStatusChange(null); }}
+        onCancel={() => {
+          setShowStatusConfirm(false);
+          setPendingStatusChange(null);
+        }}
       />
 
       <AdminConfirmDialog

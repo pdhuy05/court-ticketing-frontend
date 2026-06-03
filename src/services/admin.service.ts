@@ -1,4 +1,4 @@
-import { getPublicApiBase } from "@/lib/runtime-config";
+import { getPublicApiBase, getSocketBaseUrl } from "@/lib/runtime-config";
 
 const API_BASE = getPublicApiBase();
 
@@ -221,6 +221,7 @@ export interface Counter {
   name: string;
   number: number;
   isActive: boolean;
+  ttsEnabled: boolean;
   processedCount: number;
   currentTicketId: string | null;
   note: string;
@@ -575,7 +576,6 @@ export async function updateStaff(
 
   if (data.success) return data.data;
 
-  // 👇 đoạn này bạn viết OK rồi
   if (Array.isArray(data.errors) && data.errors.length > 0) {
     const errorMessages = data.errors
       .map((err: { field?: string; message?: string }) =>
@@ -765,6 +765,21 @@ export async function toggleCounterActive(id: string): Promise<Counter | null> {
   }
 }
 
+export async function toggleCounterTts(id: string): Promise<Counter | null> {
+  try {
+    const response = await fetch(`${API_BASE}/counters/${id}/toggle-tts`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+    });
+    const data = await response.json();
+    if (data.success) return data.data;
+    return null;
+  } catch (error) {
+    console.error("Error toggling counter TTS:", error);
+    return null;
+  }
+}
+
 export async function addServicesToCounter(
   counterId: string,
   serviceIds: string[],
@@ -943,4 +958,169 @@ export async function searchTickets(
     return { tickets: data.data, pagination: data.pagination };
   }
   throw new Error(getApiErrorMessage(data, "Lỗi tra cứu vé"));
+}
+// ─── Site Config ─────────────────────────────────────────────────────────────
+
+export interface SiteConfig {
+  branchName: string;
+  logoUrl: string;
+  primaryColor: string;
+  tickerText: string;
+  workingHours: string;
+  address: string;
+  announcement: string;
+}
+
+export async function getSiteConfig(): Promise<SiteConfig> {
+  const response = await fetch(`${API_BASE}/admin/settings/site-config`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: SiteConfig; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Không lấy được cấu hình giao diện"));
+}
+
+export async function updateSiteConfig(fields: Partial<SiteConfig>): Promise<SiteConfig> {
+  const response = await fetch(`${API_BASE}/admin/settings/site-config`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(fields),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: SiteConfig; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Cập nhật cấu hình giao diện thất bại"));
+}
+// ─── Upload Logo ─────────────────────────────────────────────────────────────
+export async function uploadLogo(file: File): Promise<{ logoUrl: string }> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append("logo", file);
+
+  const response = await fetch(`${API_BASE}/admin/settings/upload-logo`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  const data = await parseJsonResponse<{ success: boolean; data: { logoUrl: string }; message?: string }>(response);
+  if (data.success) {
+    const raw = data.data.logoUrl;
+    const beBase = getSocketBaseUrl(); 
+    const logoUrl = raw.startsWith("http") ? raw : `${beBase}${raw}`;
+    return { logoUrl };
+  }
+  throw new Error(getApiErrorMessage(data, "Upload logo thất bại"));
+}
+// ─── Phân quyền Admin ────────────────────────────────────────────────────────
+
+export type AdminPermissionsData = {
+  _id: string;
+  fullName: string;
+  username: string;
+  isSuperAdmin: boolean;
+  adminPermissions: string[] | null;
+  allPermissions: string[];
+};
+
+export async function getAdminPermissions(adminId: string): Promise<AdminPermissionsData> {
+  const response = await fetch(`${API_BASE}/admin/users/admins/${adminId}/permissions`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: AdminPermissionsData; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Không lấy được phân quyền"));
+}
+
+export async function updateAdminPermissions(
+  adminId: string,
+  payload: { permissions?: string[] | null; isSuperAdmin?: boolean },
+): Promise<AdminPermissionsData> {
+  const response = await fetch(`${API_BASE}/admin/users/admins/${adminId}/permissions`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: AdminPermissionsData; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Cập nhật phân quyền thất bại"));
+}
+// ─── Admin Accounts CRUD ─────────────────────────────────────────────────────
+
+export type AdminAccount = {
+  _id: string;
+  username: string;
+  fullName: string;
+  role: "admin";
+  isActive: boolean;
+  isSuperAdmin: boolean;
+  adminPermissions: string[] | null;
+  createdAt?: string;
+  lastLoginAt?: string | null;
+};
+
+export type CreateAdminPayload = {
+  username: string;
+  password: string;
+  fullName: string;
+  isSuperAdmin?: boolean;
+  adminPermissions?: string[] | null;
+};
+
+export type UpdateAdminPayload = {
+  password?: string;
+  fullName?: string;
+  isActive?: boolean;
+};
+
+export async function getAllAdmins(): Promise<AdminAccount[]> {
+  const response = await fetch(`${API_BASE}/admin/users/admins`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: AdminAccount[]; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Không lấy được danh sách admin"));
+}
+
+export async function createAdmin(payload: CreateAdminPayload): Promise<AdminAccount> {
+  const response = await fetch(`${API_BASE}/admin/users/admins`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: AdminAccount; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Tạo admin thất bại"));
+}
+
+export async function updateAdmin(id: string, payload: UpdateAdminPayload): Promise<AdminAccount> {
+  const response = await fetch(`${API_BASE}/admin/users/admins/${id}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: AdminAccount; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Cập nhật admin thất bại"));
+}
+
+export async function deleteAdmin(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/admin/users/admins/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  const data = await parseJsonResponse<{ success: boolean; message?: string }>(response);
+  if (!data.success) throw new Error(getApiErrorMessage(data, "Xóa admin thất bại"));
+}
+
+export async function toggleAdminActive(id: string): Promise<AdminAccount> {
+  const response = await fetch(`${API_BASE}/admin/users/admins/${id}/toggle-active`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: AdminAccount; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Cập nhật trạng thái thất bại"));
 }

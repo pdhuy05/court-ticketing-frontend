@@ -166,7 +166,57 @@ export type AdminProfile = {
   assignedServices?: ProfileService[];
   effectiveServices?: ProfileService[];
   serviceRestrictionConfigured?: boolean;
+  isSuperAdmin?: boolean;
+  adminPermissions?: string[] | null;
 };
+
+export type UpdateProfilePayload = {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  currentPassword?: string;
+  newPassword?: string;
+};
+
+export type UpdateProfileResponse = {
+  success: boolean;
+  data: AdminProfile;
+  message?: string;
+};
+
+export async function updateMyProfile(payload: UpdateProfilePayload): Promise<AdminProfile> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+
+  if (!token) {
+    throw new Error("NO_TOKEN");
+  }
+
+  const response = await fetch(`${API_BASE}/auth/profile`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const rawText = await response.text();
+  const data = parseJsonSafely<UpdateProfileResponse & ApiErrorPayload>(rawText);
+
+  if (!response.ok) {
+    throw new Error(
+      getErrorMessageFromPayload(data, rawText, "Không thể cập nhật hồ sơ"),
+    );
+  }
+
+  if (!data?.data) {
+    throw new Error("Phản hồi không hợp lệ");
+  }
+
+  return data.data;
+}
 
 export type MeResponse = {
   success: boolean;
