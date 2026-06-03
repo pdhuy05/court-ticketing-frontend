@@ -621,7 +621,7 @@ export default function SettingsPage() {
                           onChange={(e) => handleLogoFile(e.target.files?.[0] ?? null)} />
                         <FiUpload size={18} className="sp-logo-drop-icon" />
                         <span className="sp-logo-drop-text">Chọn hoặc kéo thả</span>
-                        <span className="sp-logo-drop-sub">JPG, PNG, WEBP, SVG · tối đa 5MB</span>
+                        <span className="sp-logo-drop-sub">JPG, PNG, WEBP · tối đa 5MB</span>
                       </div>
                     ) : (
                       <div className="sp-logo-file-row">
