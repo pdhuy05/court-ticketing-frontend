@@ -16,25 +16,37 @@ function getAudioCtx(): AudioContext | null {
       (window as unknown as { webkitAudioContext: typeof AudioContext })
         .webkitAudioContext)();
   }
-  if (_audioCtx.state === "suspended") void _audioCtx.resume();
   return _audioCtx;
 }
 
+// FIX: await resume() trước khi play — tránh bị suspended do AutoPlay Policy
+async function ensureAudioCtxReady(): Promise<AudioContext | null> {
+  const ctx = getAudioCtx();
+  if (!ctx) return null;
+  if (ctx.state === "suspended") {
+    try {
+      await ctx.resume();
+    } catch {
+      return null;
+    }
+  }
+  return ctx;
+}
+
 /**
+ * @param ctx       AudioContext đã sẵn sàng
  * @param freq      Tần số Hz
  * @param duration  Giây
  * @param volume    0–1
  * @param startAt   Delay giây (để ghép nhiều tone)
  */
 function playTone(
+  ctx: AudioContext,
   freq: number,
   duration: number,
   volume = 0.4,
   startAt = 0,
 ): void {
-  const ctx = getAudioCtx();
-  if (!ctx) return;
-
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -52,9 +64,12 @@ function playTone(
   osc.stop(ctx.currentTime + startAt + duration);
 }
 
-function playNewTicketSound() {
-  playTone(880, 2, 0.5, 0.0);   
-  playTone(1100, 2, 0.4, 0.7);   
+// FIX: async — đợi ctx resume xong mới play
+async function playNewTicketSound() {
+  const ctx = await ensureAudioCtxReady();
+  if (!ctx) return;
+  playTone(ctx, 880, 0.2, 0.5, 0.0);
+  playTone(ctx, 1100, 0.2, 0.4, 0.25);
 }
 
 // ─── Browser notification ──────────────────────────────────────────────────────
@@ -78,7 +93,7 @@ function showDesktopNotification(payload: NewTicketSocketPayload) {
       n.close();
     };
   } catch {
-
+    // silent
   }
 }
 
@@ -92,15 +107,6 @@ export function useNewTicketAlerts() {
     if (typeof document === "undefined") return;
     baseTitleRef.current = stripTitleBadge(document.title);
 
-    // Unlock AudioContext khi user tương tác lần đầu
-    const unlock = () => {
-      getAudioCtx();
-      window.removeEventListener("click", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-    window.addEventListener("click", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-
     const onFocus = () => {
       unseenRef.current = 0;
       if (baseTitleRef.current !== null) document.title = baseTitleRef.current;
@@ -109,14 +115,11 @@ export function useNewTicketAlerts() {
 
     return () => {
       window.removeEventListener("focus", onFocus);
-      window.removeEventListener("click", unlock);
-      window.removeEventListener("keydown", unlock);
     };
   }, []);
 
   return useCallback((payload: NewTicketSocketPayload) => {
-
-    playNewTicketSound();
+    void playNewTicketSound();
 
     showDesktopNotification(payload);
 
