@@ -151,16 +151,21 @@ function DarkCodeRain() {
 
     const FONT = 13;
     let cols = Math.floor(W / FONT);
-    let drops = Array(cols).fill(0).map(() => Math.random() * -60);
+    // FIX: dùng Array.from thay Array.fill để tránh lỗi TypeScript
+    let drops = Array.from({ length: cols }, () => Math.random() * -60);
     const CHARS = "アイウエオカキクケコサシスセソタチツテト0123456789{}[]<>/\\|=+-*&#@!";
     const arr = CHARS.split("");
-    const speeds = Array(cols).fill(0).map(() => 0.25 + Math.random() * 0.55);
+    // FIX: let thay const để có thể reassign trong onResize
+    let speeds = Array.from({ length: cols }, () => 0.25 + Math.random() * 0.55);
     let animId = 0;
 
     const onResize = () => {
       W = canvas.width = window.innerWidth;
       H = canvas.height = window.innerHeight;
       cols = Math.floor(W / FONT);
+      // FIX: reset drops và speeds khi resize để đồng bộ với cols mới
+      drops = Array.from({ length: cols }, () => Math.random() * -60);
+      speeds = Array.from({ length: cols }, () => 0.25 + Math.random() * 0.55);
     };
 
     const draw = () => {
@@ -683,7 +688,6 @@ export default function OwnerPage() {
                     position: "relative", overflow: "hidden",
                   }}
                 >
-                  {/* Subtle inner glow */}
                   <div style={{
                     position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)",
                     width: 40, height: 40, borderRadius: "50%",
@@ -707,7 +711,6 @@ export default function OwnerPage() {
           )}
         </AnimatePresence>
 
-        {/* ── SECTION HELPER ── */}
         {ready && (
           <>
             {/* DETAILS */}
