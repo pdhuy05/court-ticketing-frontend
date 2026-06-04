@@ -69,9 +69,6 @@ const getTicketDisplayNumber = (ticket?: Ticket | null) =>
   ticket?.formattedNumber ||
   String(ticket?.number ?? "").padStart(3, "0");
 
-const TICKER_TEXT =
-  "Thứ tự xử lý phụ thuộc vào tình trạng hồ sơ — Quý vị có thể không được gọi theo thứ tự số phiếu\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0";
-
 export default function CounterDisplayPage() {
   const params = useParams();
   const counterParam = params.counterId as string;
@@ -708,30 +705,6 @@ export default function CounterDisplayPage() {
                 </span>
                 <span>đương sự chờ xử lý</span>
               </div>
-            </div>
-
-            {/* Dòng 2: ticker thông báo */}
-            <div
-              style={{
-                overflow: "hidden",
-                whiteSpace: "nowrap",
-                padding: "clamp(5px, 0.6vh, 9px) 0",
-                background: "#ffc233",
-                borderTop: "2px solid #e6a800",
-              }}
-            >
-              <span
-                className="tickerText"
-                style={{
-                  display: "inline-block",
-                  fontSize: "clamp(13px, 1.3vw, 18px)",
-                  fontWeight: 700,
-                  color: "#003366",
-                  letterSpacing: "0.3px",
-                }}
-              >
-                {TICKER_TEXT}{TICKER_TEXT}
-              </span>
             </div>
           </div>
 

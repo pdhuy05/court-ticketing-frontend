@@ -16,6 +16,7 @@ export interface Ticket {
   status: TicketStatus;
   serviceName: string;
   createdAt: string;
+  processingAt?: string | null;
   name: string; // for speakName compatibility
 }
 

@@ -36,8 +36,6 @@ const getTicketDisplayNumber = (ticket?: Ticket | null) =>
   ticket?.formattedNumber ||
   String(ticket?.number ?? "").padStart(3, "0");
 
-// Rút gọn họ tên dài: giữ nguyên tên cuối, viết tắt các từ trước
-// "Nguyễn Như Thùy Dung Hoàng" → "N.N.T.D. Hoàng"
 const abbreviateName = (name: string, maxLen = 18): string => {
   if (!name || name.length <= maxLen) return name;
   const parts = name.trim().split(/\s+/);
@@ -68,16 +66,19 @@ function useWaitMinutes(createdAt?: string | number | Date | null) {
   return mins;
 }
 
+
+
 /* ─── sub-components ──────────────────────────────────────────────────── */
 
 function KeyHint({ k, label }: { k: string; label: string }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--muted)" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--muted)" }}>
       <kbd style={{
         background: "var(--surface)",
-        border: "1px solid var(--border2)",
-        borderRadius: 4, padding: "1px 6px", fontFamily: "monospace",
-        fontSize: 11, color: "var(--text2)", lineHeight: "18px",
+        border: "1.5px solid var(--border2)",
+        borderRadius: 4, padding: "2px 7px", fontFamily: "monospace",
+        fontSize: 12, color: "var(--text2)", lineHeight: "18px",
+        fontWeight: 600,
       }}>{k}</kbd>
       {label}
     </span>
@@ -87,7 +88,7 @@ function KeyHint({ k, label }: { k: string; label: string }) {
 function WaitBadge({ mins }: { mins: number }) {
   const color = mins >= 20 ? "var(--red)" : mins >= 10 ? "var(--orange)" : "var(--muted)";
   return (
-    <span style={{ fontSize: 11, color, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+    <span style={{ fontSize: 13, color, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", fontWeight: 600 }}>
       {mins}p
     </span>
   );
@@ -97,24 +98,26 @@ function StatCard({ value, label, accent }: { value: string | number; label: str
   return (
     <div style={{
       background: "var(--surface)",
-      border: "1px solid var(--border)",
+      border: "2px solid var(--border)",
       borderRadius: 10,
-      padding: "14px 18px",
-      minWidth: 90,
-      flex: 1,
+      padding: "9px 16px",
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
       boxShadow: "var(--shadow-sm)",
     }}>
       <div style={{
-        fontSize: 26, fontWeight: 800,
+        fontSize: 24, fontWeight: 800,
         color: accent || "var(--text1)",
         fontVariantNumeric: "tabular-nums",
-        letterSpacing: -1,
+        letterSpacing: -0.5, lineHeight: 1,
       }}>
         {value}
       </div>
       <div style={{
-        fontSize: 11, color: "var(--muted)", marginTop: 2,
-        textTransform: "uppercase", letterSpacing: "0.08em",
+        fontSize: 12, color: "var(--muted)",
+        textTransform: "uppercase", letterSpacing: "0.07em", lineHeight: 1.3,
+        fontWeight: 600,
       }}>
         {label}
       </div>
@@ -134,8 +137,8 @@ function ActionBtn({
     primary: { bg: "#3b5bdb", hov: "#2f4ac4", text: "#fff",      border: "#3b5bdb" },
     success: { bg: "#2f9e44", hov: "#276b35", text: "#fff",      border: "#2f9e44" },
     warning: { bg: "#e8590c", hov: "#c24a09", text: "#fff",      border: "#e8590c" },
-    ghost:   { bg: "transparent", hov: "#f0f2f8", text: "#4a5070", border: "#e2e6f0" },
-    back:    { bg: "#eef1fd", hov: "#dde3fb", text: "#3b5bdb",   border: "#c5d0f5" },
+    ghost:   { bg: "transparent", hov: "#f0f2f8", text: "#4a5070", border: "#c8cfe8" },
+    back:    { bg: "#eef1fd", hov: "#dde3fb", text: "#3b5bdb",   border: "#a8b8f0" },
   };
   const c = map[variant];
   return (
@@ -145,26 +148,26 @@ function ActionBtn({
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        flex: 1, padding: "16px 12px",
+        flex: 1, padding: "18px 14px",
         background: disabled ? "var(--surface2)" : hov ? c.hov : c.bg,
         color: disabled ? "var(--muted)" : c.text,
-        border: `1.5px solid ${disabled ? "var(--border)" : c.border}`,
+        border: `2px solid ${disabled ? "var(--border)" : c.border}`,
         borderRadius: 10, cursor: disabled ? "not-allowed" : "pointer",
-        fontWeight: 700, fontSize: 15,
+        fontWeight: 800, fontSize: 16,
         transition: "all 0.15s",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
         position: "relative",
       }}
     >
       <span>{label}</span>
-      {sublabel && <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.75 }}>{sublabel}</span>}
+      {sublabel && <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.78 }}>{sublabel}</span>}
       {kbd && !disabled && (
         <kbd style={{
-          position: "absolute", top: 6, right: 8,
-          background: "rgba(0,0,0,0.12)", borderRadius: 3,
-          padding: "0 5px", fontSize: 10, fontFamily: "monospace",
-          color: variant === "ghost" || variant === "back" ? "var(--muted)" : "rgba(255,255,255,0.8)",
-          border: "none",
+          position: "absolute", top: 7, right: 9,
+          background: "rgba(0,0,0,0.14)", borderRadius: 3,
+          padding: "0 5px", fontSize: 11, fontFamily: "monospace",
+          color: variant === "ghost" || variant === "back" ? "var(--muted)" : "rgba(255,255,255,0.85)",
+          border: "none", fontWeight: 700,
         }}>{kbd}</kbd>
       )}
     </button>
@@ -193,6 +196,7 @@ export default function StaffCounterPage() {
   const [doneToday, setDoneToday] = useState(0);
   const [socketOk, setSocketOk] = useState(true);
   const [search, setSearch] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 7;
 
@@ -283,7 +287,6 @@ export default function StaffCounterPage() {
     return () => { active = false; window.clearInterval(id); };
   }, [authenticated]);
 
-  // useRef giữ handlers mới nhất → tránh stale closure, không cần re-attach listener
   const kbdHandlersRef = useRef({
     handleConfirmCallNext: () => {},
     handleComplete: () => {},
@@ -455,16 +458,18 @@ export default function StaffCounterPage() {
     });
   };
 
-  useEffect(() => { setPage(1); }, [activeTab, search]);
+  useEffect(() => { setPage(1); }, [activeTab, search, serviceFilter]);
 
   const allTickets = activeTab === "waiting" ? waitingTickets : recallTickets;
-  const filteredTickets = search.trim()
-    ? allTickets.filter(t =>
-        getTicketDisplayNumber(t).toLowerCase().includes(search.toLowerCase()) ||
-        (t.customerName || "").toLowerCase().includes(search.toLowerCase()) ||
-        (t.serviceName || "").toLowerCase().includes(search.toLowerCase())
-      )
-    : allTickets;
+  const serviceOptions = Array.from(new Set(allTickets.map(t => t.serviceName).filter(Boolean))) as string[];
+  const filteredTickets = allTickets.filter(t => {
+    const matchSearch = !search.trim() ||
+      getTicketDisplayNumber(t).toLowerCase().includes(search.toLowerCase()) ||
+      (t.customerName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (t.serviceName || "").toLowerCase().includes(search.toLowerCase());
+    const matchService = !serviceFilter || t.serviceName === serviceFilter;
+    return matchSearch && matchService;
+  });
   const totalPages = Math.max(1, Math.ceil(filteredTickets.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const displayTickets = filteredTickets.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -506,20 +511,10 @@ export default function StaffCounterPage() {
           </div>
 
           <div className="sp__topbar-right">
-
             <NotificationPermissionButton variant="staff" />
-
             <button className="sp__logout" onClick={handleLogout}>Đăng xuất</button>
           </div>
         </header>
-
-        {/* ── STATS ── */}
-        <div className="sp__stats">
-          <StatCard value={totalWaiting} label="Đang chờ" accent={totalWaiting > 10 ? "var(--red)" : totalWaiting > 5 ? "var(--orange)" : undefined} />
-          <StatCard value={recallTickets.length} label="Bỏ qua" accent={recallTickets.length > 0 ? "var(--orange)" : undefined} />
-          <StatCard value={doneToday} label="Hôm nay" accent="var(--green)" />
-          <StatCard value={counter?.name || "—"} label="Quầy" />
-        </div>
 
         {/* ── MAIN GRID ── */}
         <div className="sp__grid">
@@ -544,7 +539,7 @@ export default function StaffCounterPage() {
               <input
                 className="sp__search-input"
                 type="text"
-                placeholder="Tìm số phiếu, tên, quầy..."
+                placeholder="Tìm số phiếu, tên..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -553,16 +548,41 @@ export default function StaffCounterPage() {
               )}
             </div>
 
+            {serviceOptions.length > 1 && (
+              <div className="sp__service-pills">
+                <button
+                  className={`sp__pill ${serviceFilter === "" ? "sp__pill--active" : ""}`}
+                  onClick={() => setServiceFilter("")}
+                >
+                  Tất cả
+                  <span className="sp__pill-count">{allTickets.length}</span>
+                </button>
+                {serviceOptions.map(s => {
+                  const cnt = allTickets.filter(t => t.serviceName === s).length;
+                  return (
+                    <button
+                      key={s}
+                      className={`sp__pill ${serviceFilter === s ? "sp__pill--active" : ""}`}
+                      onClick={() => setServiceFilter(prev => prev === s ? "" : s)}
+                    >
+                      {s}
+                      <span className={`sp__pill-count ${cnt > 5 ? "sp__pill-count--hot" : ""}`}>{cnt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="sp__table-wrap">
               <table className="sp__table">
                 <thead>
                   <tr>
-                    <th style={{ width: "7%" }}>#</th>
-                    <th style={{ width: "18%" }}>Số phiếu</th>
-                    <th style={{ width: "32%" }}>Họ và tên</th>
-                    <th style={{ width: "24%" }}>Quầy</th>
-                    <th style={{ width: "11%" }}>Chờ</th>
-                    <th style={{ width: "8%" }}></th>
+                    <th style={{ width: "6%" }}>#</th>
+                    <th style={{ width: "16%" }}>Số phiếu</th>
+                    <th style={{ width: "30%" }}>Họ và tên</th>
+                    <th style={{ width: "26%" }}>Dịch vụ</th>
+                    <th style={{ width: "10%" }}>Chờ</th>
+                    <th style={{ width: "12%" }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -579,7 +599,7 @@ export default function StaffCounterPage() {
                   ) : (
                     <tr>
                       <td colSpan={6} className="sp__empty">
-                        {search ? "Không tìm thấy kết quả" : activeTab === "waiting" ? "Không có vé chờ" : "Không có vé bỏ qua"}
+                        {search || serviceFilter ? "Không tìm thấy kết quả" : activeTab === "waiting" ? "Không có vé chờ" : "Không có vé bỏ qua"}
                       </td>
                     </tr>
                   )}
@@ -642,6 +662,7 @@ export default function StaffCounterPage() {
                       <span className="sp__meta-val">{currentTicket.serviceName || "—"}</span>
                     </div>
                   </div>
+
                 </>
               ) : (
                 <div className="sp__current-empty">
@@ -672,6 +693,8 @@ export default function StaffCounterPage() {
 
       <ConfirmModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} fields={confirmModal.fields} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(p => ({ ...p, isOpen: false }))} />
       <Toast isOpen={toast.isOpen} message={toast.message} type={toast.type} onClose={() => setToast(p => ({ ...p, isOpen: false }))} duration={3000} />
+
+
     </>
   );
 }
@@ -679,12 +702,38 @@ export default function StaffCounterPage() {
 /* ─── ticket row ── */
 function TicketRow({ ticket, index, isRecall, onCall }: { ticket: Ticket; index: number; isRecall: boolean; onCall: () => void }) {
   const mins = useWaitMinutes((ticket as Ticket & { createdAt?: string }).createdAt);
+  const [copied, setCopied] = useState<"name" | "num" | null>(null);
+
+  const copy = (text: string, type: "name" | "num") => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(type);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
   return (
     <tr className={`sp__tr ${index === 0 ? "sp__tr--first" : ""}`}>
       <td className="sp__td sp__td--idx">{index + 1}</td>
-      <td className="sp__td sp__td--num">{getTicketDisplayNumber(ticket)}</td>
-      <td className="sp__td sp__td--name" title={ticket.customerName || undefined}>
-        {abbreviateName(ticket.customerName || "—")}
+      <td className="sp__td sp__td--num">
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          {getTicketDisplayNumber(ticket)}
+        </div>
+      </td>
+      <td className="sp__td sp__td--name">
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {ticket.customerName || "—"}
+          </span>
+          {ticket.customerName && (
+            <button
+              onClick={() => copy(ticket.customerName!, "name")}
+              className="sp__copy-btn"
+              title="Sao chép tên"
+            >
+              {copied === "name" ? "✓" : "⎘"}
+            </button>
+          )}
+        </div>
       </td>
       <td className="sp__td sp__td--service">{ticket.serviceName || "—"}</td>
       <td className="sp__td"><WaitBadge mins={mins} /></td>
@@ -702,24 +751,24 @@ const CSS = `
   :root {
     --surface:    #ffffff;
     --surface2:   #f0f2f8;
-    --border:     #e2e6f0;
-    --border2:    #c8cfe8;
+    --border:     #c8cfe8;
+    --border2:    #a8b4d8;
     --text1:      #1a1d2e;
-    --text2:      #4a5070;
-    --muted:      #8890b0;
+    --text2:      #3a4060;
+    --muted:      #7080a0;
     --accent:     #3b5bdb;
     --accent-bg:  #eef1fd;
     --accent2:    #2f4ac4;
     --green:      #2f9e44;
     --green-bg:   #ebfbee;
-    --green-bdr:  #b2f2bb;
+    --green-bdr:  #8ce99a;
     --orange:     #e8590c;
     --orange-bg:  #fff4e6;
-    --orange-bdr: #ffd8a8;
+    --orange-bdr: #ffc078;
     --red:        #c92a2a;
     --red-bg:     #fff5f5;
-    --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md:  0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-sm:  0 1px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md:  0 4px 14px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
     --radius:     10px;
     --font:       'DM Mono', 'Fira Code', 'Courier New', monospace;
     --font-sans:  'Inter', 'DM Sans', 'Segoe UI', system-ui, sans-serif;
@@ -733,136 +782,168 @@ const CSS = `
   .sp__topbar {
     display: flex; align-items: center; justify-content: space-between;
     gap: 16px; flex-wrap: wrap; background: var(--surface);
-    border: 1px solid var(--border); border-radius: var(--radius);
+    border: 2px solid var(--border); border-radius: var(--radius);
     padding: 12px 20px; box-shadow: var(--shadow-sm);
   }
   .sp__identity { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .sp__avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: var(--accent-bg); border: 1.5px solid #c5d0f5;
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--accent-bg); border: 2px solid #a8b8f0;
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 17px; color: var(--accent); flex-shrink: 0;
+    font-weight: 800; font-size: 18px; color: var(--accent); flex-shrink: 0;
   }
-  .sp__greeting { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .sp__name { font-size: 17px; font-weight: 700; color: var(--text1); }
+  .sp__greeting { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .sp__name { font-size: 18px; font-weight: 800; color: var(--text1); }
   .sp__restrict-badge {
     display: inline-flex; align-items: center; gap: 7px;
-    background: var(--orange-bg); border: 1px solid var(--orange-bdr);
-    border-radius: 99px; padding: 4px 12px; font-size: 12px; color: var(--orange); flex-wrap: wrap;
+    background: var(--orange-bg); border: 2px solid var(--orange-bdr);
+    border-radius: 99px; padding: 5px 14px; font-size: 13px; color: var(--orange);
+    flex-wrap: wrap; font-weight: 700;
   }
-  .sp__restrict-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
-  .sp__service-tag { background: #ffe8d6; border-radius: 99px; padding: 1px 9px; font-size: 11px; color: var(--orange); }
+  .sp__restrict-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+  .sp__service-tag { background: #ffe8d6; border-radius: 99px; padding: 2px 10px; font-size: 12px; color: var(--orange); font-weight: 700; }
   .sp__topbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
   .sp__socket {
     display: inline-flex; align-items: center; gap: 6px;
-    border-radius: 99px; padding: 5px 12px; font-size: 12px; font-weight: 600;
+    border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 700;
   }
-  .sp__socket--ok  { background: var(--green-bg);  border: 1px solid var(--green-bdr); color: var(--green); }
-  .sp__socket--err { background: var(--red-bg);    border: 1px solid #ffc9c9;          color: var(--red); }
-  .sp__socket-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sp__socket--ok  { background: var(--green-bg);  border: 2px solid var(--green-bdr); color: var(--green); }
+  .sp__socket--err { background: var(--red-bg);    border: 2px solid #ffc9c9;          color: var(--red); }
+  .sp__socket-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .sp__socket--ok  .sp__socket-dot { background: var(--green); animation: blink 1.8s ease-in-out infinite; }
   .sp__socket--err .sp__socket-dot { background: var(--red); }
   .sp__tts {
     display: inline-flex; align-items: center; gap: 7px;
-    border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; border: 1.5px solid;
+    border-radius: 8px; padding: 7px 14px; font-size: 14px; font-weight: 700; border: 2px solid;
   }
   .sp__tts--on  { background: var(--green-bg);  border-color: var(--green-bdr); color: var(--green); }
   .sp__tts--off { background: var(--red-bg);    border-color: #ffc9c9;          color: var(--red); }
   .sp__logout {
-    padding: 8px 18px; background: var(--red); color: #fff;
-    border: none; border-radius: 8px; cursor: pointer;
-    font-weight: 700; font-size: 14px; font-family: var(--font-sans); transition: opacity .15s;
+    padding: 9px 20px; background: var(--red); color: #fff;
+    border: 2px solid var(--red); border-radius: 8px; cursor: pointer;
+    font-weight: 800; font-size: 14px; font-family: var(--font-sans); transition: opacity .15s;
   }
   .sp__logout:hover { opacity: .85; }
-  .sp__stats { display: flex; gap: 12px; flex-wrap: wrap; }
-  .sp__grid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; flex: 1; min-height: 0; align-items: start; }
+  .sp__stats { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sp__grid { display: grid; grid-template-columns: 1fr 440px; gap: 16px; flex: 1; min-height: 0; align-items: start; }
   .sp__queue {
-    background: var(--surface); border: 1px solid var(--border);
+    background: var(--surface); border: 2px solid var(--border);
     border-radius: var(--radius); display: flex; flex-direction: column;
     overflow: hidden; box-shadow: var(--shadow-sm);
   }
-  .sp__tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .sp__tabs { display: flex; border-bottom: 2px solid var(--border); background: var(--surface); }
   .sp__tab {
-    display: flex; align-items: center; gap: 8px; padding: 14px 22px;
-    font-size: 14px; font-weight: 600; color: var(--muted);
+    display: flex; align-items: center; gap: 8px; padding: 15px 24px;
+    font-size: 15px; font-weight: 700; color: var(--muted);
     background: transparent; border: none; cursor: pointer; font-family: var(--font-sans);
-    border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s;
+    border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s;
   }
   .sp__tab:hover { color: var(--text2); }
   .sp__tab--active { color: var(--accent); border-bottom-color: var(--accent); }
   .sp__tab--recall.sp__tab--active { color: var(--orange); border-bottom-color: var(--orange); }
   .sp__tab-count {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 99px; padding: 1px 9px; font-size: 12px;
-    min-width: 28px; text-align: center; color: var(--text2);
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 99px; padding: 2px 10px; font-size: 13px;
+    min-width: 30px; text-align: center; color: var(--text2); font-weight: 700;
   }
   .sp__tab-count--warn { background: var(--orange-bg); border-color: var(--orange-bdr); color: var(--orange); }
   .sp__table-wrap { overflow-y: auto; flex: 1; }
-  .sp__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
+  .sp__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 15px; }
   .sp__table thead tr { background: var(--surface2); position: sticky; top: 0; z-index: 1; }
   .sp__table th {
-    padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700;
-    color: var(--muted); text-transform: uppercase; letter-spacing: .07em;
-    border-bottom: 1px solid var(--border);
+    padding: 11px 14px; text-align: left; font-size: 12px; font-weight: 800;
+    color: var(--text2); text-transform: uppercase; letter-spacing: .07em;
+    border-bottom: 2px solid var(--border);
   }
-  .sp__tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  .sp__tr { border-bottom: 1.5px solid var(--border); transition: background .1s; }
   .sp__tr:hover { background: var(--surface2); }
   .sp__tr--first { background: var(--accent-bg); }
   .sp__tr--first:hover { background: #e4e9fb; }
-  .sp__td { padding: 12px 14px; color: var(--text2); vertical-align: middle; }
-  .sp__td--idx     { color: var(--muted); font-size: 12px; }
-  .sp__td--num     { font-weight: 700; color: var(--accent); font-family: var(--font); font-size: 15px; }
-  .sp__td--name    { color: var(--text1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sp__td--service { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp__td { padding: 13px 14px; color: var(--text2); vertical-align: middle; }
+  .sp__td--idx     { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .sp__td--num     { font-weight: 800; color: var(--accent); font-family: var(--font); font-size: 17px; }
+  .sp__td--name    { color: var(--text1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp__td--service { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .sp__td--action  { text-align: right; }
   .sp__search-bar {
     display: flex; align-items: center; gap: 8px;
-    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    padding: 11px 14px; border-bottom: 2px solid var(--border);
     background: var(--surface);
   }
-  .sp__search-icon { font-size: 18px; color: var(--muted); flex-shrink: 0; line-height: 1; }
+  .sp__search-icon { font-size: 20px; color: var(--muted); flex-shrink: 0; line-height: 1; }
   .sp__search-input {
-    flex: 1; border: none; outline: none; font-size: 14px;
-    color: var(--text1); background: transparent; font-family: var(--font-sans);
+    flex: 1; border: none; outline: none; font-size: 15px;
+    color: var(--text1); background: transparent; font-family: var(--font-sans); font-weight: 500;
   }
   .sp__search-input::placeholder { color: var(--muted); }
   .sp__search-clear {
     background: none; border: none; cursor: pointer; color: var(--muted);
-    font-size: 13px; padding: 2px 6px; border-radius: 4px; line-height: 1;
-    transition: color .15s, background .15s;
+    font-size: 14px; padding: 2px 6px; border-radius: 4px; line-height: 1;
+    transition: color .15s, background .15s; font-weight: 700;
   }
   .sp__search-clear:hover { color: var(--text2); background: var(--surface2); }
-  .sp__empty { padding: 48px; text-align: center; color: var(--muted); font-style: italic; font-size: 14px; }
+  .sp__service-pills {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 9px 14px 11px;
+    border-bottom: 2px solid var(--border);
+    background: var(--surface);
+  }
+  .sp__pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 99px; cursor: pointer;
+    font-size: 13px; font-weight: 700; font-family: var(--font-sans);
+    border: 1.5px solid var(--border2); background: var(--surface2);
+    color: var(--text2); transition: all .15s; white-space: nowrap;
+  }
+  .sp__pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+  .sp__pill--active { background: var(--accent-bg); border-color: #a8b8f0; color: var(--accent); }
+  .sp__pill-count {
+    background: var(--border); border-radius: 99px;
+    padding: 1px 8px; font-size: 12px; font-weight: 800; color: var(--text2);
+    min-width: 22px; text-align: center;
+  }
+  .sp__pill--active .sp__pill-count { background: #a8b8f0; color: var(--accent2); }
+  .sp__pill-count--hot { background: #ffd8a8 !important; color: var(--orange) !important; }
+  .sp__copy-btn {
+    flex-shrink: 0; background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 14px; padding: 1px 5px;
+    border-radius: 4px; line-height: 1; opacity: 0;
+    transition: opacity .15s, color .15s, background .15s;
+  }
+  .sp__tr:hover .sp__copy-btn { opacity: 1; }
+  .sp__copy-btn:hover { color: var(--accent); background: var(--accent-bg); }
+  .sp__empty { padding: 52px; text-align: center; color: var(--muted); font-style: italic; font-size: 15px; }
   .sp__pagination {
     display: flex; align-items: center; gap: 6px;
-    padding: 10px 14px; border-top: 1px solid var(--border);
+    padding: 10px 14px; border-top: 2px solid var(--border);
     background: var(--surface); flex-wrap: wrap;
   }
   .sp__page-btn {
-    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
-    color: var(--text2); font-size: 13px; cursor: pointer; transition: all .15s;
-    font-family: var(--font-sans);
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--border); border-radius: 6px; background: var(--surface);
+    color: var(--text2); font-size: 14px; cursor: pointer; transition: all .15s;
+    font-family: var(--font-sans); font-weight: 700;
   }
   .sp__page-btn:disabled { color: var(--muted); cursor: not-allowed; opacity: .5; }
   .sp__page-btn:not(:disabled):hover { background: var(--surface2); border-color: var(--border2); }
   .sp__page-nums { display: flex; align-items: center; gap: 4px; }
   .sp__page-num {
-    min-width: 30px; height: 30px; padding: 0 6px;
+    min-width: 32px; height: 32px; padding: 0 6px;
     display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
-    color: var(--text2); font-size: 13px; cursor: pointer; transition: all .15s;
-    font-family: var(--font-sans);
+    border: 1.5px solid var(--border); border-radius: 6px; background: var(--surface);
+    color: var(--text2); font-size: 14px; cursor: pointer; transition: all .15s;
+    font-family: var(--font-sans); font-weight: 600;
   }
   .sp__page-num:hover { background: var(--surface2); border-color: var(--border2); }
-  .sp__page-num--active { background: var(--accent-bg); border-color: #c5d0f5; color: var(--accent); font-weight: 700; }
-  .sp__page-ellipsis { color: var(--muted); font-size: 13px; padding: 0 2px; }
-  .sp__page-info { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .sp__page-num--active { background: var(--accent-bg); border-color: #a8b8f0; color: var(--accent); font-weight: 800; }
+  .sp__page-ellipsis { color: var(--muted); font-size: 14px; padding: 0 2px; }
+  .sp__page-info { margin-left: auto; font-size: 13px; color: var(--muted); font-weight: 600; }
   .sp__call-btn {
-    padding: 5px 14px; background: var(--accent-bg); color: var(--accent2);
-    border: 1px solid #c5d0f5; border-radius: 6px; cursor: pointer;
-    font-weight: 600; font-size: 12px; font-family: var(--font-sans);
-    transition: background .15s, border-color .15s;
+    padding: 9px 28px; background: var(--accent-bg); color: var(--accent2);
+    border: 1.5px solid #a8b8f0; border-radius: 7px; cursor: pointer;
+    font-weight: 800; font-size: 14px; font-family: var(--font-sans);
+    transition: background .15s, border-color .15s; white-space: nowrap;
+    display: inline-block;
   }
   .sp__call-btn:hover { background: #dde3fb; border-color: var(--accent2); }
   .sp__call-btn--recall { background: var(--orange-bg); color: var(--orange); border-color: var(--orange-bdr); }
@@ -871,47 +952,46 @@ const CSS = `
 
   /* ── current ticket card ── */
   .sp__current {
-    background: var(--surface); border: 1.5px solid var(--border);
+    background: var(--surface); border: 2px solid var(--border);
     border-radius: var(--radius); padding: 20px; flex-shrink: 0;
     box-shadow: var(--shadow-sm); transition: border-color .3s, box-shadow .3s;
+    min-height: 280px; display: flex; flex-direction: column; justify-content: center;
   }
-  .sp__current--active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg), var(--shadow-md); }
-  .sp__current-label { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .sp__current--active { border-color: var(--accent); border-width: 2.5px; box-shadow: 0 0 0 4px var(--accent-bg), var(--shadow-md); }
+  .sp__current-label { font-size: 12px; font-weight: 800; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
 
-  /* số vé: căn giữa, to hơn */
   .sp__current-number {
     font-family: var(--font);
-    font-size: clamp(64px, 8vw, 88px);
+    font-size: clamp(72px, 8vw, 96px);
     font-weight: 800;
     color: var(--accent);
     letter-spacing: -3px;
     line-height: 1;
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     padding: 8px 0;
   }
 
-  /* metadata: 2 thẻ lưới song song */
   .sp__current-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .sp__meta-card {
     background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    display: flex; flex-direction: column; gap: 4px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 5px;
     overflow: hidden;
   }
-  .sp__meta-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
-  .sp__meta-val { font-size: 15px; color: var(--text1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp__meta-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+  .sp__meta-val { font-size: 17px; color: var(--text1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .sp__current-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 0; color: var(--muted); font-size: 16px; text-align: center; }
-  .sp__current-empty-icon { font-size: 52px; opacity: .2; }
+  .sp__current-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 0; color: var(--muted); font-size: 17px; text-align: center; font-weight: 500; }
+  .sp__current-empty-icon { font-size: 54px; opacity: .2; }
 
   .sp__actions { display: flex; flex-direction: column; gap: 10px; }
   .sp__actions-row { display: flex; gap: 10px; }
   .sp__hints {
     display: flex; flex-wrap: wrap; gap: 10px;
-    background: var(--surface2); border: 1px solid var(--border);
+    background: var(--surface2); border: 1.5px solid var(--border);
     border-radius: var(--radius); padding: 12px 14px;
   }
   .sp-loading {
@@ -919,9 +999,9 @@ const CSS = `
     flex-direction: column; gap: 16px; background: var(--bg); color: var(--text2);
     font-family: var(--font-sans);
   }
-  .sp-loading__spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
-  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
-  @keyframes spin  { to{transform:rotate(360deg);} }
+  .sp-loading__spinner { width: 38px; height: 38px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes blink     { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+  @keyframes spin      { to{transform:rotate(360deg);} }
   @media (max-width: 1100px) {
     .sp__grid { grid-template-columns: 1fr; }
     .sp__panel { flex-direction: row; flex-wrap: wrap; }

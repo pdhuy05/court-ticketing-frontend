@@ -3,114 +3,39 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const PASSPHRASE = "00000000";
+const PASSPHRASE = "000000000";
 
 const TECH_STACK = [
-  { name: "Next.js", icon: "▲", color: "#ffffff", glow: "rgba(255,255,255,0.15)" },
-  { name: "TypeScript", icon: "TS", color: "#3178c6", glow: "rgba(49,120,198,0.2)" },
-  { name: "Node.js", icon: "⬢", color: "#68a063", glow: "rgba(104,160,99,0.2)" },
-  { name: "MongoDB", icon: "◈", color: "#4db33d", glow: "rgba(77,179,61,0.2)" },
-  { name: "Socket.IO", icon: "⚡", color: "#e8e8e8", glow: "rgba(232,232,232,0.15)" },
-  { name: "Tailwind CSS", icon: "✦", color: "#38bdf8", glow: "rgba(56,189,248,0.2)" },
-  { name: "Redis", icon: "◉", color: "#d82c20", glow: "rgba(216,44,32,0.2)" },
-  { name: "Docker", icon: "🐳", color: "#2496ed", glow: "rgba(36,150,237,0.2)" },
+  { name: "Next.js", icon: "▲" },
+  { name: "TypeScript", icon: "TS" },
+  { name: "Node.js", icon: "⬢" },
+  { name: "MongoDB", icon: "◈" },
+  { name: "Socket.IO", icon: "⚡" },
+  { name: "Tailwind", icon: "✦" },
+  { name: "Redis", icon: "◉" },
+  { name: "Docker", icon: "⬛" },
 ];
 
 const TIMELINE = [
-  {
-    year: "2023",
-    title: "Bắt đầu lập trình",
-    desc: "Học HTML, CSS, JavaScript cơ bản",
-    accent: "#6366f1",
-  },
-  {
-    year: "2024",
-    title: "Full-stack Development",
-    desc: "Next.js · Node.js · MongoDB · REST APIs",
-    accent: "#8b5cf6",
-  },
-  {
-    year: "2025",
-    title: "System Architecture",
-    desc: "Real-time systems, WebSocket, microservices",
-    accent: "#a78bfa",
-  },
-  {
-    year: "2026",
-    title: "Court Ticket System",
-    desc: "Production · ~1000 users · 99.9% uptime",
-    accent: "#c4b5fd",
-  },
+  { year: "2023", title: "Khởi đầu", desc: "HTML · CSS · JavaScript cơ bản" },
+  { year: "2024", title: "Full-stack Dev", desc: "Next.js · Node.js · MongoDB · REST APIs" },
+  { year: "2025", title: "Kiến trúc hệ thống", desc: "Real-time · WebSocket · Microservices" },
+  { year: "2026", title: "Court Ticket System", desc: "Production · ~1000 users · 99.9% uptime" },
 ];
 
 const STATS = [
-  { label: "Projects Shipped", value: 12, suffix: "+" },
-  { label: "Lines of Code", value: 80, suffix: "K+" },
-  { label: "Uptime SLA", value: 99.9, suffix: "%", decimals: 1 },
-  { label: "Build Year", value: 2026, suffix: "" },
+  { label: "Dự án", value: "12+", icon: "⬡" },
+  { label: "Dòng code", value: "80K+", icon: "◇" },
+  { label: "Uptime", value: "99.9%", icon: "◆" },
+  { label: "Năm", value: "2026", icon: "▣" },
 ];
 
-const BUILD_YEAR = 2026;
 const FULL_NAME = "5Ys";
 
-// ────────────────────────────────────────────────────────────────────────────────
-// Animated counter component
-// ────────────────────────────────────────────────────────────────────────────────
-function AnimatedCounter({
-  value,
-  suffix,
-  decimals = 0,
-  duration = 2,
-}: {
-  value: number;
-  suffix: string;
-  decimals?: number;
-  duration?: number;
-}) {
-  const [count, setCount] = useState(0);
-  const [started, setStarted] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setStarted(true);
-      },
-      { threshold: 0.5 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!started) return;
-    const steps = 60;
-    const increment = value / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= value) {
-        setCount(value);
-        clearInterval(timer);
-      } else {
-        setCount(current);
-      }
-    }, (duration * 1000) / steps);
-    return () => clearInterval(timer);
-  }, [started, value, duration]);
-
-  return (
-    <div ref={ref}>
-      {decimals > 0 ? count.toFixed(decimals) : Math.floor(count)}
-      {suffix}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────────
-// Particle background canvas
-// ────────────────────────────────────────────────────────────────────────────────
-function ParticleField() {
+// ═══════════════════════════════════════════════════════════════════
+// SMOKE PARTICLE CANVAS
+// ═══════════════════════════════════════════════════════════════════
+function SmokeCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -119,89 +44,72 @@ function ParticleField() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let animId: number;
-    let W = 0;
-    let H = 0;
+    let W = 0, H = 0, animId = 0;
 
-    interface Particle {
-      x: number;
-      y: number;
-      vx: number;
-      vy: number;
-      size: number;
-      alpha: number;
-      pulse: number;
-      pulseSpeed: number;
+    interface Ember {
+      x: number; y: number; vx: number; vy: number;
+      size: number; life: number; maxLife: number; opacity: number;
     }
 
-    const particles: Particle[] = [];
+    const embers: Ember[] = [];
 
     const resize = () => {
       W = canvas.width = window.innerWidth;
       H = canvas.height = window.innerHeight;
     };
 
-    const init = () => {
-      resize();
-      const count = Math.floor((W * H) / 18000);
-      for (let i = 0; i < count; i++) {
-        particles.push({
-          x: Math.random() * W,
-          y: Math.random() * H,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          size: Math.random() * 1.5 + 0.5,
-          alpha: Math.random() * 0.4 + 0.1,
-          pulse: Math.random() * Math.PI * 2,
-          pulseSpeed: 0.01 + Math.random() * 0.02,
-        });
-      }
+    const spawnEmber = () => {
+      const maxLife = 200 + Math.random() * 300;
+      embers.push({
+        x: Math.random() * W,
+        y: H + 10,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -(0.3 + Math.random() * 0.6),
+        size: 1 + Math.random() * 2,
+        life: 0,
+        maxLife,
+        opacity: 0.15 + Math.random() * 0.35,
+      });
     };
 
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
 
-      for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.pulse += p.pulseSpeed;
+      if (Math.random() > 0.85) spawnEmber();
 
-        if (p.x < 0) p.x = W;
-        if (p.x > W) p.x = 0;
-        if (p.y < 0) p.y = H;
-        if (p.y > H) p.y = 0;
+      for (let i = embers.length - 1; i >= 0; i--) {
+        const e = embers[i];
+        e.x += e.vx + Math.sin(e.life * 0.015) * 0.3;
+        e.y += e.vy;
+        e.life++;
 
-        const a = p.alpha * (0.5 + 0.5 * Math.sin(p.pulse));
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(139, 92, 246, ${a})`;
-        ctx.fill();
-      }
+        const progress = e.life / e.maxLife;
+        const fade = progress < 0.1 ? progress / 0.1 : progress > 0.7 ? (1 - progress) / 0.3 : 1;
+        const alpha = e.opacity * fade;
 
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(139, 92, 246, ${0.06 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
+        if (e.life > e.maxLife || alpha <= 0) {
+          embers.splice(i, 1);
+          continue;
         }
+
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(180, 30, 30, ${alpha * 0.6})`;
+        ctx.fill();
+
+        // glow
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size * 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(120, 10, 10, ${alpha * 0.08})`;
+        ctx.fill();
       }
 
       animId = requestAnimationFrame(draw);
     };
 
-    init();
+    resize();
     draw();
     window.addEventListener("resize", resize);
-
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resize);
@@ -209,279 +117,27 @@ function ParticleField() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1,
-        pointerEvents: "none",
-        opacity: 0.7,
-      }}
-    />
+    <canvas ref={canvasRef} style={{
+      position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none",
+    }} />
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────────
-// Floating orbs for login page
-// ────────────────────────────────────────────────────────────────────────────────
-function FloatingOrbs() {
+// ═══════════════════════════════════════════════════════════════════
+// GLITCH TEXT
+// ═══════════════════════════════════════════════════════════════════
+function GlitchText({ text, style }: { text: string; style?: React.CSSProperties }) {
   return (
-    <>
-      {/* Main purple orb */}
-      <div
-        style={{
-          position: "fixed",
-          top: "20%",
-          left: "15%",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(99,102,241,0.12) 0%, rgba(99,102,241,0) 70%)",
-          filter: "blur(60px)",
-          animation: "floatOrb1 12s ease-in-out infinite",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-      {/* Secondary blue orb */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "10%",
-          right: "10%",
-          width: 400,
-          height: 400,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(56,189,248,0.08) 0%, rgba(56,189,248,0) 70%)",
-          filter: "blur(60px)",
-          animation: "floatOrb2 15s ease-in-out infinite",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-      {/* Accent pink orb */}
-      <div
-        style={{
-          position: "fixed",
-          top: "60%",
-          left: "60%",
-          width: 350,
-          height: 350,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(168,85,247,0.08) 0%, rgba(168,85,247,0) 70%)",
-          filter: "blur(50px)",
-          animation: "floatOrb3 18s ease-in-out infinite",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-    </>
+    <span className="owner-glitch" data-text={text} style={{ position: "relative", ...style }}>
+      {text}
+    </span>
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────────
-// Tech stack card
-// ────────────────────────────────────────────────────────────────────────────────
-function TechCard({
-  name,
-  icon,
-  color,
-  glow,
-  index,
-}: {
-  name: string;
-  icon: string;
-  color: string;
-  glow: string;
-  index: number;
-}) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.06, duration: 0.5 }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        position: "relative",
-        padding: "14px 20px",
-        borderRadius: 12,
-        background: hovered
-          ? "rgba(255,255,255,0.06)"
-          : "rgba(255,255,255,0.025)",
-        border: `1px solid ${hovered ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)"}`,
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        cursor: "default",
-        transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
-        backdropFilter: "blur(12px)",
-        boxShadow: hovered ? `0 0 30px ${glow}, 0 4px 20px rgba(0,0,0,0.3)` : "none",
-        transform: hovered ? "translateY(-2px)" : "translateY(0)",
-        overflow: "hidden",
-      }}
-    >
-      {/* Glow effect behind icon */}
-      {hovered && (
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: 20,
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            background: glow,
-            filter: "blur(12px)",
-            transform: "translateY(-50%)",
-            pointerEvents: "none",
-          }}
-        />
-      )}
-      <span
-        style={{
-          fontSize: 14,
-          color: hovered ? color : "rgba(255,255,255,0.4)",
-          transition: "color 0.3s",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        {icon}
-      </span>
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          color: hovered ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.45)",
-          transition: "color 0.3s",
-          fontFamily: "'Inter', sans-serif",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        {name}
-      </span>
-    </motion.div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────────
-// Section label
-// ────────────────────────────────────────────────────────────────────────────────
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        marginBottom: 32,
-      }}
-    >
-      <div
-        style={{
-          width: 3,
-          height: 16,
-          borderRadius: 2,
-          background: "linear-gradient(180deg, #8b5cf6, #6366f1)",
-        }}
-      />
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "0.2em",
-          color: "rgba(255,255,255,0.35)",
-          textTransform: "uppercase",
-          fontFamily: "'Inter', sans-serif",
-        }}
-      >
-        {children}
-      </span>
-      <div
-        style={{
-          flex: 1,
-          height: 1,
-          background:
-            "linear-gradient(90deg, rgba(139,92,246,0.2), transparent)",
-        }}
-      />
-    </motion.div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────────
-// MetaBlock for profile info
-// ────────────────────────────────────────────────────────────────────────────────
-function MetaBlock({
-  label,
-  value,
-  accent,
-  index,
-}: {
-  label: string;
-  value: string;
-  accent?: string;
-  index: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.08, duration: 0.5 }}
-      style={{
-        padding: "16px 20px",
-        borderRadius: 12,
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.04)",
-        backdropFilter: "blur(8px)",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 9,
-          fontWeight: 600,
-          letterSpacing: "0.25em",
-          color: "rgba(255,255,255,0.2)",
-          textTransform: "uppercase",
-          marginBottom: 8,
-          fontFamily: "'Inter', sans-serif",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 500,
-          color: accent || "rgba(255,255,255,0.7)",
-          fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-          letterSpacing: "0.02em",
-        }}
-      >
-        {value}
-      </div>
-    </motion.div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────────
-// Hacker code rain (login background)
-// ────────────────────────────────────────────────────────────────────────────────
-function HackerCodePanel() {
+// ═══════════════════════════════════════════════════════════════════
+// CODE RAIN (login bg - dark red theme)
+// ═══════════════════════════════════════════════════════════════════
+function DarkCodeRain() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -490,127 +146,92 @@ function HackerCodePanel() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const W = (canvas.width = canvas.offsetWidth * 2);
-    const H = (canvas.height = canvas.offsetHeight * 2);
-    ctx.scale(2, 2);
-    const displayW = canvas.offsetWidth;
-    const displayH = canvas.offsetHeight;
+    let W = canvas.width = window.innerWidth;
+    let H = canvas.height = window.innerHeight;
 
-    const FONT_SIZE = 14;
-    const cols = Math.floor(displayW / FONT_SIZE);
-    const drops: number[] = Array(cols)
-      .fill(0)
-      .map(() => Math.random() * -80);
+    const FONT = 13;
+    let cols = Math.floor(W / FONT);
+    let drops = Array(cols).fill(0).map(() => Math.random() * -60);
+    const CHARS = "アイウエオカキクケコサシスセソタチツテト0123456789{}[]<>/\\|=+-*&#@!";
+    const arr = CHARS.split("");
+    const speeds = Array(cols).fill(0).map(() => 0.25 + Math.random() * 0.55);
+    let animId = 0;
 
-    const CHARS =
-      "アイウエオカキクケコサシスセソタチツテトナニヌネノ" +
-      "ハヒフヘホマミムメモヤユヨラリルレロワヲン" +
-      "0123456789ABCDEF<>{}[]|/\\=+-*&^%$#@!~";
-
-    const CHARS_ARR = CHARS.split("");
-    const speeds: number[] = Array(cols)
-      .fill(0)
-      .map(() => 0.3 + Math.random() * 0.7);
-    const brightHead: number[] = Array(cols)
-      .fill(0)
-      .map(() => Math.random());
-
-    let animId: number;
+    const onResize = () => {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      cols = Math.floor(W / FONT);
+    };
 
     const draw = () => {
-      ctx.fillStyle = "rgba(8,8,16,0.06)";
-      ctx.fillRect(0, 0, displayW, displayH);
+      ctx.fillStyle = "rgba(3,3,3,0.07)";
+      ctx.fillRect(0, 0, W, H);
 
       for (let i = 0; i < cols; i++) {
-        const y = drops[i] * FONT_SIZE;
-        const char = CHARS_ARR[Math.floor(Math.random() * CHARS_ARR.length)];
+        const y = drops[i] * FONT;
+        const c = arr[Math.floor(Math.random() * arr.length)];
 
-        const isHead = brightHead[i] > 0.5;
-        if (isHead && drops[i] > 0) {
-          ctx.fillStyle = `rgba(167,139,250,${0.5 + Math.random() * 0.5})`;
+        if (drops[i] > 0 && Math.random() > 0.6) {
+          ctx.fillStyle = `rgba(180,20,20,${0.35 + Math.random() * 0.45})`;
         } else {
-          const alpha = 0.03 + Math.random() * 0.12;
-          ctx.fillStyle = `rgba(99,102,241,${alpha})`;
+          ctx.fillStyle = `rgba(100,10,10,${0.04 + Math.random() * 0.1})`;
         }
 
-        ctx.font = `${FONT_SIZE}px 'JetBrains Mono', 'Courier New', monospace`;
-        ctx.fillText(char, i * FONT_SIZE, y);
-
+        ctx.font = `${FONT}px 'Courier New', monospace`;
+        ctx.fillText(c, i * FONT, y);
         drops[i] += speeds[i];
-        if (y > displayH && Math.random() > 0.975) {
-          drops[i] = -Math.floor(Math.random() * 20);
-          brightHead[i] = Math.random();
-        }
+        if (y > H && Math.random() > 0.98) drops[i] = -Math.floor(Math.random() * 15);
       }
-
       animId = requestAnimationFrame(draw);
     };
 
     draw();
-    return () => cancelAnimationFrame(animId);
+    window.addEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", onResize); };
   }, []);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1,
-        pointerEvents: "none",
-        overflow: "hidden",
-      }}
-    >
-      <canvas
-        ref={canvasRef}
-        style={{ width: "100%", height: "100%", display: "block" }}
-      />
-      {/* Radial fade from center */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(ellipse at center, rgba(8,8,16,0.85) 0%, rgba(8,8,16,0.4) 50%, rgba(8,8,16,0.95) 100%)",
-        }}
-      />
+    <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" }}>
+      <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "radial-gradient(ellipse at center, rgba(3,3,3,0.7) 0%, rgba(3,3,3,0.3) 40%, rgba(3,3,3,0.92) 100%)",
+      }} />
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ════════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════
 export default function OwnerPage() {
   const [input, setInput] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [shake, setShake] = useState(false);
-  const [showCursor, setShowCursor] = useState(true);
+  const [blink, setBlink] = useState(true);
   const [typed, setTyped] = useState("");
-  const [typingDone, setTypingDone] = useState(false);
+  const [ready, setReady] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Cursor blink
   useEffect(() => {
-    const t = setInterval(() => setShowCursor((v) => !v), 530);
+    const t = setInterval(() => setBlink(v => !v), 530);
     return () => clearInterval(t);
   }, []);
 
-  // Typewriter effect for name
   useEffect(() => {
     if (!unlocked) return;
-    const delay = setTimeout(() => {
+    const d = setTimeout(() => {
       let i = 0;
       const t = setInterval(() => {
         i++;
         setTyped(FULL_NAME.slice(0, i));
         if (i >= FULL_NAME.length) {
           clearInterval(t);
-          setTimeout(() => setTypingDone(true), 300);
+          setTimeout(() => setReady(true), 400);
         }
-      }, 80);
-      return () => clearInterval(t);
-    }, 600);
-    return () => clearTimeout(delay);
+      }, 90);
+    }, 500);
+    return () => clearTimeout(d);
   }, [unlocked]);
 
   const tryUnlock = useCallback(() => {
@@ -627,1017 +248,662 @@ export default function OwnerPage() {
     if (e.key === "Enter") tryUnlock();
   };
 
-  const globalStyles = `
+  // ─── STYLES ───
+  const CSS = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
 
-    @keyframes floatOrb1 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33% { transform: translate(40px, -30px) scale(1.1); }
-      66% { transform: translate(-20px, 20px) scale(0.95); }
-    }
-    @keyframes floatOrb2 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33% { transform: translate(-50px, 30px) scale(1.05); }
-      66% { transform: translate(30px, -40px) scale(0.9); }
-    }
-    @keyframes floatOrb3 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(30px, -50px) scale(1.1); }
-    }
-    @keyframes shimmer {
-      0% { background-position: -200% center; }
-      100% { background-position: 200% center; }
-    }
-    @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 0 20px rgba(139,92,246,0.15), 0 0 60px rgba(139,92,246,0.05); }
-      50% { box-shadow: 0 0 30px rgba(139,92,246,0.25), 0 0 80px rgba(139,92,246,0.1); }
-    }
-    @keyframes breathing {
-      0%, 100% { opacity: 0.4; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(1.02); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
+    ::selection { background: rgba(180,20,20,0.35); color: #fff; }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(120,10,10,0.3); border-radius: 3px; }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(14px); }
+      to   { opacity:1; transform:translateY(0); }
     }
     @keyframes shake {
-      10%, 90%  { transform: translateX(-3px); }
-      20%, 80%  { transform: translateX(5px); }
-      30%, 50%, 70% { transform: translateX(-6px); }
-      40%, 60%  { transform: translateX(6px); }
+      10%,90%  { transform:translateX(-3px); }
+      20%,80%  { transform:translateX(5px); }
+      30%,50%,70% { transform:translateX(-6px); }
+      40%,60%  { transform:translateX(6px); }
     }
     @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+      0%,100% { opacity:1; }
+      50% { opacity:0; }
     }
-    @keyframes borderRotate {
-      0%   { --angle: 0deg; }
-      100% { --angle: 360deg; }
+    @keyframes pulseRing {
+      0%,100% { box-shadow: 0 0 0 0 rgba(140,20,20,0.3); }
+      50% { box-shadow: 0 0 0 8px rgba(140,20,20,0); }
     }
-    @keyframes scanline {
-      0% { transform: translateY(-100%); }
-      100% { transform: translateY(100vh); }
+    @keyframes flicker {
+      0%,100% { opacity:0.03; }
+      50% { opacity:0.06; }
+    }
+    @keyframes scanMove {
+      0% { top: -4px; }
+      100% { top: 100%; }
+    }
+    @keyframes glitchShift {
+      0%,100% { clip-path: inset(0 0 95% 0); transform: translate(0); }
+      20% { clip-path: inset(20% 0 60% 0); transform: translate(-2px, 1px); }
+      40% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+      60% { clip-path: inset(40% 0 30% 0); transform: translate(-1px, 0); }
+      80% { clip-path: inset(80% 0 5% 0); transform: translate(1px, 1px); }
+    }
+    @keyframes glitchShift2 {
+      0%,100% { clip-path: inset(95% 0 0 0); transform: translate(0); }
+      20% { clip-path: inset(10% 0 70% 0); transform: translate(2px, -1px); }
+      40% { clip-path: inset(50% 0 20% 0); transform: translate(-2px, 1px); }
+      60% { clip-path: inset(70% 0 10% 0); transform: translate(1px, 0); }
+      80% { clip-path: inset(5% 0 80% 0); transform: translate(-1px, -1px); }
     }
 
-    ::selection {
-      background: rgba(139,92,246,0.3);
-      color: #fff;
+    .owner-glitch {
+      position: relative;
     }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 4px;
+    .owner-glitch::before,
+    .owner-glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
     }
-    ::-webkit-scrollbar-track {
-      background: transparent;
+    .owner-glitch::before {
+      color: rgba(180,20,20,0.7);
+      animation: glitchShift 4s infinite linear;
     }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(139,92,246,0.2);
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(139,92,246,0.4);
+    .owner-glitch::after {
+      color: rgba(60,0,0,0.5);
+      animation: glitchShift2 4s infinite linear reverse;
     }
   `;
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  // LOGIN PAGE
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
+  // LOGIN
+  // ═══════════════════════════════════════════════════════════════
   if (!unlocked) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          width: "100vw",
-          background: "#080810",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "'Inter', sans-serif",
-          overflow: "hidden",
-          position: "relative",
-        }}
-      >
-        <style>{globalStyles}</style>
+      <div style={{
+        minHeight: "100vh", width: "100vw", background: "#030303",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: "'Inter', sans-serif", overflow: "hidden", position: "relative",
+      }}>
+        <style>{CSS}</style>
+        <DarkCodeRain />
 
-        {/* Background effects */}
-        <HackerCodePanel />
-        <FloatingOrbs />
+        {/* Scanline */}
+        <div style={{
+          position: "fixed", inset: 0, pointerEvents: "none", zIndex: 3,
+          backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)",
+          animation: "flicker 3s infinite",
+        }} />
 
-        {/* Subtle noise texture */}
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            pointerEvents: "none",
-            zIndex: 2,
-            opacity: 0.03,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          }}
-        />
+        {/* Moving scan beam */}
+        <div style={{
+          position: "fixed", left: 0, right: 0, height: 2, zIndex: 4,
+          background: "linear-gradient(90deg, transparent 20%, rgba(140,20,20,0.15) 50%, transparent 80%)",
+          animation: "scanMove 6s linear infinite",
+          pointerEvents: "none",
+        }} />
 
-        {/* System label top */}
-        <div
-          style={{
-            position: "fixed",
-            top: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            fontSize: 10,
-            fontWeight: 500,
-            letterSpacing: "0.4em",
-            color: "rgba(139,92,246,0.25)",
-            textTransform: "uppercase",
-            zIndex: 20,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
-          SYS · RESTRICTED · v{BUILD_YEAR}
+        {/* Top label */}
+        <div style={{
+          position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)",
+          fontSize: 9, fontWeight: 500, letterSpacing: "0.5em",
+          color: "rgba(140,20,20,0.25)", textTransform: "uppercase", zIndex: 20,
+          fontFamily: "'JetBrains Mono', monospace",
+        }}>
+          HỆ THỐNG · BỊ HẠN CHẾ
         </div>
 
-        {/* Bottom status */}
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 10,
-            letterSpacing: "0.2em",
-            color: "rgba(255,255,255,0.12)",
-            zIndex: 20,
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
-          <div
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#6366f1",
-              animation: "breathing 3s ease-in-out infinite",
-            }}
-          />
-          SYSTEM ONLINE
+        {/* Bottom */}
+        <div style={{
+          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+          display: "flex", alignItems: "center", gap: 8,
+          fontSize: 9, color: "rgba(255,255,255,0.06)", zIndex: 20,
+          fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.2em",
+        }}>
+          <div style={{
+            width: 5, height: 5, borderRadius: "50%",
+            background: "rgba(140,20,20,0.5)",
+            animation: "pulseRing 2.5s infinite",
+          }} />
+          ĐANG HOẠT ĐỘNG
         </div>
 
-        {/* Login container */}
+        {/* Login card */}
         <motion.div
-          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          initial={{ opacity: 0, y: 20, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           style={{
-            position: "relative",
-            zIndex: 20,
-            width: 380,
-            padding: "48px 40px",
-            borderRadius: 24,
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            backdropFilter: "blur(24px)",
-            boxShadow:
-              "0 0 80px rgba(99,102,241,0.06), 0 32px 64px rgba(0,0,0,0.4)",
+            position: "relative", zIndex: 20, width: 340,
+            padding: "40px 32px", borderRadius: 16,
+            background: "rgba(10,10,10,0.8)",
+            border: "1px solid rgba(140,20,20,0.12)",
+            backdropFilter: "blur(20px)",
+            boxShadow: "0 0 60px rgba(80,0,0,0.08), 0 20px 50px rgba(0,0,0,0.5)",
           }}
         >
-          {/* Gradient border accent */}
-          <div
-            style={{
-              position: "absolute",
-              top: -1,
-              left: "20%",
-              right: "20%",
-              height: 1,
-              background:
-                "linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)",
-              borderRadius: "50%",
-            }}
-          />
+          {/* Top accent line */}
+          <div style={{
+            position: "absolute", top: -1, left: "25%", right: "25%", height: 1,
+            background: "linear-gradient(90deg, transparent, rgba(140,20,20,0.4), transparent)",
+          }} />
 
           {/* Logo */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginBottom: 40,
-            }}
-          >
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 20,
-                background:
-                  "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))",
-                border: "1px solid rgba(139,92,246,0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                animation: "pulse-glow 4s ease-in-out infinite",
-                position: "relative",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 28,
-                  fontWeight: 800,
-                  background:
-                    "linear-gradient(135deg, #8b5cf6, #6366f1, #a78bfa)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                5Y
-              </span>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 14,
+              background: "rgba(140,20,20,0.08)",
+              border: "1px solid rgba(140,20,20,0.2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              animation: "pulseRing 3s infinite",
+            }}>
+              <GlitchText text="5Y" style={{
+                fontSize: 22, fontWeight: 800,
+                color: "rgba(180,30,30,0.85)",
+                fontFamily: "'Inter', sans-serif",
+              }} />
             </div>
           </div>
 
           {/* Title */}
-          <div style={{ textAlign: "center", marginBottom: 36 }}>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.88)",
-                marginBottom: 8,
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Restricted Access
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{
+              fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.75)",
+              marginBottom: 6, letterSpacing: "-0.01em",
+            }}>
+              Truy cập bị hạn chế
             </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: "rgba(255,255,255,0.3)",
-                letterSpacing: "0.01em",
-              }}
-            >
-              Authorization required to proceed
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
+              Yêu cầu xác thực để tiếp tục
             </div>
           </div>
 
-          {/* Error message */}
-          <div
-            style={{
-              height: 20,
-              marginBottom: 8,
-              textAlign: "center",
-              fontSize: 11,
-              fontWeight: 500,
-              color: shake ? "#ef4444" : "transparent",
-              transition: "color 0.2s",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-            }}
-          >
-            <span style={{ fontSize: 12 }}>⚠</span> Invalid passphrase
+          {/* Error */}
+          <div style={{
+            height: 18, marginBottom: 6, textAlign: "center",
+            fontSize: 10, fontWeight: 500,
+            color: shake ? "#dc2626" : "transparent",
+            transition: "color 0.2s",
+          }}>
+            ✕ Mật khẩu không đúng
           </div>
 
           {/* Input */}
-          <div
-            style={{
-              animation: shake
-                ? "shake 0.5s cubic-bezier(0.36,0.07,0.19,0.97)"
-                : "none",
-              marginBottom: 16,
-            }}
-          >
+          <div style={{
+            animation: shake ? "shake 0.5s cubic-bezier(0.36,0.07,0.19,0.97)" : "none",
+            marginBottom: 14,
+          }}>
             <input
-              ref={inputRef}
-              type="password"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              autoFocus
-              placeholder="Enter passphrase..."
+              ref={inputRef} type="password" value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKey} autoFocus
+              placeholder="Nhập mật khẩu..."
               style={{
-                width: "100%",
-                boxSizing: "border-box",
-                background: "rgba(255,255,255,0.04)",
-                border: `1px solid ${shake ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}`,
-                borderRadius: 12,
-                color: "rgba(255,255,255,0.8)",
-                fontSize: 14,
-                letterSpacing: "0.15em",
-                padding: "14px 18px",
-                outline: "none",
-                textAlign: "center",
+                width: "100%", boxSizing: "border-box",
+                background: "rgba(255,255,255,0.03)",
+                border: `1px solid ${shake ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.06)"}`,
+                borderRadius: 10, color: "rgba(255,255,255,0.7)",
+                fontSize: 13, letterSpacing: "0.15em", padding: "13px 16px",
+                outline: "none", textAlign: "center",
                 fontFamily: "'JetBrains Mono', monospace",
-                caretColor: "#8b5cf6",
+                caretColor: "rgba(180,30,30,0.6)",
                 transition: "border-color 0.3s, box-shadow 0.3s",
               }}
-              onFocus={(e) => {
+              onFocus={e => {
                 if (!shake) {
-                  e.currentTarget.style.borderColor =
-                    "rgba(139,92,246,0.4)";
-                  e.currentTarget.style.boxShadow =
-                    "0 0 20px rgba(139,92,246,0.1)";
+                  e.currentTarget.style.borderColor = "rgba(140,20,20,0.35)";
+                  e.currentTarget.style.boxShadow = "0 0 20px rgba(100,0,0,0.1)";
                 }
               }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor =
-                  "rgba(255,255,255,0.08)";
+              onBlur={e => {
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
                 e.currentTarget.style.boxShadow = "none";
               }}
             />
           </div>
 
           {/* Button */}
-          <button
-            onClick={tryUnlock}
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: 12,
-              border: "none",
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 600,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              fontFamily: "'Inter', sans-serif",
-              transition: "all 0.3s",
-              boxShadow: "0 4px 20px rgba(99,102,241,0.3)",
-              position: "relative",
-              overflow: "hidden",
+          <button onClick={tryUnlock} style={{
+            width: "100%", padding: "13px", borderRadius: 10,
+            border: "1px solid rgba(140,20,20,0.3)",
+            background: "linear-gradient(135deg, rgba(140,20,20,0.2), rgba(80,10,10,0.3))",
+            color: "rgba(220,80,80,0.9)", fontSize: 11, fontWeight: 600,
+            letterSpacing: "0.15em", textTransform: "uppercase", cursor: "pointer",
+            fontFamily: "'Inter', sans-serif",
+            transition: "all 0.3s",
+          }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(160,20,20,0.3), rgba(100,10,10,0.4))";
+              e.currentTarget.style.borderColor = "rgba(180,30,30,0.5)";
+              e.currentTarget.style.boxShadow = "0 0 25px rgba(120,0,0,0.2)";
             }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget;
-              el.style.boxShadow = "0 6px 30px rgba(99,102,241,0.5)";
-              el.style.transform = "translateY(-1px)";
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget;
-              el.style.boxShadow = "0 4px 20px rgba(99,102,241,0.3)";
-              el.style.transform = "translateY(0)";
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(140,20,20,0.2), rgba(80,10,10,0.3))";
+              e.currentTarget.style.borderColor = "rgba(140,20,20,0.3)";
+              e.currentTarget.style.boxShadow = "none";
             }}
           >
-            Authenticate
+            Xác thực
           </button>
 
-          {/* Bottom accent */}
-          <div
-            style={{
-              marginTop: 32,
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                flex: 1,
-                height: 1,
-                background:
-                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.06))",
-              }}
-            />
-            <div
-              style={{
-                fontSize: 9,
-                letterSpacing: "0.3em",
-                color: "rgba(255,255,255,0.12)",
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-            >
-              {showCursor ? "█" : "░"} ENCRYPTED
-            </div>
-            <div
-              style={{
-                flex: 1,
-                height: 1,
-                background:
-                  "linear-gradient(90deg, rgba(255,255,255,0.06), transparent)",
-              }}
-            />
+          {/* Bottom */}
+          <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.04))" }} />
+            <span style={{ fontSize: 8, letterSpacing: "0.3em", color: "rgba(255,255,255,0.06)", fontFamily: "'JetBrains Mono', monospace" }}>
+              {blink ? "█" : "░"} MÃ HOÁ
+            </span>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, rgba(255,255,255,0.04), transparent)" }} />
           </div>
         </motion.div>
       </div>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  // PROFILE PAGE
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
+  // PROFILE
+  // ═══════════════════════════════════════════════════════════════
+  const sectionDelay = (i: number) => ({ delay: i * 0.1, duration: 0.6 });
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        width: "100vw",
-        background: "#080810",
-        fontFamily: "'Inter', sans-serif",
-        color: "#e2e2e2",
-        overflowX: "hidden",
-        position: "relative",
-      }}
-    >
-      <style>{globalStyles}</style>
+    <div style={{
+      minHeight: "100vh", width: "100vw", background: "#030303",
+      fontFamily: "'Inter', sans-serif", color: "#d0d0d0",
+      overflowX: "hidden", position: "relative",
+    }}>
+      <style>{CSS}</style>
+      <SmokeCanvas />
 
-      {/* Background effects */}
-      <ParticleField />
-      <FloatingOrbs />
+      {/* Scanline overlay */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50,
+        backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px)",
+        opacity: 0.4,
+      }} />
 
-      {/* Noise texture */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          pointerEvents: "none",
-          zIndex: 2,
-          opacity: 0.025,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-        }}
-      />
+      {/* Ambient fog */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, height: "40vh",
+        background: "linear-gradient(0deg, rgba(60,5,5,0.06), transparent)",
+        pointerEvents: "none", zIndex: 2,
+      }} />
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, height: "30vh",
+        background: "linear-gradient(180deg, rgba(3,3,3,0.8), transparent)",
+        pointerEvents: "none", zIndex: 2,
+      }} />
 
-      {/* Top navigation bar */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
+      {/* ── NAV ── */}
+      <motion.nav
+        initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.6 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
         style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          padding: "16px 32px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          backdropFilter: "blur(20px)",
-          background: "rgba(8,8,16,0.6)",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+          padding: "12px 28px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          backdropFilter: "blur(16px)",
+          background: "rgba(3,3,3,0.7)",
+          borderBottom: "1px solid rgba(140,20,20,0.06)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 10,
-              background:
-                "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.15))",
-              border: "1px solid rgba(139,92,246,0.25)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 800,
-                background:
-                  "linear-gradient(135deg, #8b5cf6, #a78bfa)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              5Y
-            </span>
-          </div>
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "rgba(255,255,255,0.6)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            Owner Profile
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            width: 26, height: 26, borderRadius: 7,
+            background: "rgba(140,20,20,0.12)",
+            border: "1px solid rgba(140,20,20,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, fontWeight: 800, color: "rgba(180,30,30,0.8)",
+          }}>5Y</div>
+          <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.35)", letterSpacing: "0.05em" }}>
+            Hồ sơ chủ sở hữu
           </span>
         </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              background: "#22c55e",
-              boxShadow: "0 0 8px rgba(34,197,94,0.5)",
-            }}
-          />
-          <span
-            style={{
-              fontSize: 11,
-              color: "rgba(255,255,255,0.35)",
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: "0.1em",
-            }}
-          >
-            PRODUCTION
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{
+            width: 5, height: 5, borderRadius: "50%",
+            background: "#b91c1c", boxShadow: "0 0 6px rgba(185,28,28,0.5)",
+          }} />
+          <span style={{
+            fontSize: 9, color: "rgba(255,255,255,0.2)",
+            fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em",
+          }}>SẢN XUẤT</span>
         </div>
-      </motion.div>
+      </motion.nav>
 
-      {/* Main content */}
-      <div
-        style={{
-          maxWidth: 800,
-          margin: "0 auto",
-          padding: "100px 32px 80px",
-          position: "relative",
-          zIndex: 10,
-        }}
-      >
-        {/* ── HERO SECTION ── */}
+      {/* ── CONTENT ── */}
+      <div style={{
+        maxWidth: 680, margin: "0 auto", padding: "80px 24px 60px",
+        position: "relative", zIndex: 10,
+      }}>
+
+        {/* HERO */}
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          style={{ marginBottom: 40, paddingTop: 24 }}
+          transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          style={{ marginBottom: 24, paddingTop: 20 }}
         >
-          {/* Greeting */}
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: "rgba(139,92,246,0.7)",
-              letterSpacing: "0.05em",
-              marginBottom: 16,
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
-          >
-            HELLO, I AM
+          <div style={{
+            fontSize: 11, fontWeight: 500, color: "rgba(180,30,30,0.5)",
+            letterSpacing: "0.08em", marginBottom: 12,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>
+             kiến.trúc.sư.hệ.thống
           </div>
 
-          {/* Name */}
-          <h1
-            style={{
-              fontSize: "clamp(56px, 10vw, 96px)",
-              fontWeight: 900,
-              letterSpacing: "-0.04em",
-              lineHeight: 1,
-              margin: 0,
-              display: "flex",
-              alignItems: "baseline",
-              gap: 4,
-              background:
-                "linear-gradient(135deg, #ffffff 0%, #e2e2e2 40%, #a78bfa 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundSize: "200% auto",
-            }}
-          >
-            {typed}
-            <span
-              style={{
-                display: "inline-block",
-                width: 4,
-                height: "0.75em",
-                background: "#8b5cf6",
-                marginLeft: 4,
-                animation: "blink 1.1s step-end infinite",
-                opacity: typed.length < FULL_NAME.length ? 1 : 0,
-                borderRadius: 1,
-              }}
-            />
+          <h1 style={{
+            fontSize: "clamp(52px, 10vw, 88px)", fontWeight: 900,
+            letterSpacing: "-0.045em", lineHeight: 0.95, margin: 0,
+            display: "flex", alignItems: "baseline", gap: 2,
+          }}>
+            <GlitchText text={typed} style={{ color: "rgba(240,240,240,0.92)" }} />
+            <span style={{
+              display: "inline-block", width: 3, height: "0.7em",
+              background: "rgba(180,30,30,0.7)", marginLeft: 3,
+              animation: "blink 1.1s step-end infinite",
+              opacity: typed.length < FULL_NAME.length ? 1 : 0,
+            }} />
           </h1>
         </motion.div>
 
-        {/* ── Subtitle ── */}
+        {/* Subtitle + Quote */}
         <AnimatePresence>
-          {typingDone && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              style={{
-                marginBottom: 20,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <span
+          {ready && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                transition={sectionDelay(0)}
                 style={{
-                  fontSize: 15,
-                  fontWeight: 400,
-                  color: "rgba(255,255,255,0.45)",
-                  letterSpacing: "0.02em",
+                  marginBottom: 12,
+                  display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
                 }}
               >
-                System Architect
-              </span>
-              <span
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.15)",
-                  display: "inline-block",
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 15,
-                  fontWeight: 400,
-                  color: "rgba(255,255,255,0.45)",
-                }}
-              >
-                Ho Chi Minh City, VN
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Quote ── */}
-        <AnimatePresence>
-          {typingDone && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              style={{
-                marginBottom: 64,
-                paddingLeft: 20,
-                borderLeft: "2px solid rgba(139,92,246,0.3)",
-                position: "relative",
-              }}
-            >
-              {/* Glow on border */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: -1,
-                  top: 0,
-                  bottom: 0,
-                  width: 2,
-                  background:
-                    "linear-gradient(180deg, transparent, rgba(139,92,246,0.6), transparent)",
-                  filter: "blur(4px)",
-                  pointerEvents: "none",
-                }}
-              />
-              <div
-                style={{
-                  fontSize: 16,
-                  color: "rgba(255,255,255,0.35)",
-                  fontStyle: "italic",
-                  lineHeight: 1.8,
-                  marginBottom: 8,
-                  fontWeight: 300,
-                }}
-              >
-                &ldquo;Tao mới là nhà vuaaa&rdquo;
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "rgba(255,255,255,0.18)",
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                — 5Ys, {BUILD_YEAR}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── STATS ── */}
-        <AnimatePresence>
-          {typingDone && (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              style={{ marginBottom: 64 }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(4, 1fr)",
-                  gap: 12,
-                }}
-              >
-                {STATS.map((s, i) => (
-                  <motion.div
-                    key={s.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1, duration: 0.5 }}
-                    style={{
-                      padding: "24px 16px",
-                      borderRadius: 16,
-                      background: "rgba(255,255,255,0.025)",
-                      border: "1px solid rgba(255,255,255,0.05)",
-                      textAlign: "center",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 28,
-                        fontWeight: 800,
-                        letterSpacing: "-0.02em",
-                        marginBottom: 8,
-                        background:
-                          "linear-gradient(135deg, #fff, #a78bfa)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                      }}
-                    >
-                      <AnimatedCounter
-                        value={s.value}
-                        suffix={s.suffix}
-                        decimals={s.decimals || 0}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 600,
-                        letterSpacing: "0.2em",
-                        color: "rgba(255,255,255,0.2)",
-                        textTransform: "uppercase",
-                        fontFamily: "'Inter', sans-serif",
-                      }}
-                    >
-                      {s.label}
-                    </div>
-                  </motion.div>
+                {["Kiến trúc sư hệ thống", "TP. Hồ Chí Minh, VN"].map((t, i) => (
+                  <span key={t} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {i > 0 && <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(140,20,20,0.3)" }} />}
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>{t}</span>
+                  </span>
                 ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
 
-        {/* ── META / DETAILS ── */}
-        <AnimatePresence>
-          {typingDone && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
-              style={{ marginBottom: 64 }}
-            >
-              <SectionLabel>Details</SectionLabel>
-              <div
+              <motion.div
+                initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
+                transition={sectionDelay(1)}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  gap: 12,
-                }}
-              >
-                <MetaBlock
-                  label="ROLE"
-                  value="System Architect"
-                  index={0}
-                />
-                <MetaBlock
-                  label="PROJECT"
-                  value="Court Ticket System"
-                  index={1}
-                />
-                <MetaBlock
-                  label="STATUS"
-                  value="Production ✓"
-                  accent="#4ade80"
-                  index={2}
-                />
-                <MetaBlock
-                  label="LOCATION"
-                  value="HCMC, Việt Nam"
-                  index={3}
-                />
-                <MetaBlock
-                  label="AVAILABILITY"
-                  value="Open to collab"
-                  accent="#818cf8"
-                  index={4}
-                />
-                <MetaBlock
-                  label="CONTACT"
-                  value="5ys@system.dev"
-                  accent="#a78bfa"
-                  index={5}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── TECH STACK ── */}
-        <AnimatePresence>
-          {typingDone && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.6 }}
-              style={{ marginBottom: 64 }}
-            >
-              <SectionLabel>Tech Stack</SectionLabel>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 10,
-                }}
-              >
-                {TECH_STACK.map((t, i) => (
-                  <TechCard
-                    key={t.name}
-                    name={t.name}
-                    icon={t.icon}
-                    color={t.color}
-                    glow={t.glow}
-                    index={i}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── TIMELINE ── */}
-        <AnimatePresence>
-          {typingDone && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7, duration: 0.6 }}
-              style={{ marginBottom: 80 }}
-            >
-              <SectionLabel>Timeline</SectionLabel>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 0,
+                  marginBottom: 48, paddingLeft: 16,
+                  borderLeft: "2px solid rgba(140,20,20,0.25)",
                   position: "relative",
                 }}
               >
-                {TIMELINE.map((item, i) => (
-                  <motion.div
-                    key={item.year}
-                    initial={{ opacity: 0, x: -30 }}
-                    whileInView={{ opacity: 1, x: 0 }}
+                <div style={{
+                  position: "absolute", left: -1, top: 0, bottom: 0, width: 2,
+                  background: "linear-gradient(180deg, transparent, rgba(180,30,30,0.4), transparent)",
+                  filter: "blur(3px)", pointerEvents: "none",
+                }} />
+                <div style={{
+                  fontSize: 14, color: "rgba(255,255,255,0.25)", fontStyle: "italic",
+                  lineHeight: 1.8, fontWeight: 300,
+                }}>
+                  &ldquo;Tao mới là nhà vuaaa&rdquo;
+                </div>
+                <div style={{
+                  fontSize: 10, color: "rgba(255,255,255,0.1)",
+                  fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.1em", marginTop: 4,
+                }}>— 5Ys, 2026</div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* STATS */}
+        <AnimatePresence>
+          {ready && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              transition={sectionDelay(2)}
+              style={{
+                display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 8, marginBottom: 48,
+              }}
+            >
+              {STATS.map((s, i) => (
+                <motion.div
+                  key={s.label}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 + i * 0.08, duration: 0.4 }}
+                  style={{
+                    padding: "18px 10px", borderRadius: 12, textAlign: "center",
+                    background: "rgba(255,255,255,0.015)",
+                    border: "1px solid rgba(140,20,20,0.08)",
+                    position: "relative", overflow: "hidden",
+                  }}
+                >
+                  {/* Subtle inner glow */}
+                  <div style={{
+                    position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)",
+                    width: 40, height: 40, borderRadius: "50%",
+                    background: "rgba(140,20,20,0.06)", filter: "blur(15px)",
+                    pointerEvents: "none",
+                  }} />
+                  <div style={{
+                    fontSize: 9, color: "rgba(180,30,30,0.35)", marginBottom: 6,
+                  }}>{s.icon}</div>
+                  <div style={{
+                    fontSize: 22, fontWeight: 800, color: "rgba(240,240,240,0.85)",
+                    letterSpacing: "-0.02em", marginBottom: 4,
+                  }}>{s.value}</div>
+                  <div style={{
+                    fontSize: 8, fontWeight: 600, letterSpacing: "0.15em",
+                    color: "rgba(255,255,255,0.15)", textTransform: "uppercase",
+                  }}>{s.label}</div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── SECTION HELPER ── */}
+        {ready && (
+          <>
+            {/* DETAILS */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={sectionDelay(3)}
+              style={{ marginBottom: 48 }}
+            >
+              <SectionHead>Chi tiết</SectionHead>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                {[
+                  { l: "VAI TRÒ", v: "Kiến trúc sư hệ thống" },
+                  { l: "DỰ ÁN", v: "Court Ticket System" },
+                  { l: "TRẠNG THÁI", v: "Sản xuất ✓", c: "rgba(140,60,60,0.8)" },
+                  { l: "ĐỊA ĐIỂM", v: "TP.HCM, Việt Nam" },
+                  { l: "HỢP TÁC", v: "Sẵn sàng", c: "rgba(140,80,80,0.7)" },
+                  { l: "LIÊN HỆ", v: "5ys@system.dev" },
+                ].map((item, i) => (
+                  <motion.div key={item.l}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: i * 0.12, duration: 0.5 }}
+                    transition={{ delay: i * 0.06, duration: 0.4 }}
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "64px 24px 1fr",
-                      gap: "0 16px",
-                      paddingBottom: i < TIMELINE.length - 1 ? 32 : 0,
+                      padding: "14px 16px", borderRadius: 10,
+                      background: "rgba(255,255,255,0.012)",
+                      border: "1px solid rgba(255,255,255,0.025)",
                     }}
                   >
-                    {/* Year */}
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: item.accent,
-                        paddingTop: 2,
-                        textAlign: "right",
-                        fontFamily:
-                          "'JetBrains Mono', monospace",
-                      }}
-                    >
-                      {item.year}
-                    </div>
+                    <div style={{
+                      fontSize: 8, fontWeight: 600, letterSpacing: "0.2em",
+                      color: "rgba(255,255,255,0.12)", textTransform: "uppercase",
+                      marginBottom: 6, fontFamily: "'Inter', sans-serif",
+                    }}>{item.l}</div>
+                    <div style={{
+                      fontSize: 12, fontWeight: 500,
+                      color: item.c || "rgba(255,255,255,0.5)",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>{item.v}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
 
-                    {/* Line + dot */}
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: "50%",
-                          background: item.accent,
-                          boxShadow: `0 0 12px ${item.accent}40`,
-                          flexShrink: 0,
-                        }}
-                      />
+            {/* TECH STACK */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={sectionDelay(4)}
+              style={{ marginBottom: 48 }}
+            >
+              <SectionHead>Công nghệ</SectionHead>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {TECH_STACK.map((t, i) => (
+                  <TechTag key={t.name} name={t.name} icon={t.icon} index={i} />
+                ))}
+              </div>
+            </motion.div>
+
+            {/* TIMELINE */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={sectionDelay(5)}
+              style={{ marginBottom: 56 }}
+            >
+              <SectionHead>Dòng thời gian</SectionHead>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {TIMELINE.map((item, i) => (
+                  <motion.div key={item.year}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1, duration: 0.4 }}
+                    style={{
+                      display: "grid", gridTemplateColumns: "52px 16px 1fr",
+                      gap: "0 14px", paddingBottom: i < TIMELINE.length - 1 ? 24 : 0,
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 12, fontWeight: 700, color: "rgba(180,30,30,0.55)",
+                      paddingTop: 1, textAlign: "right",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>{item.year}</div>
+
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                      <div style={{
+                        width: 7, height: 7, borderRadius: "50%",
+                        background: "rgba(180,30,30,0.5)",
+                        boxShadow: "0 0 8px rgba(140,20,20,0.3)",
+                        flexShrink: 0,
+                      }} />
                       {i < TIMELINE.length - 1 && (
-                        <div
-                          style={{
-                            flex: 1,
-                            width: 1,
-                            background: `linear-gradient(180deg, ${item.accent}40, rgba(255,255,255,0.04))`,
-                            marginTop: 6,
-                          }}
-                        />
+                        <div style={{
+                          flex: 1, width: 1, marginTop: 4,
+                          background: "linear-gradient(180deg, rgba(140,20,20,0.2), rgba(255,255,255,0.02))",
+                        }} />
                       )}
                     </div>
 
-                    {/* Content */}
-                    <div style={{ paddingTop: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 600,
-                          color: "rgba(255,255,255,0.75)",
-                          marginBottom: 4,
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        {item.title}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "rgba(255,255,255,0.3)",
-                          lineHeight: 1.6,
-                          fontWeight: 400,
-                        }}
-                      >
-                        {item.desc}
-                      </div>
+                    <div>
+                      <div style={{
+                        fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)",
+                        marginBottom: 2, letterSpacing: "-0.01em",
+                      }}>{item.title}</div>
+                      <div style={{
+                        fontSize: 11, color: "rgba(255,255,255,0.2)", lineHeight: 1.5,
+                      }}>{item.desc}</div>
                     </div>
                   </motion.div>
                 ))}
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* ── FOOTER / SIGNATURE ── */}
-        <AnimatePresence>
-          {typingDone && (
+            {/* FOOTER */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.9, duration: 0.6 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              transition={sectionDelay(6)}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 0" }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  padding: "24px 0",
-                }}
-              >
-                <div
-                  style={{
-                    flex: 1,
-                    height: 1,
-                    background:
-                      "linear-gradient(90deg, transparent, rgba(139,92,246,0.15))",
-                  }}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    fontSize: 10,
-                    fontWeight: 500,
-                    letterSpacing: "0.2em",
-                    color: "rgba(255,255,255,0.15)",
-                    fontFamily: "'JetBrains Mono', monospace",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  <span
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #8b5cf6, #6366f1)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                      fontWeight: 700,
-                    }}
-                  >
-                    5Ys
-                  </span>
-                  <span style={{ color: "rgba(255,255,255,0.08)" }}>
-                    ·
-                  </span>
-                  {BUILD_YEAR}
-                  <span style={{ color: "rgba(255,255,255,0.08)" }}>
-                    ·
-                  </span>
-                  Built with 🖤
-                </div>
-                <div
-                  style={{
-                    flex: 1,
-                    height: 1,
-                    background:
-                      "linear-gradient(90deg, rgba(139,92,246,0.15), transparent)",
-                  }}
-                />
+              <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, transparent, rgba(140,20,20,0.1))" }} />
+              <div style={{
+                fontSize: 9, fontWeight: 500, letterSpacing: "0.15em",
+                color: "rgba(255,255,255,0.08)",
+                fontFamily: "'JetBrains Mono', monospace",
+                display: "flex", alignItems: "center", gap: 6,
+              }}>
+                <span style={{ color: "rgba(180,30,30,0.4)", fontWeight: 700 }}>5Ys</span>
+                <span>·</span> 2026 <span>·</span> 🖤
               </div>
+              <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, rgba(140,20,20,0.1), transparent)" }} />
             </motion.div>
-          )}
-        </AnimatePresence>
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Section heading
+// ═══════════════════════════════════════════════════════════════════
+function SectionHead({ children }: { children: string }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10, marginBottom: 20,
+    }}>
+      <div style={{
+        width: 2, height: 12, borderRadius: 1,
+        background: "linear-gradient(180deg, rgba(180,30,30,0.5), rgba(80,10,10,0.2))",
+      }} />
+      <span style={{
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.18em",
+        color: "rgba(255,255,255,0.2)", textTransform: "uppercase",
+        fontFamily: "'Inter', sans-serif",
+      }}>{children}</span>
+      <div style={{
+        flex: 1, height: 1,
+        background: "linear-gradient(90deg, rgba(140,20,20,0.12), transparent)",
+      }} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tech tag
+// ═══════════════════════════════════════════════════════════════════
+function TechTag({ name, icon, index }: { name: string; icon: string; index: number }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.04, duration: 0.4 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: "8px 14px", borderRadius: 8,
+        background: hovered ? "rgba(140,20,20,0.08)" : "rgba(255,255,255,0.015)",
+        border: `1px solid ${hovered ? "rgba(140,20,20,0.2)" : "rgba(255,255,255,0.03)"}`,
+        display: "flex", alignItems: "center", gap: 7,
+        cursor: "default", transition: "all 0.25s ease",
+        boxShadow: hovered ? "0 0 16px rgba(100,0,0,0.1)" : "none",
+        transform: hovered ? "translateY(-1px)" : "none",
+      }}
+    >
+      <span style={{
+        fontSize: 10,
+        color: hovered ? "rgba(220,60,60,0.7)" : "rgba(255,255,255,0.15)",
+        transition: "color 0.25s",
+      }}>{icon}</span>
+      <span style={{
+        fontSize: 11, fontWeight: 500,
+        color: hovered ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.25)",
+        transition: "color 0.25s", fontFamily: "'Inter', sans-serif",
+      }}>{name}</span>
+    </motion.div>
   );
 }
