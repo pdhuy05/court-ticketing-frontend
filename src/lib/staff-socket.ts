@@ -3,8 +3,6 @@
 import { io, Socket } from "socket.io-client";
 import { getSocketBaseUrl } from "@/lib/runtime-config";
 
-const SOCKET_BASE_URL = getSocketBaseUrl();
-
 export interface StaffDisplayTicket {
   id: string;
   number: number;
@@ -71,7 +69,8 @@ export interface TicketBackToWaitingPayload {
 }
 
 export function createStaffSocket() {
-  return io(SOCKET_BASE_URL, {
+  const url = getSocketBaseUrl();
+  return io(url, {
     transports: ["websocket"],
   });
 }

@@ -19,7 +19,7 @@ export default function NotificationPermissionButton({
     setPermission(next);
   }, []);
 
-  if (!("Notification" in window)) return null;
+  if (typeof window === "undefined" || !("Notification" in window)) return null;
   if (permission !== "default") return null;
 
   const isAdmin = variant === "admin";

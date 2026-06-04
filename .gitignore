@@ -32,11 +32,7 @@ yarn-error.log*
 
 + thêm vào
 # env files
-.env
-.env.local
-.env.production
-.env.*
-!.env.example
+
 
 # vercel
 .vercel
