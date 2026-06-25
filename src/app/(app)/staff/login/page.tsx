@@ -31,6 +31,14 @@ function useLocalTime() {
   return { time, date };
 }
 
+type ToastType = "success" | "error" | "warning" | "info";
+
+interface ToastState {
+  isOpen: boolean;
+  message: string;
+  type: ToastType;
+}
+
 function StaffLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -38,10 +46,10 @@ function StaffLoginContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState({
+  const [toast, setToast] = useState<ToastState>({
     isOpen: false,
     message: "",
-    type: "info" as "success" | "error" | "warning" | "info",
+    type: "info",
   });
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const { time, date } = useLocalTime();
@@ -86,12 +94,14 @@ function StaffLoginContent() {
       const response = await loginStaff({ username, password });
 
       if (response.success && response.data) {
-        const { token, user } = response.data;
+        const { accessToken, token, user } = response.data;
+        const tokenToStore = accessToken || token;
 
         // Lưu vào sessionStorage (mỗi tab riêng biệt)
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("staffToken", token);
+          sessionStorage.setItem("staffToken", tokenToStore ?? "");
           sessionStorage.setItem("staffUser", JSON.stringify(user));
+          sessionStorage.setItem("staffName", user.fullName || user.username || "");
         }
 
         setToast({
@@ -119,11 +129,12 @@ function StaffLoginContent() {
         });
         setLoading(false);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Login error:", error);
+      const message = error instanceof Error ? error.message : "Lỗi đăng nhập, vui lòng thử lại";
       setToast({
         isOpen: true,
-        message: error.message || "Lỗi đăng nhập, vui lòng thử lại",
+        message,
         type: "error",
       });
       setLoading(false);
@@ -358,7 +369,7 @@ function StaffLoginContent() {
         isOpen={toast.isOpen}
         message={toast.message}
         type={toast.type}
-        onClose={() => setToast({ ...toast, isOpen: false })}
+        onClose={() => setToast((prev) => ({ ...prev, isOpen: false }))}
       />
 
       {/* Demo Info */}

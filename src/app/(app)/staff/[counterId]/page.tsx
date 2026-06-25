@@ -6,6 +6,7 @@ import { RiVolumeMuteLine, RiVolumeUpLine } from "react-icons/ri";
 import { Ticket, Counter, Service } from "@/types/queue";
 import Toast from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import { getErrorMessage } from "@/lib/error-message";
 import {
   backTicketToWaitingApi,
   getStaffDisplay,
@@ -17,6 +18,7 @@ import {
   recallTicket,
   recallProcessingTicketApi,
   getTtsEnabledStatus,
+  updateTicketNoteApi,
 } from "@/services/ticket.service";
 import {
   StaffDisplayUpdatedPayload,
@@ -66,7 +68,16 @@ function useWaitMinutes(createdAt?: string | number | Date | null) {
   return mins;
 }
 
+const formatWaitLabel = (mins: number): string => {
+  if (mins < 1) return "Mới vào";
+  if (mins < 60) return `Chờ ${mins} phút`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `Chờ ${h}h${m}p` : `Chờ ${h} giờ`;
+};
 
+const getWaitColorVar = (mins: number): string =>
+  mins >= 20 ? "var(--red)" : mins >= 10 ? "var(--orange)" : "var(--muted)";
 
 /* ─── sub-components ──────────────────────────────────────────────────── */
 
@@ -81,15 +92,6 @@ function KeyHint({ k, label }: { k: string; label: string }) {
         fontWeight: 600,
       }}>{k}</kbd>
       {label}
-    </span>
-  );
-}
-
-function WaitBadge({ mins }: { mins: number }) {
-  const color = mins >= 20 ? "var(--red)" : mins >= 10 ? "var(--orange)" : "var(--muted)";
-  return (
-    <span style={{ fontSize: 13, color, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", fontWeight: 600 }}>
-      {mins}p
     </span>
   );
 }
@@ -195,10 +197,16 @@ export default function StaffCounterPage() {
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [doneToday, setDoneToday] = useState(0);
   const [socketOk, setSocketOk] = useState(true);
+  const [noteText, setNoteText] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
+  const noteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 7;
+  const [topbarExpanded, setTopbarExpanded] = useState(false);
+  const [openNoteTicketId, setOpenNoteTicketId] = useState<string | null>(null);
 
   const [toast, setToast] = useState<{ isOpen: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ isOpen: false, message: "", type: "info" });
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message?: string; fields?: { label: string; value: string }[]; onConfirm: () => void }>({ isOpen: false, title: "", onConfirm: () => {} });
@@ -295,6 +303,44 @@ export default function StaffCounterPage() {
     setActiveTab,
   });
 
+  // Sync ghi chú khi đổi vé
+  useEffect(() => {
+    setNoteText(currentTicket?.note || "");
+    setNoteSaved(false);
+    if (noteDebounceRef.current) clearTimeout(noteDebounceRef.current);
+  }, [currentTicket?.id]);
+
+  const handleNoteChange = (val: string) => {
+    setNoteText(val);
+    setNoteSaved(false);
+    if (noteDebounceRef.current) clearTimeout(noteDebounceRef.current);
+    if (!currentTicket) return;
+    noteDebounceRef.current = setTimeout(async () => {
+      try {
+        setNoteSaving(true);
+        await updateTicketNoteApi(currentTicket.id, val);
+        setNoteSaved(true);
+      } catch {
+        // im lặng, không làm phiền staff
+      } finally {
+        setNoteSaving(false);
+      }
+    }, 800);
+  };
+
+  const handleNoteClear = async () => {
+    setNoteText("");
+    setNoteSaved(false);
+    if (!currentTicket) return;
+    try {
+      setNoteSaving(true);
+      await updateTicketNoteApi(currentTicket.id, "");
+      setNoteSaved(true);
+    } catch { /* ignore */ } finally {
+      setNoteSaving(false);
+    }
+  };
+
   useEffect(() => {
     kbdHandlersRef.current.handleConfirmCallNext = handleConfirmCallNext;
     kbdHandlersRef.current.handleComplete = handleComplete;
@@ -326,7 +372,7 @@ export default function StaffCounterPage() {
         const res = await recallProcessingTicketApi(currentTicket.id);
         res.success ? showToast("Đang gọi lại!", "info") : showToast(res.message || "Không thể gọi lại!", "error");
       } catch (error) {
-        if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+        if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(getErrorMessage(error, "Không thể kết nối máy chủ"), "error"); }
         else showToast("Lỗi hệ thống!", "error");
       }
       return;
@@ -345,7 +391,7 @@ export default function StaffCounterPage() {
       const res = await callTicketById(next.id, counterId);
       res.success ? showToast(res.message || "Đang gọi!", "success") : showToast(res.message || "Không thể gọi!", "error");
     } catch (error) {
-      if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+      if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(getErrorMessage(error, "Không thể kết nối máy chủ"), "error"); }
       else showToast("Lỗi hệ thống!", "error");
     }
   };
@@ -377,7 +423,7 @@ export default function StaffCounterPage() {
           if (res.success) { showToast(res.message, "success"); setDoneToday(d => d + 1); }
           else showToast(res.message || "Không thể hoàn thành!", "error");
         } catch (error) {
-          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(getErrorMessage(error, "Không thể kết nối máy chủ"), "error"); }
           else showToast("Lỗi hệ thống!", "error");
         } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
@@ -395,7 +441,7 @@ export default function StaffCounterPage() {
           if (res.success) { showToast(res.message, "success"); void handleRecallListRefresh(); }
           else showToast(res.message || "Không thể bỏ qua!", "error");
         } catch (error) {
-          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(getErrorMessage(error, "Không thể kết nối máy chủ"), "error"); }
           else showToast("Lỗi hệ thống!", "error");
         } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
@@ -412,7 +458,7 @@ export default function StaffCounterPage() {
           const res = await backTicketToWaitingApi(currentTicket.id, "front");
           res.success ? showToast(res.message || "Đã trả về hàng chờ", "success") : showToast(res.message || "Không thể trả về!", "error");
         } catch (error) {
-          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(getErrorMessage(error, "Không thể kết nối máy chủ"), "error"); }
           else showToast("Lỗi hệ thống!", "error");
         } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
@@ -427,7 +473,7 @@ export default function StaffCounterPage() {
           const res = await callTicketById(ticket.id, counterId);
           res.success ? showToast(res.message || "Đang gọi!", "success") : showToast(res.message || "Không thể gọi!", "error");
         } catch (error) {
-          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(getErrorMessage(error, "Không thể kết nối máy chủ"), "error"); }
           else showToast("Lỗi hệ thống!", "error");
         } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
@@ -444,7 +490,7 @@ export default function StaffCounterPage() {
           if (res.success) { showToast("Đang gọi lại!", "success"); void handleRecallListRefresh(); }
           else showToast(res.message || "Không thể gọi lại!", "error");
         } catch (error) {
-          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(error.message, "error"); }
+          if (error instanceof Error) { if (error.message === AUTH_EXPIRED_ERROR) { handleSessionExpired(); return; } showToast(getErrorMessage(error, "Không thể kết nối máy chủ"), "error"); }
           else showToast("Lỗi hệ thống!", "error");
         } finally { setConfirmModal(p => ({ ...p, isOpen: false })); }
       },
@@ -458,7 +504,16 @@ export default function StaffCounterPage() {
     });
   };
 
-  useEffect(() => { setPage(1); }, [activeTab, search, serviceFilter]);
+  const handleTicketNoteChange = useCallback((ticketId: string, note: string) => {
+    setWaitingTickets(prev => prev.map(t => t.id === ticketId ? { ...t, note } : t));
+    setRecallTickets(prev => prev.map(t => t.id === ticketId ? { ...t, note } : t));
+  }, []);
+
+  const handleToggleNote = useCallback((ticketId: string) => {
+    setOpenNoteTicketId(prev => (prev === ticketId ? null : ticketId));
+  }, []);
+
+  useEffect(() => { setPage(1); setOpenNoteTicketId(null); }, [activeTab, search, serviceFilter]);
 
   const allTickets = activeTab === "waiting" ? waitingTickets : recallTickets;
   const serviceOptions = Array.from(new Set(allTickets.map(t => t.serviceName).filter(Boolean))) as string[];
@@ -491,15 +546,45 @@ export default function StaffCounterPage() {
       <style>{CSS}</style>
       <div className="sp">
 
-        {/* ── TOPBAR ── */}
-        <header className="sp__topbar">
-          <div className="sp__identity">
-            <div className="sp__avatar">{staffName.charAt(0).toUpperCase()}</div>
-            <div>
-              <div className="sp__greeting">Chào mừng trở lại</div>
-              <div className="sp__name">{staffName}</div>
+        {/* ── TOPBAR (collapsible) ── */}
+        <header className={`sp__topbar ${topbarExpanded ? "sp__topbar--expanded" : ""}`}>
+          <div className="sp__topbar-main">
+            <button
+              type="button"
+              className="sp__topbar-toggle"
+              onClick={() => setTopbarExpanded(v => !v)}
+              aria-expanded={topbarExpanded}
+              aria-label={topbarExpanded ? "Thu gọn thông tin tài khoản" : "Mở rộng thông tin tài khoản"}
+              title={topbarExpanded ? "Thu gọn" : "Mở rộng"}
+            >
+              {topbarExpanded ? "▴" : "▾"}
+            </button>
+
+            <div className="sp__avatar sp__avatar--compact">{staffName.charAt(0).toUpperCase()}</div>
+
+            <div className="sp__topbar-info">
+              <div className="sp__name sp__name--compact">{staffName}</div>
+              {!topbarExpanded && restricted && assignedServices.length > 0 && (
+                <div
+                  className="sp__restrict-summary"
+                  title={assignedServices.map(s => s.name).join(", ")}
+                >
+                  Giới hạn {assignedServices.length} dịch vụ
+                </div>
+              )}
             </div>
-            {restricted && (
+
+            <div className="sp__topbar-right">
+              <NotificationPermissionButton variant="staff" />
+              <button className="sp__logout" onClick={handleLogout}>
+                {topbarExpanded ? "Đăng xuất" : "Thoát"}
+              </button>
+            </div>
+          </div>
+
+          <div className="sp__topbar-details">
+            <div className="sp__greeting">Chào mừng trở lại</div>
+            {restricted && assignedServices.length > 0 && (
               <div className="sp__restrict-badge">
                 <span className="sp__restrict-dot" />
                 Giới hạn:{" "}
@@ -508,11 +593,6 @@ export default function StaffCounterPage() {
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="sp__topbar-right">
-            <NotificationPermissionButton variant="staff" />
-            <button className="sp__logout" onClick={handleLogout}>Đăng xuất</button>
           </div>
         </header>
 
@@ -532,20 +612,19 @@ export default function StaffCounterPage() {
                 <span className={`sp__tab-count ${recallTickets.length > 0 ? "sp__tab-count--warn" : ""}`}>{recallTickets.length}</span>
                 <KeyHint k="2" label="" />
               </button>
-            </div>
-
-            <div className="sp__search-bar">
-              <span className="sp__search-icon">⌕</span>
-              <input
-                className="sp__search-input"
-                type="text"
-                placeholder="Tìm số phiếu, tên..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-              {search && (
-                <button className="sp__search-clear" onClick={() => setSearch("")}>✕</button>
-              )}
+              <div className="sp__search-bar">
+                <span className="sp__search-icon">⌕</span>
+                <input
+                  className="sp__search-input"
+                  type="text"
+                  placeholder="Tìm số phiếu, tên..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button className="sp__search-clear" onClick={() => setSearch("")}>✕</button>
+                )}
+              </div>
             </div>
 
             {serviceOptions.length > 1 && (
@@ -579,26 +658,32 @@ export default function StaffCounterPage() {
                   <tr>
                     <th style={{ width: "6%" }}>#</th>
                     <th style={{ width: "16%" }}>Số phiếu</th>
-                    <th style={{ width: "30%" }}>Họ và tên</th>
-                    <th style={{ width: "26%" }}>Dịch vụ</th>
-                    <th style={{ width: "10%" }}>Chờ</th>
+                    <th style={{ width: "36%" }}>Họ và tên</th>
+                    <th style={{ width: "30%" }}>Dịch vụ</th>
                     <th style={{ width: "12%" }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayTickets.length > 0 ? (
-                    displayTickets.map((ticket, index) => (
-                      <TicketRow
-                        key={ticket.id || (ticket as Ticket & { _id?: string })._id}
-                        ticket={ticket}
-                        index={(safePage - 1) * PAGE_SIZE + index}
-                        isRecall={activeTab === "recall"}
-                        onCall={() => activeTab === "waiting" ? handleCallSpecific(ticket) : handleRecallSpecific(ticket)}
-                      />
-                    ))
+                    displayTickets.map((ticket, index) => {
+                      const rowId = ticket.id || (ticket as Ticket & { _id?: string })._id || "";
+                      return (
+                        <TicketRow
+                          key={rowId}
+                          ticket={ticket}
+                          index={(safePage - 1) * PAGE_SIZE + index}
+                          isRecall={activeTab === "recall"}
+                          onCall={() => activeTab === "waiting" ? handleCallSpecific(ticket) : handleRecallSpecific(ticket)}
+                          onNoteChange={handleTicketNoteChange}
+                          onCopyToast={(msg) => showToast(msg, "success")}
+                          isNoteOpen={openNoteTicketId === rowId}
+                          onToggleNote={() => handleToggleNote(rowId)}
+                        />
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={6} className="sp__empty">
+                      <td colSpan={5} className="sp__empty">
                         {search || serviceFilter ? "Không tìm thấy kết quả" : activeTab === "waiting" ? "Không có vé chờ" : "Không có vé bỏ qua"}
                       </td>
                     </tr>
@@ -646,7 +731,11 @@ export default function StaffCounterPage() {
           {/* RIGHT — current + actions */}
           <aside className="sp__panel">
             <div className={`sp__current ${currentTicket ? "sp__current--active" : ""}`}>
-              <div className="sp__current-label">VÉ ĐANG XỬ LÝ</div>
+              {currentTicket?.note && (
+                <div className="sp__current-note">
+                  <span className="sp__current-note-text">{currentTicket.note}</span>
+                </div>
+              )}
               {currentTicket ? (
                 <>
                   <div className="sp__current-number">{getTicketDisplayNumber(currentTicket)}</div>
@@ -662,7 +751,6 @@ export default function StaffCounterPage() {
                       <span className="sp__meta-val">{currentTicket.serviceName || "—"}</span>
                     </div>
                   </div>
-
                 </>
               ) : (
                 <div className="sp__current-empty">
@@ -700,49 +788,174 @@ export default function StaffCounterPage() {
 }
 
 /* ─── ticket row ── */
-function TicketRow({ ticket, index, isRecall, onCall }: { ticket: Ticket; index: number; isRecall: boolean; onCall: () => void }) {
+function TicketRow({ ticket, index, isRecall, onCall, onNoteChange, onCopyToast, isNoteOpen, onToggleNote }: {
+  ticket: Ticket; index: number; isRecall: boolean;
+  onCall: () => void;
+  onNoteChange: (ticketId: string, note: string) => void;
+  onCopyToast: (msg: string) => void;
+  isNoteOpen: boolean;
+  onToggleNote: () => void;
+}) {
   const mins = useWaitMinutes((ticket as Ticket & { createdAt?: string }).createdAt);
-  const [copied, setCopied] = useState<"name" | "num" | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [noteVal, setNoteVal] = useState(ticket.note || "");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const copy = (text: string, type: "name" | "num") => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(type);
-      setTimeout(() => setCopied(null), 1500);
-    });
+  const lastTicketIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const ticketId = ticket.id;
+    if (ticketId !== lastTicketIdRef.current) {
+      lastTicketIdRef.current = ticketId;
+      setNoteVal(ticket.note || "");
+      setNoteSaved(false);
+    }
+  }, [ticket.id, ticket.note]);
+
+  // Khi dòng này được mở (vì dòng khác bị đóng lại), focus vào textarea
+  useEffect(() => {
+    if (isNoteOpen) {
+      setNoteSaved(false);
+      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [isNoteOpen]);
+
+  // Click vào tên để copy
+  const handleNameClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!ticket.customerName) return;
+    const doFeedback = () => {
+      setCopied(true);
+      onCopyToast(`Đã sao chép: ${ticket.customerName}`);
+      setTimeout(() => setCopied(false), 1500);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(ticket.customerName).then(doFeedback).catch(() => {});
+    } else {
+      const el = document.createElement("textarea");
+      el.value = ticket.customerName; el.style.position = "fixed"; el.style.opacity = "0";
+      document.body.appendChild(el); el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      doFeedback();
+    }
   };
 
+  const handleNoteBtnClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleNote();
+  };
+
+  const saveNote = (val: string) => {
+    setNoteSaving(true);
+    setNoteSaved(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        await updateTicketNoteApi(ticket.id, val);
+        onNoteChange(ticket.id, val);
+        setNoteSaved(true);
+      } catch { /* silent */ } finally {
+        setNoteSaving(false);
+      }
+    }, 700);
+  };
+
+  const handleNoteInput = (val: string) => {
+    setNoteVal(val);
+    setNoteSaved(false);
+    saveNote(val);
+  };
+
+  const handleNoteClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNoteVal("");
+    saveNote("");
+  };
+
+  const hasNote = (noteVal || "").trim().length > 0;
+
   return (
-    <tr className={`sp__tr ${index === 0 ? "sp__tr--first" : ""}`}>
-      <td className="sp__td sp__td--idx">{index + 1}</td>
-      <td className="sp__td sp__td--num">
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+    <>
+      <tr className={`sp__tr ${index === 0 ? "sp__tr--first" : ""} ${isNoteOpen ? "sp__tr--note-open" : ""}`}>
+        <td className="sp__td sp__td--idx">{index + 1}</td>
+        <td
+          className="sp__td sp__td--num"
+          style={{ color: mins >= 20 ? "var(--red)" : mins >= 10 ? "var(--orange)" : "var(--accent)" }}
+          title={`Chờ ${mins} phút`}
+        >
           {getTicketDisplayNumber(ticket)}
-        </div>
-      </td>
-      <td className="sp__td sp__td--name">
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {ticket.customerName || "—"}
+        </td>
+        <td className="sp__td sp__td--name">
+          {/* Click thẳng vào tên để copy, không cần nút riêng */}
+          <span
+            className={`sp__name-copy ${copied ? "sp__name-copy--copied" : ""} ${ticket.customerName ? "sp__name-copy--clickable" : ""}`}
+            onClick={ticket.customerName ? handleNameClick : undefined}
+            title={ticket.customerName ? "Nhấn để sao chép tên" : undefined}
+          >
+            {copied ? "✓ Đã sao chép" : (ticket.customerName || "—")}
           </span>
-          {ticket.customerName && (
+        </td>
+        <td className="sp__td sp__td--service">
+          <div className="sp__service-cell">
+            <span className="sp__service-name">{ticket.serviceName || "—"}</span>
+            <span className="sp__service-wait" style={{ color: getWaitColorVar(mins) }}>
+              {formatWaitLabel(mins)}
+            </span>
+          </div>
+        </td>
+        <td className="sp__td sp__td--action">
+          <div style={{ display: "flex", alignItems: "stretch", justifyContent: "flex-end", gap: 6 }}>
             <button
-              onClick={() => copy(ticket.customerName!, "name")}
-              className="sp__copy-btn"
-              title="Sao chép tên"
+              onClick={handleNoteBtnClick}
+              className={`sp__note-btn ${hasNote ? "sp__note-btn--has" : ""} ${isNoteOpen ? "sp__note-btn--open" : ""}`}
+              title={hasNote ? `Ghi chú: ${noteVal}` : "Thêm ghi chú"}
             >
-              {copied === "name" ? "✓" : "⎘"}
+              ✎{hasNote && <span className="sp__note-dot" />}
             </button>
-          )}
-        </div>
-      </td>
-      <td className="sp__td sp__td--service">{ticket.serviceName || "—"}</td>
-      <td className="sp__td"><WaitBadge mins={mins} /></td>
-      <td className="sp__td sp__td--action">
-        <button onClick={onCall} className={`sp__call-btn ${isRecall ? "sp__call-btn--recall" : ""}`}>
-          {isRecall ? "Gọi lại" : "Gọi"}
-        </button>
-      </td>
-    </tr>
+            <button onClick={onCall} className={`sp__call-btn ${isRecall ? "sp__call-btn--recall" : ""}`}>
+              {isRecall ? "Gọi lại" : "Gọi"}
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {isNoteOpen && (
+        <tr className="sp__tr-note">
+          <td colSpan={5} className="sp__td-note">
+            <div className="sp__inline-note">
+              <span className="sp__inline-note-label">Ghi chú — {getTicketDisplayNumber(ticket)}</span>
+              <div className="sp__inline-note-row">
+                <div className="sp__inline-textarea-wrap">
+                  <textarea
+                    ref={inputRef}
+                    className="sp__inline-textarea"
+                    placeholder="Vd: Thiếu CMND, hẹn thứ 6 tuần sau, chờ thẩm phán đóng dấu…"
+                    value={noteVal}
+                    onChange={e => handleNoteInput(e.target.value)}
+                    maxLength={300}
+                    rows={2}
+                    onKeyDown={e => { if (e.key === "Escape") onToggleNote(); }}
+                  />
+                  {noteSaving && <span className="sp__note-status sp__note-status--saving">Đang lưu…</span>}
+                  {!noteSaving && noteSaved && <span className="sp__note-status sp__note-status--saved">✓ Đã lưu</span>}
+                </div>
+                <div className="sp__inline-note-actions">
+                  {hasNote && !noteSaving && (
+                    <button className="sp__inline-clear" onClick={handleNoteClear} title="Xoá ghi chú">Xoá</button>
+                  )}
+                  <button className="sp__inline-close" onClick={onToggleNote}>Đóng</button>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -762,10 +975,10 @@ const CSS = `
     --green:      #2f9e44;
     --green-bg:   #ebfbee;
     --green-bdr:  #8ce99a;
-    --orange:     #e8590c;
+    --orange:     #d9480f;
     --orange-bg:  #fff4e6;
     --orange-bdr: #ffc078;
-    --red:        #c92a2a;
+    --red:        #e03131;
     --red-bg:     #fff5f5;
     --shadow-sm:  0 1px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
     --shadow-md:  0 4px 14px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
@@ -777,13 +990,63 @@ const CSS = `
   .sp {
     min-height: 100dvh; background: var(--bg); color: var(--text1);
     font-family: var(--font-sans); display: flex; flex-direction: column;
-    gap: 16px; padding: 16px clamp(16px, 2.5vw, 36px) 28px;
+    gap: 10px; padding: 10px clamp(16px, 2.5vw, 36px) 20px;
   }
   .sp__topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; flex-wrap: wrap; background: var(--surface);
-    border: 2px solid var(--border); border-radius: var(--radius);
-    padding: 12px 20px; box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .sp__topbar-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    min-height: 46px;
+  }
+  .sp__topbar-toggle {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    font-family: var(--font-sans);
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .sp__topbar-toggle:hover {
+    background: var(--accent-bg);
+    border-color: #a8b8f0;
+    color: var(--accent);
+  }
+  .sp__topbar-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .sp__topbar-details {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0 14px;
+    transition: max-height 0.28s ease, opacity 0.22s ease, padding 0.28s ease;
+  }
+  /* ── FIX: thêm padding-top để nội dung không dính sát viền trên,
+     tăng max-height để không bị cắt khi nhiều dịch vụ bị giới hạn ── */
+  .sp__topbar--expanded .sp__topbar-details {
+    max-height: 220px;
+    opacity: 1;
+    padding: 14px 14px 16px 52px;
+    border-top: 1px solid var(--border);
   }
   .sp__identity { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .sp__avatar {
@@ -792,8 +1055,30 @@ const CSS = `
     display: flex; align-items: center; justify-content: center;
     font-weight: 800; font-size: 18px; color: var(--accent); flex-shrink: 0;
   }
-  .sp__greeting { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-  .sp__name { font-size: 18px; font-weight: 800; color: var(--text1); }
+  .sp__avatar--compact {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+  }
+  .sp__greeting {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 600;
+    margin-bottom: 10px; /* FIX: tăng từ 6px để tách rõ khỏi badge "Giới hạn" phía dưới */
+  }
+  .sp__name { font-size: 18px; font-weight: 800; color: var(--text1); line-height: 1.2; }
+  .sp__name--compact { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp__restrict-summary {
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--orange);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .sp__restrict-badge {
     display: inline-flex; align-items: center; gap: 7px;
     background: var(--orange-bg); border: 2px solid var(--orange-bdr);
@@ -802,7 +1087,7 @@ const CSS = `
   }
   .sp__restrict-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
   .sp__service-tag { background: #ffe8d6; border-radius: 99px; padding: 2px 10px; font-size: 12px; color: var(--orange); font-weight: 700; }
-  .sp__topbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+  .sp__topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
   .sp__socket {
     display: inline-flex; align-items: center; gap: 6px;
     border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 700;
@@ -819,9 +1104,10 @@ const CSS = `
   .sp__tts--on  { background: var(--green-bg);  border-color: var(--green-bdr); color: var(--green); }
   .sp__tts--off { background: var(--red-bg);    border-color: #ffc9c9;          color: var(--red); }
   .sp__logout {
-    padding: 9px 20px; background: var(--red); color: #fff;
+    padding: 7px 14px; background: var(--red); color: #fff;
     border: 2px solid var(--red); border-radius: 8px; cursor: pointer;
-    font-weight: 800; font-size: 14px; font-family: var(--font-sans); transition: opacity .15s;
+    font-weight: 800; font-size: 13px; font-family: var(--font-sans); transition: opacity .15s;
+    white-space: nowrap;
   }
   .sp__logout:hover { opacity: .85; }
   .sp__stats { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -831,7 +1117,7 @@ const CSS = `
     border-radius: var(--radius); display: flex; flex-direction: column;
     overflow: hidden; box-shadow: var(--shadow-sm);
   }
-  .sp__tabs { display: flex; border-bottom: 2px solid var(--border); background: var(--surface); }
+  .sp__tabs { display: flex; align-items: stretch; border-bottom: 2px solid var(--border); background: var(--surface); }
   .sp__tab {
     display: flex; align-items: center; gap: 8px; padding: 15px 24px;
     font-size: 15px; font-weight: 700; color: var(--muted);
@@ -861,21 +1147,65 @@ const CSS = `
   .sp__tr--first:hover { background: #e4e9fb; }
   .sp__td { padding: 13px 14px; color: var(--text2); vertical-align: middle; }
   .sp__td--idx     { color: var(--muted); font-size: 13px; font-weight: 600; }
-  .sp__td--num     { font-weight: 800; color: var(--accent); font-family: var(--font); font-size: 17px; }
-  .sp__td--name    { color: var(--text1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sp__td--service { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .sp__td--num     { font-weight: 800; font-family: var(--font); font-size: 17px; transition: color .2s; }
+  .sp__td--name    { color: var(--text1); font-weight: 600; overflow: visible; }
+  .sp__td--service { font-size: 14px; overflow: hidden; font-weight: 500; }
   .sp__td--action  { text-align: right; }
+
+  /* dịch vụ + thời gian chờ (2 dòng) */
+  .sp__service-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .sp__service-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--text2);
+    font-weight: 700;
+  }
+  .sp__service-wait {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* click-to-copy name */
+  .sp__name-copy {
+    display: inline-block;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%;
+    border-radius: 4px;
+    transition: background .12s, color .12s;
+  }
+  .sp__name-copy--clickable {
+    cursor: pointer;
+    padding: 2px 6px;
+    margin: -2px -6px;
+  }
+  .sp__name-copy--clickable:hover {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  .sp__name-copy--copied {
+    background: var(--green-bg) !important;
+    color: var(--green) !important;
+    font-weight: 700;
+  }
+
   .sp__search-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 11px 14px; border-bottom: 2px solid var(--border);
-    background: var(--surface);
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; margin-left: auto;
+    border-bottom: 2px solid transparent;
   }
-  .sp__search-icon { font-size: 20px; color: var(--muted); flex-shrink: 0; line-height: 1; }
+  .sp__search-icon { font-size: 17px; color: var(--muted); flex-shrink: 0; line-height: 1; opacity: 0.7; }
   .sp__search-input {
-    flex: 1; border: none; outline: none; font-size: 15px;
-    color: var(--text1); background: transparent; font-family: var(--font-sans); font-weight: 500;
+    flex: 1; border: none; outline: none; font-size: 13px;
+    color: var(--text2); background: transparent; font-family: var(--font-sans); font-weight: 500;
+    width: 160px;
   }
-  .sp__search-input::placeholder { color: var(--muted); }
+  .sp__search-input::placeholder { color: var(--muted); opacity: 0.75; }
   .sp__search-clear {
     background: none; border: none; cursor: pointer; color: var(--muted);
     font-size: 14px; padding: 2px 6px; border-radius: 4px; line-height: 1;
@@ -904,14 +1234,6 @@ const CSS = `
   }
   .sp__pill--active .sp__pill-count { background: #a8b8f0; color: var(--accent2); }
   .sp__pill-count--hot { background: #ffd8a8 !important; color: var(--orange) !important; }
-  .sp__copy-btn {
-    flex-shrink: 0; background: none; border: none; cursor: pointer;
-    color: var(--muted); font-size: 14px; padding: 1px 5px;
-    border-radius: 4px; line-height: 1; opacity: 0;
-    transition: opacity .15s, color .15s, background .15s;
-  }
-  .sp__tr:hover .sp__copy-btn { opacity: 1; }
-  .sp__copy-btn:hover { color: var(--accent); background: var(--accent-bg); }
   .sp__empty { padding: 52px; text-align: center; color: var(--muted); font-style: italic; font-size: 15px; }
   .sp__pagination {
     display: flex; align-items: center; gap: 6px;
@@ -950,26 +1272,26 @@ const CSS = `
   .sp__call-btn--recall:hover { background: #ffe0c2; }
   .sp__panel { display: flex; flex-direction: column; gap: 12px; }
 
-  /* ── current ticket card ── */
+  /* ── current ticket card — chiều cao cố định để không nhảy khi có/không có vé ── */
   .sp__current {
     background: var(--surface); border: 2px solid var(--border);
     border-radius: var(--radius); padding: 20px; flex-shrink: 0;
     box-shadow: var(--shadow-sm); transition: border-color .3s, box-shadow .3s;
-    min-height: 280px; display: flex; flex-direction: column; justify-content: center;
+    display: flex; flex-direction: column; justify-content: center;
+    min-height: 290px;
   }
   .sp__current--active { border-color: var(--accent); border-width: 2.5px; box-shadow: 0 0 0 4px var(--accent-bg), var(--shadow-md); }
-  .sp__current-label { font-size: 12px; font-weight: 800; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
 
   .sp__current-number {
     font-family: var(--font);
-    font-size: clamp(72px, 8vw, 96px);
+    font-size: clamp(110px, 13vw, 160px);
     font-weight: 800;
     color: var(--accent);
-    letter-spacing: -3px;
+    letter-spacing: -5px;
     line-height: 1;
     text-align: center;
-    margin-bottom: 16px;
-    padding: 8px 0;
+    margin-bottom: 18px;
+    padding: 4px 0;
   }
 
   .sp__current-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -984,7 +1306,7 @@ const CSS = `
   .sp__meta-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
   .sp__meta-val { font-size: 17px; color: var(--text1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .sp__current-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 0; color: var(--muted); font-size: 17px; text-align: center; font-weight: 500; }
+  .sp__current-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 17px; text-align: center; font-weight: 500; flex: 1; }
   .sp__current-empty-icon { font-size: 54px; opacity: .2; }
 
   .sp__actions { display: flex; flex-direction: column; gap: 10px; }
@@ -1000,6 +1322,75 @@ const CSS = `
     font-family: var(--font-sans);
   }
   .sp-loading__spinner { width: 38px; height: 38px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  .sp__note-btn {
+    width: 36px; border-radius: 7px; border: 1.5px solid var(--border);
+    background: var(--surface2); color: var(--muted); cursor: pointer;
+    font-size: 15px; display: inline-flex; align-items: center; justify-content: center;
+    position: relative; transition: all .15s; flex-shrink: 0;
+  }
+  .sp__note-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+  .sp__note-btn--has  { border-color: #f0c060; color: #b07800; background: #fffbe6; }
+  .sp__note-btn--has:hover { border-color: #d4a017; background: #fff3cd; }
+  .sp__note-btn--open { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+  .sp__note-dot {
+    position: absolute; top: 3px; right: 3px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #e8a000; border: 1.5px solid #fff;
+  }
+  .sp__tr--note-open { background: var(--accent-bg) !important; }
+  .sp__tr-note { background: #f6f8ff; }
+  .sp__tr-note:hover { background: #f6f8ff; }
+  .sp__td-note { padding: 0 14px 12px 14px !important; border-bottom: 2px solid #c0cff0; }
+  .sp__inline-note { padding-top: 10px; }
+  .sp__inline-note-label {
+    display: block; font-size: 11px; font-weight: 800; color: var(--accent);
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;
+  }
+  .sp__inline-note-row { display: flex; gap: 10px; align-items: stretch; }
+  .sp__inline-textarea-wrap { flex: 1; position: relative; display: flex; flex-direction: column; }
+  .sp__inline-textarea {
+    width: 100%; height: 100%; border: 1.5px solid #a8c0f0; border-radius: 8px;
+    padding: 8px 12px; resize: none; font-size: 14px; line-height: 1.5;
+    color: var(--text1); background: #fff; font-family: var(--font-sans);
+    outline: none; transition: border-color .15s; display: block;
+  }
+  .sp__inline-textarea:focus { border-color: var(--accent); }
+  .sp__inline-textarea::placeholder { color: var(--muted); font-style: italic; }
+  .sp__inline-note-actions {
+    display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex-shrink: 0; align-self: stretch;
+  }
+  .sp__note-status {
+    position: absolute; bottom: 8px; right: 8px;
+    font-size: 11px; font-weight: 700; border-radius: 99px;
+    padding: 2px 8px; white-space: nowrap; pointer-events: none;
+  }
+  .sp__note-status--saving { background: var(--surface2); color: var(--muted); }
+  .sp__note-status--saved  { background: var(--green-bg); color: var(--green); }
+  .sp__inline-clear {
+    flex: 1; padding: 6px 12px; background: var(--red-bg); color: var(--red);
+    border: 1.5px solid #ffc9c9; border-radius: 7px; cursor: pointer;
+    font-size: 13px; font-weight: 700; font-family: var(--font-sans); transition: all .15s;
+  }
+  .sp__inline-clear:hover { background: #ffe0e0; }
+  .sp__inline-close {
+    flex: 1; padding: 6px 12px; background: var(--surface2); color: var(--text2);
+    border: 1.5px solid var(--border); border-radius: 7px; cursor: pointer;
+    font-size: 13px; font-weight: 700; font-family: var(--font-sans); transition: all .15s;
+  }
+  .sp__inline-close:hover { background: var(--border); }
+  .sp__current-note {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fffbe6; border: 1.5px solid #f0c060;
+    border-radius: 99px; padding: 3px 12px;
+    max-width: 100%;
+    align-self: center;
+    margin-bottom: 12px;
+  }
+  .sp__current-note-icon { font-size: 11px; color: #b07800; flex-shrink: 0; }
+  .sp__current-note-text {
+    font-size: 12px; color: #7a5000; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   @keyframes blink     { 0%,100%{opacity:1;} 50%{opacity:.3;} }
   @keyframes spin      { to{transform:rotate(360deg);} }
   @media (max-width: 1100px) {

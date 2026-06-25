@@ -5,11 +5,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { RiArrowLeftLine } from "react-icons/ri";
-import { Service, getServices } from "@/mock/services";
+import { Service } from "@/mock/services";
 import { createTicket, printTicket } from "@/services/ticket.service";
 import { Ticket } from "@/mock/data";
 import Toast from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import AppErrorState from "@/components/AppErrorState";
 
 interface DisplayTicket extends Ticket {
   _id?: string;
@@ -49,16 +50,18 @@ function ServiceTicketContent() {
   const [step, setStep] = useState<"form" | "done">("form");
   const [ticket, setTicket] = useState<DisplayTicket | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [hasPrinted, setHasPrinted] = useState(false);
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(20);
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [displayedName, setDisplayedName] = useState(fullName);
   const nameContainerRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLParagraphElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<{
     isOpen: boolean;
     message: string;
@@ -82,18 +85,31 @@ function ServiceTicketContent() {
     setToast((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  useEffect(() => {
-    const loadService = async () => {
-      const services = await getServices();
-      const found = services.find((s) => s._id === serviceId);
-      if (found) {
-        setService(found);
+  const loadService = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const response = await fetch("/api/services/active", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Không thể tải danh sách dịch vụ");
       }
+      const data = await response.json();
+      if (!data?.success || !Array.isArray(data?.data)) {
+        throw new Error(data?.message || "Không thể tải danh sách dịch vụ");
+      }
+      const found = (data.data as Service[]).find((s) => s._id === serviceId);
+      setService(found || null);
+    } catch (err) {
+      setService(null);
+      setLoadError(err instanceof Error ? err.message : "Không thể kết nối máy chủ");
+    } finally {
       setLoading(false);
-    };
-
-    void loadService();
+    }
   }, [serviceId]);
+
+  useEffect(() => {
+    void loadService();
+  }, [loadService]);
 
   useEffect(() => {
     if (step === "done" && nameContainerRef.current && nameRef.current) {
@@ -105,7 +121,7 @@ function ServiceTicketContent() {
 
   useEffect(() => {
     if (step !== "done") {
-      setCountdown(60);
+      setCountdown(20);
       return;
     }
 
@@ -148,14 +164,17 @@ function ServiceTicketContent() {
       return false;
     }
 
-    if (!phoneNumber.trim()) {
+    // Lấy chỉ các chữ số, bỏ qua khoảng trắng và ký tự phân cách
+    const rawPhone = phoneNumber.replace(/\D/g, "");
+
+    if (!rawPhone) {
       showToast("Vui lòng nhập số điện thoại", "error");
       return false;
     }
 
-    if (!/^[0-9]{8,12}$/.test(phoneNumber.replace(/\D/g, ""))) {
+    if (!/^[0-9]{8,12}$/.test(rawPhone)) {
       showToast(
-        "Vui lòng nhập đúng số điện thoại (tối thiểu 8 số đến 12 số)",
+        `Số điện thoại không hợp lệ (đang có ${rawPhone.length} số, cần từ 8 đến 12 số)`,
         "error",
       );
       return false;
@@ -174,7 +193,8 @@ function ServiceTicketContent() {
       const result = await createTicket({
         serviceId,
         name,
-        phone: phoneNumber,
+        // Gửi lên server chỉ các chữ số, bỏ khoảng trắng/dấu gạch
+        phone: phoneNumber.replace(/\D/g, ""),
         counterId: selectedCounterId || undefined,
       });
 
@@ -271,6 +291,18 @@ function ServiceTicketContent() {
     return <div style={{ padding: 20 }} />;
   }
 
+  if (loadError) {
+    return (
+      <AppErrorState
+        code="503"
+        title={loadError || "Không thể kết nối máy chủ"}
+        actionLabel={loading ? "Đang thử lại..." : "Thử lại"}
+        onAction={() => void loadService()}
+        actionDisabled={loading}
+      />
+    );
+  }
+
   if (!service) {
     return (
       <div style={{ padding: 20 }}>
@@ -355,9 +387,21 @@ function ServiceTicketContent() {
                     capitalizeName(sanitizeFullName(`${prev} ${pastedText}`))
                   );
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setFullName((prev) => capitalizeName(sanitizeFullName(prev)));
+                    phoneInputRef.current?.focus();
+                    phoneInputRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }
+                }}
                 placeholder="Nhập họ và tên"
                 inputMode="text"
                 autoComplete="name"
+                enterKeyHint="next"
                 style={{
                   width: "100%",
                   padding: 12,
@@ -382,10 +426,29 @@ function ServiceTicketContent() {
                 Số điện thoại <span style={{ color: "red" }}>*</span>
               </label>
               <input
+                ref={phoneInputRef}
                 type="tel"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                onChange={(e) => {
+                  // Chỉ cho phép nhập số, khoảng trắng, dấu +, -, (, )
+                  setPhoneNumber(e.target.value.replace(/[^\d\s\-+()]/g, ""));
+                }}
+                onFocus={(e) => {
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 300);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (isSubmitting) return;
+                    if (!validateForm()) return;
+                    setConfirmSubmitOpen(true);
+                  }
+                }}
                 placeholder="Nhập số điện thoại"
+                inputMode="numeric"
+                enterKeyHint="done"
                 style={{
                   width: "100%",
                   padding: 12,
@@ -768,7 +831,7 @@ function ServiceTicketContent() {
         title="Xác nhận thông tin"
         fields={[
           { label: "Họ và tên", value: name.toLocaleUpperCase("vi-VN") },
-          { label: "Số điện thoại", value: phoneNumber.trim() },
+          { label: "Số điện thoại", value: phoneNumber.replace(/\D/g, "") },
         ]}
         onConfirm={() => { setConfirmSubmitOpen(false); void submitTicket(); }}
         onCancel={() => setConfirmSubmitOpen(false)}

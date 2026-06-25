@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Toast from "@/components/Toast";
 import { loginAdmin } from "@/services/auth.service";
+import { getErrorMessage } from "@/lib/error-message";
+import { adminPath } from "@/lib/admin-base";
 
 const MAX_CREDENTIAL_LENGTH = 25;
 
@@ -94,13 +96,15 @@ function AdminLoginContent() {
         password: trimmedPassword,
       });
 
-      if (data.success && data.data.token) {
+      const token = data.data.accessToken ?? data.data.token ?? "";
+
+      if (data.success && token) {
         if (data.data.user.role !== "admin") {
           throw new Error("Tài khoản này không có quyền quản trị");
         }
 
         if (typeof window !== "undefined") {
-          localStorage.setItem("adminToken", data.data.token);
+          localStorage.setItem("adminToken", token);
           localStorage.setItem("adminUser", JSON.stringify(data.data.user));
         }
 
@@ -111,13 +115,12 @@ function AdminLoginContent() {
         });
 
         setTimeout(() => {
-          router.push("/admin");
+          router.push(adminPath("/admin"));
         }, 1000);
       } else {
         setToast({
           isOpen: true,
-          message:
-            data.message || "Tên đăng nhập hoặc mật khẩu không đúng",
+          message: data.message || "Tên đăng nhập hoặc mật khẩu không đúng",
           type: "error",
         });
       }
@@ -125,10 +128,7 @@ function AdminLoginContent() {
       console.error("Login error:", error);
       setToast({
         isOpen: true,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Lỗi kết nối với server, vui lòng thử lại",
+        message: getErrorMessage(error, "Lỗi kết nối với server, vui lòng thử lại"),
         type: "error",
       });
     } finally {
@@ -157,19 +157,19 @@ function AdminLoginContent() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <img
-          src="/assets/logotoaan.png"
-          alt="Logo"
-          style={{ height: 54, width: "auto", objectFit: "contain" }}
-        />
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: 14, color: "#72809a", fontWeight: 700 }}>
-            TÒA ÁN NHÂN DÂN KHU VỰC 1
-          </span>
-          <span style={{ fontSize: 12, color: "#9aa6bf" }}>
-            Thành Phố Hồ Chí Minh
-          </span>
-        </div>
+          <img
+            src="/assets/logotoaan.png"
+            alt="Logo"
+            style={{ height: 54, width: "auto", objectFit: "contain" }}
+          />
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: 14, color: "#72809a", fontWeight: 700 }}>
+              TÒA ÁN NHÂN DÂN KHU VỰC 1
+            </span>
+            <span style={{ fontSize: 12, color: "#9aa6bf" }}>
+              Thành Phố Hồ Chí Minh
+            </span>
+          </div>
         </div>
         <div style={{ textAlign: "right", color: "#7a879d" }}>
           <div style={{ fontSize: 12, letterSpacing: "0.4px" }}>{date}</div>
@@ -310,9 +310,7 @@ function AdminLoginContent() {
             >
               <i
                 className={
-                  showPassword
-                    ? "fa-regular fa-eye-slash"
-                    : "fa-regular fa-eye"
+                  showPassword ? "fa-regular fa-eye-slash" : "fa-regular fa-eye"
                 }
                 aria-hidden="true"
               />
@@ -336,22 +334,18 @@ function AdminLoginContent() {
             borderRadius: 10,
             cursor: loading ? "not-allowed" : "pointer",
             transition: "transform 0.2s ease, box-shadow 0.2s ease",
-            boxShadow: loading
-              ? "none"
-              : "0 10px 22px rgba(11, 59, 114, 0.24)",
+            boxShadow: loading ? "none" : "0 10px 22px rgba(11, 59, 114, 0.24)",
           }}
           onMouseOver={(e) => {
             if (!loading) {
               e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow =
-                "0 14px 26px rgba(11, 59, 114, 0.3)";
+              e.currentTarget.style.boxShadow = "0 14px 26px rgba(11, 59, 114, 0.3)";
             }
           }}
           onMouseOut={(e) => {
             if (!loading) {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow =
-                "0 10px 22px rgba(11, 59, 114, 0.24)";
+              e.currentTarget.style.boxShadow = "0 10px 22px rgba(11, 59, 114, 0.24)";
             }
           }}
         >

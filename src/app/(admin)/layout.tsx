@@ -7,6 +7,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import NewTicketGlobalSocket from "@/components/NewTicketGlobalSocket";
 import NotificationPermissionButton from "@/components/NotificationPermissionButton";
 import { clearAdminSession } from "@/lib/admin-auth";
+import { adminPath } from "@/lib/admin-base";
 import { getMyProfile } from "@/services/auth.service";
 import type { AdminProfile } from "@/services/auth.service";
 import { SiteConfigProvider, useSiteConfig } from "@/lib/site-config.context";
@@ -15,7 +16,7 @@ import { hasPermission, ROUTE_PERMISSION_MAP, type AdminPermission } from "@/lib
 import {
   FiActivity, FiFileText, FiLogOut, FiPrinter,
   FiSearch, FiSettings, FiUsers, FiChevronLeft,
-  FiChevronRight, FiUser, FiShield,
+  FiChevronRight, FiUser, FiShield, FiClock,
 } from "react-icons/fi";
 import { TbBuildingBank, TbLayoutGrid } from "react-icons/tb";
 import { IconType } from "react-icons";
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { href: "/admin/reports",     label: "Báo cáo",    icon: FiFileText     },
   { href: "/admin/search",      label: "Tra cứu vé", icon: FiSearch       },
   { href: "/admin/permissions", label: "Phân quyền", icon: FiShield       },
+  { href: "/admin/audit-logs",  label: "Nhật ký",    icon: FiClock        },
   { href: "/admin/profile",     label: "Hồ sơ",      icon: FiUser         },
 ];
 
@@ -60,7 +62,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 function AdminLayoutInner({ children }: { children: ReactNode }) {
   const { siteConfig } = useSiteConfig();
   const router    = useRouter();
-  const pathname  = usePathname();
+  const pathname  = usePathname(); // Lưu ý: đây là pathname THẬT trên browser (secret path), không phải "/admin/..."
   const routerRef = useRef(router);
 
   const [isLoggedIn,         setIsLoggedIn        ] = useState(hasAdminToken);
@@ -68,16 +70,19 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const [showLogoutConfirm,  setShowLogoutConfirm  ] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed ] = useState(false);
 
-  const isLoginPage = pathname === "/login" || pathname === "/admin/login";
+  // base = "/p-xxxxx" (secret path hiện tại) hoặc "/admin" nếu không có cookie (fallback an toàn)
+  const base = adminPath("/admin");
+  const loginHref = adminPath("/admin/login");
+  const isLoginPage = pathname === loginHref;
 
   useEffect(() => {
-    if (pathname === "/login" || pathname === "/admin/login") return;
+    if (pathname === loginHref) return;
 
     let mounted = true;
 
     const token = localStorage.getItem("adminToken");
     if (!token) {
-      routerRef.current.replace("/admin/login");
+      routerRef.current.replace(loginHref);
       return;
     }
 
@@ -92,22 +97,22 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
         if (!mounted) return;
         clearAdminSession();
         setIsLoggedIn(false);
-        routerRef.current.replace("/admin/login?reason=session_expired");
+        routerRef.current.replace(`${loginHref}?reason=session_expired`);
       });
 
     return () => { mounted = false; };
-  }, [pathname]);
+  }, [pathname, loginHref]);
 
-  const isActive = (href: string) =>
-    href === "/admin"
-      ? pathname === "/admin"
-      : pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (internalHref: string) => {
+    const href = adminPath(internalHref);
+    return href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   const handleLogout        = () => setShowLogoutConfirm(true);
   const handleConfirmLogout = () => {
     setShowLogoutConfirm(false);
     clearAdminSession();
-    routerRef.current.replace("/admin/login");
+    routerRef.current.replace(loginHref);
   };
 
   if (isLoginPage) return <>{children}</>;
@@ -167,13 +172,13 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
             <ul className="space-y-2">
               {navItems
                 .filter((item) => {
-                  // Mục "Phân quyền" chỉ dành cho superAdmin hoặc admin chưa cấu hình (toàn quyền)
+                  // Mục "Phân quyền" chỉ dành cho superAdmin hoặc admin toàn quyền
                   if (item.href === "/admin/permissions") {
                     return adminUser?.isSuperAdmin || adminUser?.adminPermissions == null;
                   }
                   // /admin/profile luôn hiển thị
                   if (item.href === "/admin/profile") return true;
-                  // Các route khác: kiểm tra permission tương ứng
+                  // Các route khác: kiểm tra permission tương ứng (bao gồm audit-logs)
                   const perm = ROUTE_PERMISSION_MAP[item.href] as AdminPermission | undefined;
                   if (!perm) return true;
                   return hasPermission(adminUser, perm);
@@ -184,7 +189,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                 return (
                   <li key={item.href}>
                     <Link
-                      href={item.href}
+                      href={adminPath(item.href)}
                       prefetch={true}
                       className={`flex items-center rounded-2xl py-3 text-sm font-medium transition-all ${
                         isSidebarCollapsed

@@ -41,14 +41,15 @@ const getCachedAdmin = (): AdminProfile | null => {
 
 /* ─── Permissions list ──────────────────────────────────────────────────── */
 const ALL_PERMISSIONS: { key: string; label: string; icon: string }[] = [
-  { key: "dashboard", label: "Thống kê", icon: "📊" },
-  { key: "users",     label: "Quản lý nhân viên", icon: "👥" },
-  { key: "counter",   label: "Quản lý phòng", icon: "🏢" },
-  { key: "services",  label: "Quản lý quầy", icon: "🪟" },
-  { key: "printers",  label: "Quản lý máy in", icon: "🖨️" },
-  { key: "settings",  label: "Cài đặt hệ thống", icon: "⚙️" },
-  { key: "reports",   label: "Báo cáo", icon: "📋" },
-  { key: "search",    label: "Tra cứu vé", icon: "🔍" },
+  { key: "dashboard",  label: "Thống kê",           icon: "📊" },
+  { key: "users",      label: "Quản lý nhân viên",  icon: "👥" },
+  { key: "counter",    label: "Quản lý phòng",      icon: "🏢" },
+  { key: "services",   label: "Quản lý quầy",       icon: "🪟" },
+  { key: "printers",   label: "Quản lý máy in",     icon: "🖨️" },
+  { key: "settings",   label: "Cài đặt hệ thống",   icon: "⚙️" },
+  { key: "reports",    label: "Báo cáo",             icon: "📋" },
+  { key: "search",     label: "Tra cứu vé",          icon: "🔍" },
+  { key: "audit-logs", label: "Nhật ký hoạt động",  icon: "🛡️" },
 ];
 
 /* ─── Global CSS ─────────────────────────────────────────────────────────── */
@@ -343,10 +344,7 @@ export default function AdminTable() {
           const av = getAvatarColor(admin.fullName);
           const permCount = admin.isSuperAdmin || admin.adminPermissions === null
             ? "Toàn quyền"
-            : `${admin.adminPermissions.length}/8 quyền`;
-          // null = toàn quyền (super admin không bị giới hạn)
-          // [] = không có quyền nào (mới tạo, chưa phân quyền)
-          // [...] = có quyền cụ thể
+            : `${admin.adminPermissions.length}/${ALL_PERMISSIONS.length} quyền`;
           const isSuperAdminRole = admin.isSuperAdmin || admin.adminPermissions === null;
           const permStyle = isSelf
             ? { bg: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }

@@ -17,7 +17,8 @@ export interface Ticket {
   serviceName: string;
   createdAt: string;
   processingAt?: string | null;
-  name: string; // for speakName compatibility
+  name: string;
+  note?: string | null;
 }
 
 export interface Counter {

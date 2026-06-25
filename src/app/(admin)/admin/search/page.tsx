@@ -23,6 +23,7 @@ import {
   FiChevronRight,
 } from "react-icons/fi";
 import { hasPermission } from "@/lib/admin-permissions";
+import { adminPath } from "@/lib/admin-base";
 import type { AdminProfile } from "@/services/auth.service";
 import styles from "./search.module.css";
 
@@ -166,7 +167,7 @@ export default function TicketSearchPage() {
           </div>
           <button
             className={styles.resetBtn}
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push(adminPath("/admin"))}
             style={{ margin: "0 auto" }}
           >
             Quay về Thống kê

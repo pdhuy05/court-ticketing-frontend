@@ -22,6 +22,7 @@ import {
   type DashboardTicketsToday,
 } from "@/services/dashboard.service";
 import { getCounters, type Counter } from "@/services/admin.service";
+import { adminPath } from "@/lib/admin-base";
 import {
   STATUS_COLORS,
   PIE_COLORS,
@@ -119,7 +120,7 @@ export function useDashboardTechData() {
         if (fetchError instanceof Error && fetchError.message === DASHBOARD_AUTH_EXPIRED_ERROR) {
           localStorage.removeItem("adminToken");
           localStorage.removeItem("adminUser");
-          router.push("/login?reason=session_expired");
+          router.push(`${adminPath("/admin/login")}?reason=session_expired`);
           return;
         }
 

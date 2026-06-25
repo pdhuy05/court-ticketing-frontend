@@ -12,10 +12,11 @@ import {
 } from "react-icons/fi";
 import ToastContainer from "@/components/ToastContainer";
 import { clearAdminSession } from "@/lib/admin-auth";
+import { adminPath } from "@/lib/admin-base";
 import { useToast } from "@/hooks/useToast";
 import { AdminProfile, getMyProfile, updateMyProfile } from "@/services/auth.service";
 
-const LOGIN_PATH = "/admin/login";
+const getLoginPath = () => adminPath("/admin/login");
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
@@ -705,13 +706,13 @@ export default function AdminProfilePage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!localStorage.getItem("adminToken")) { router.replace(LOGIN_PATH); return; }
+      if (!localStorage.getItem("adminToken")) { router.replace(getLoginPath()); return; }
       try {
         const p = await getMyProfile();
         localStorage.setItem("adminUser", JSON.stringify(p));
         if (!mounted) return;
         setAdminUser(p); setIsReady(true);
-      } catch { clearAdminSession(); router.replace(LOGIN_PATH); }
+      } catch { clearAdminSession(); router.replace(getLoginPath()); }
     })();
     return () => { mounted = false; };
   }, [router]);
@@ -729,7 +730,7 @@ export default function AdminProfilePage() {
     { key: "services", label: `Dịch vụ (${services.length})`, icon: <FiLayers size={13} /> },
   ];
 
-  const handleLogout = () => { clearAdminSession(); router.replace(LOGIN_PATH); };
+  const handleLogout = () => { clearAdminSession(); router.replace(getLoginPath()); };
 
   const handleSaved = (updated: AdminProfile) => {
     setAdminUser(updated);
@@ -907,7 +908,7 @@ export default function AdminProfilePage() {
                       ? <Pill cls="pill-green">Đang hoạt động</Pill>
                       : <Pill cls="pill-red">Bị khóa</Pill>}
                   </Field>
-                  <Field icon={<FiHash size={13} />} label="Mã tài khoản" value={adminUser.id || adminUser._id || "—"} mono />
+                  <Field icon={<FiHash size={13} />} label="Mã tài khoản" value={(() => { const id = adminUser.id || adminUser._id; return id ? `…${id.slice(-6)}` : "—"; })()} mono />
                   <Field icon={<FiClock size={13} />} label="Trạng thái ca">
                     {adminUser.onDuty
                       ? <Pill cls="pill-green">Đang trực</Pill>

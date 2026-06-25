@@ -10,6 +10,9 @@ export interface Service {
   counterId: string;
   counterName: string;
   icon?: string;
+  isActive?: boolean;
+  isOpen?: boolean;
+  inactiveLabel?: string;
 }
 
 export const services: Service[] = [
@@ -81,7 +84,6 @@ export const services: Service[] = [
   },
 ];
 
-// Fetch services từ API
 export async function getServices(): Promise<Service[]> {
   try {
     const apiBase = getPublicApiBase();
@@ -91,7 +93,6 @@ export async function getServices(): Promise<Service[]> {
 
     const data = await response.json();
     if (data.success && Array.isArray(data.data)) {
-      // Sắp xếp theo displayOrder
       return data.data.sort(
         (a: Service, b: Service) => a.displayOrder - b.displayOrder,
       );

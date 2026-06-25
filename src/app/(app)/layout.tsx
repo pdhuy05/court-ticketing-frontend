@@ -54,7 +54,7 @@ export default function AppLayout({
   return (
     <>
       <NewTicketGlobalSocket />
-      <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="app-shell" style={{ display: "flex", flexDirection: "column" }}>
         {!isStaffLogin && (
           <header className="app-header">
             {/* Logo + title */}
@@ -82,7 +82,8 @@ export default function AppLayout({
           style={{
             flex: 1,
             minHeight: 0,
-            overflow: "hidden",
+            overflow: isStaffLogin ? "hidden" : "auto",
+            WebkitOverflowScrolling: "touch",
             ...(isStaffLogin
               ? {
                   display: "flex",
@@ -106,6 +107,11 @@ export default function AppLayout({
       </div>
 
       <style>{`
+        .app-shell {
+          height: 100vh;
+          height: 100dvh;
+        }
+
         /* ── Header shell ─────────────────────────────────────── */
         .app-header {
           display: flex;

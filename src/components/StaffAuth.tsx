@@ -2,7 +2,6 @@
 
 import { useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { getStaffFromToken } from "@/mock/auth";
 
 export function StaffAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -16,21 +15,14 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
       }
 
       const token = sessionStorage.getItem("staffToken");
-      if (!token) {
+      if (!token || token.trim() === "") {
         router.push("/staff/login");
         setIsLoading(false);
         return;
       }
 
-      const staff = getStaffFromToken(token);
-      if (!staff) {
-        sessionStorage.removeItem("staffToken");
-        sessionStorage.removeItem("staffName");
-        router.push("/staff/login");
-        setIsLoading(false);
-        return;
-      }
-
+      // Token tồn tại và không rỗng → coi là hợp lệ
+      // Backend sẽ validate JWT thực sự khi gọi API
       setIsAuthenticated(true);
       setIsLoading(false);
     };
@@ -52,10 +44,22 @@ export function StaffAuthProvider({ children }: { children: ReactNode }) {
 export function StaffLogoutButton() {
   const router = useRouter();
   const staffName =
-    typeof window !== "undefined" ? sessionStorage.getItem("staffName") : "";
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("staffName") || sessionStorage.getItem("staffUser")
+          ? (() => {
+              try {
+                const u = JSON.parse(sessionStorage.getItem("staffUser") || "{}");
+                return sessionStorage.getItem("staffName") || u.fullName || u.username || "";
+              } catch {
+                return sessionStorage.getItem("staffName") || "";
+              }
+            })()
+          : ""
+      : "";
 
   const handleLogout = () => {
     sessionStorage.removeItem("staffToken");
+    sessionStorage.removeItem("staffUser");
     sessionStorage.removeItem("staffName");
     router.push("/staff/login");
   };

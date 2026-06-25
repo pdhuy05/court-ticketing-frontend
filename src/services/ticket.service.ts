@@ -118,7 +118,7 @@ export const getStaffDisplay = async () => {
     if (response.status === 401 || isAuthExpiredMessage(error.message)) {
       throw new Error(AUTH_EXPIRED_ERROR);
     }
-    throw new Error(error.message || "Failed to fetch staff display data");
+    throw new Error(error.message || "Không thể tải dữ liệu màn hình nhân viên");
   }
   const data = await response.json();
   if (!data.success && isAuthExpiredMessage(data.message)) {
@@ -337,4 +337,21 @@ export const printTicket = async (ticketId: string) => {
   });
 
   return response.json();
+};
+
+export const updateTicketNoteApi = async (ticketId: string, note: string) => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/tickets/${ticketId}/note`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ note }),
+  });
+  const data = await parseApiJsonSafely(response);
+  if (response.status === 401 || isAuthExpiredMessage(data?.message)) {
+    throw new Error(AUTH_EXPIRED_ERROR);
+  }
+  return data;
 };

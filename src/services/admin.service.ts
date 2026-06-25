@@ -111,6 +111,10 @@ export interface Service {
   name: string;
   icon: string;
   isActive: boolean;
+  /** Còn trong giờ lấy vé hay không (theo lịch quầy đã set, tự động cập nhật mỗi phút). */
+  isOpen?: boolean;
+  /** Override thủ công của admin: 'open' | 'closed' | null (null = theo lịch tự động). */
+  manualOverride?: 'open' | 'closed' | null;
   /** In 2 tờ: vé đầy đủ + tờ nhỏ kẹp hồ sơ (theo cấu hình backend). */
   doublePrint?: boolean;
   /** Nhãn hiển thị khi dịch vụ tắt (isActive = false). Mặc định: "ĐANG THỬ NGHIỆM" */
@@ -543,6 +547,148 @@ export async function updateAutoResetTime(
           ? data.data.time
           : time,
   };
+}
+
+// ==================== SERVICE SCHEDULE (Giờ lấy vé) ====================
+export interface TimeSlot {
+  openTime: string; // "HH:MM"
+  closeTime: string; // "HH:MM"
+}
+
+export interface ServiceSchedule {
+  serviceId:
+    | "ALL"
+    | {
+        _id: string;
+        code?: string;
+        name?: string;
+        isActive?: boolean;
+        isOpen?: boolean;
+        manualOverride?: 'open' | 'closed' | null;
+      };
+  slots: TimeSlot[];
+  openTime?: string; // legacy
+  closeTime?: string; // legacy
+  isEnabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function getServiceSchedules(): Promise<ServiceSchedule[]> {
+  const response = await fetch(`${API_BASE}/admin/shift/service-schedules`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await parseJsonResponse<{
+    success?: boolean;
+    data?: ServiceSchedule[];
+    message?: string;
+  }>(response);
+
+  if (data.success === false) {
+    throw new Error(data.message || "Không lấy được lịch giờ lấy vé");
+  }
+
+  return Array.isArray(data.data) ? data.data : [];
+}
+
+export async function upsertServiceSchedule(payload: {
+  serviceId: string; // ObjectId hoặc "ALL"
+  slots?: TimeSlot[]; // Nhiều ca (slot) mỗi ngày
+  openTime?: string; // legacy fallback
+  closeTime?: string; // legacy fallback
+  isEnabled?: boolean;
+}): Promise<ServiceSchedule> {
+  const response = await fetch(`${API_BASE}/admin/shift/service-schedules`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseJsonResponse<{
+    success?: boolean;
+    data?: ServiceSchedule;
+    message?: string;
+  }>(response);
+
+  if (data.success === false || !data.data) {
+    throw new Error(data.message || "Lưu lịch giờ lấy vé thất bại");
+  }
+
+  return data.data;
+}
+
+export async function deleteServiceSchedule(
+  serviceId: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/admin/shift/service-schedules/${serviceId}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    },
+  );
+
+  const data = await parseJsonResponse<{
+    success?: boolean;
+    message?: string;
+  }>(response);
+
+  if (data.success === false) {
+    throw new Error(data.message || "Xóa lịch giờ lấy vé thất bại");
+  }
+}
+
+export async function toggleServiceSchedule(
+  serviceId: string,
+  isEnabled: boolean,
+): Promise<ServiceSchedule> {
+  const response = await fetch(
+    `${API_BASE}/admin/shift/service-schedules/${serviceId}/toggle`,
+    {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ isEnabled }),
+    },
+  );
+
+  const data = await parseJsonResponse<{
+    success?: boolean;
+    data?: ServiceSchedule;
+    message?: string;
+  }>(response);
+
+  if (data.success === false || !data.data) {
+    throw new Error(data.message || "Cập nhật trạng thái lịch thất bại");
+  }
+
+  return data.data;
+}
+
+export async function setServiceManualOverride(
+  serviceId: string, // ObjectId hoặc "ALL"
+  override: 'open' | 'closed' | null,
+): Promise<{ serviceId: string | 'ALL'; manualOverride: string | null; isOpen: boolean }> {
+  const response = await fetch(
+    `${API_BASE}/admin/shift/service-override/${serviceId}`,
+    {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ override }),
+    },
+  );
+
+  const data = await parseJsonResponse<{
+    success?: boolean;
+    data?: { serviceId: string; manualOverride: string | null; isOpen: boolean };
+    message?: string;
+  }>(response);
+
+  if (data.success === false || !data.data) {
+    throw new Error(data.message || 'Cập nhật trạng thái dịch vụ thất bại');
+  }
+
+  return data.data;
 }
 
 // ==================== PRINTERS ====================
@@ -1149,4 +1295,58 @@ export async function updateDisplayMode(mode: DisplayMode): Promise<DisplayMode>
   const data = await parseJsonResponse<{ success: boolean; data: { display_mode: DisplayMode }; message?: string }>(response);
   if (data.success) return data.data.display_mode;
   throw new Error(getApiErrorMessage(data, 'Cập nhật chế độ màn hình thất bại'));
+}
+
+export interface AuditLog {
+  _id: string;
+  actorId:       string | null;
+  actorUsername: string;
+  actorRole:     "admin" | "staff" | "system";
+  action:        string;
+  status:        "success" | "failed";
+  targetId:      string | null;
+  targetType:    string | null;
+  detail:        Record<string, unknown> | null;
+  ipAddress:     string | null;
+  userAgent:     string | null;
+  createdAt:     string;
+  updatedAt:     string;
+}
+
+export interface AuditLogFilter {
+  actorId?:      string;
+  actorUsername?: string;
+  action?:       string;
+  status?:       "success" | "failed" | "";
+  dateFrom?:     string;
+  dateTo?:       string;
+  page?:         number;
+  limit?:        number;
+}
+
+export interface AuditLogResult {
+  logs:       AuditLog[];
+  total:      number;
+  page:       number;
+  limit:      number;
+  totalPages: number;
+}
+
+export async function getAuditLogs(filter: AuditLogFilter = {}): Promise<AuditLogResult> {
+  const params = new URLSearchParams();
+  if (filter.actorId)       params.set("actorId",       filter.actorId);
+  if (filter.actorUsername) params.set("actorUsername",  filter.actorUsername);
+  if (filter.action)        params.set("action",         filter.action);
+  if (filter.status)        params.set("status",         filter.status);
+  if (filter.dateFrom)      params.set("dateFrom",       filter.dateFrom);
+  if (filter.dateTo)        params.set("dateTo",         filter.dateTo);
+  if (filter.page)          params.set("page",           String(filter.page));
+  if (filter.limit)         params.set("limit",          String(filter.limit));
+
+  const response = await fetch(`${API_BASE}/admin/audit-logs?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await parseJsonResponse<{ success: boolean; data: AuditLogResult; message?: string }>(response);
+  if (data.success) return data.data;
+  throw new Error(getApiErrorMessage(data, "Không tải được nhật ký hoạt động"));
 }

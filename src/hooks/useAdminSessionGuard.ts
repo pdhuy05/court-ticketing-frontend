@@ -7,6 +7,7 @@ import {
   clearAdminSession,
   isAuthExpiredMessage,
 } from "@/lib/admin-auth";
+import { adminPath } from "@/lib/admin-base";
 
 export function useAdminSessionGuard() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export function useAdminSessionGuard() {
         isAuthExpiredMessage(message)
       ) {
         clearAdminSession();
-        router.replace("/login?reason=session_expired");
+        router.replace(`${adminPath("/admin/login")}?reason=session_expired`);
         return true;
       }
 

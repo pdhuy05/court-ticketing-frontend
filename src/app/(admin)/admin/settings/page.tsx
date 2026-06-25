@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   FiVolume2, FiRefreshCw, FiClock, FiSave, FiLayout,
   FiMapPin, FiAlignLeft, FiSun, FiImage, FiUpload, FiX,
-  FiCheck, FiAlertCircle, FiSettings, FiMonitor,
+  FiCheck, FiAlertCircle, FiSettings, FiMonitor, FiPlus, FiTrash2, FiArrowRight,
 } from "react-icons/fi";
 import ToastContainer from "@/components/ToastContainer";
 import { useToast } from "@/hooks/useToast";
@@ -22,8 +22,17 @@ import {
   uploadLogo,
   getDisplayMode,
   updateDisplayMode,
+  getServices,
+  getServiceSchedules,
+  upsertServiceSchedule,
+  deleteServiceSchedule,
+  toggleServiceSchedule,
+  setServiceManualOverride,
   type SiteConfig,
   type DisplayMode,
+  type Service,
+  type ServiceSchedule,
+  type TimeSlot,
 } from "@/services/admin.service";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -110,6 +119,7 @@ const STYLES = `
     font-size: 12px; font-weight: 700; color: #94a3b8;
     text-transform: uppercase; letter-spacing: 0.7px;
     margin-bottom: 14px;
+    display: flex; align-items: center; gap: 7px;
   }
 
   /* ── Brand preview ── */
@@ -328,6 +338,19 @@ const STYLES = `
   }
   .sp-display-card-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
   .sp-display-card-desc { font-size: 11.5px; color: #64748b; line-height: 1.5; }
+
+  /* ── Override pulse dot ── */
+  @keyframes sp-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.72); }
+  }
+  .sp-override-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: sp-pulse 1.4s ease-in-out infinite;
+  }
 `;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -345,13 +368,14 @@ function Toggle({ checked, disabled, onChange }: { checked: boolean; disabled: b
 }
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
-type TabId = "brand" | "display" | "tts" | "reset";
+type TabId = "brand" | "display" | "tts" | "reset" | "ticket-hours";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: "brand",   label: "Giao diện",       icon: <FiLayout size={13} /> },
-  { id: "display", label: "Màn hình quầy",   icon: <FiMonitor size={13} /> },
-  { id: "tts",     label: "Giọng nói",        icon: <FiVolume2 size={13} /> },
-  { id: "reset",   label: "Tự động reset",    icon: <FiRefreshCw size={13} /> },
+  { id: "brand",        label: "Giao diện",       icon: <FiLayout size={13} /> },
+  { id: "display",      label: "Màn hình quầy",   icon: <FiMonitor size={13} /> },
+  { id: "tts",          label: "Giọng nói",        icon: <FiVolume2 size={13} /> },
+  { id: "reset",        label: "Tự động reset",    icon: <FiRefreshCw size={13} /> },
+  { id: "ticket-hours", label: "Giờ lấy vé",       icon: <FiClock size={13} /> },
 ];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -382,6 +406,17 @@ export default function SettingsPage() {
   const [logoPreview,   setLogoPreview]   = useState<string>("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  // ── Giờ lấy vé ──
+  const [services,          setServices]          = useState<Service[]>([]);
+  const [schedules,         setSchedules]         = useState<ServiceSchedule[]>([]);
+  const [loadingSchedules,  setLoadingSchedules]  = useState(true);
+  const [savingScheduleKey, setSavingScheduleKey] = useState<string | null>(null);
+  const [allSlots,          setAllSlots]          = useState<TimeSlot[]>([{ openTime: "07:30", closeTime: "11:30" }]);
+  const [pickedServiceId,   setPickedServiceId]   = useState("");
+  const [svcSlots,          setSvcSlots]          = useState<TimeSlot[]>([{ openTime: "07:30", closeTime: "11:30" }]);
+  const [overrideServiceId, setOverrideServiceId] = useState("ALL");
+  const [savingOverride,    setSavingOverride]    = useState(false);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -401,6 +436,27 @@ export default function SettingsPage() {
     };
     void load();
   }, [error]);
+
+  const loadSchedules = useCallback(async () => {
+    setLoadingSchedules(true);
+    try {
+      const [svcList, scheduleList] = await Promise.all([
+        getServices(), getServiceSchedules(),
+      ]);
+      setServices(svcList);
+      setSchedules(scheduleList);
+      if (!pickedServiceId && svcList.length > 0) {
+        setPickedServiceId(svcList[0]._id);
+      }
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Không lấy được lịch giờ lấy vé");
+    } finally { setLoadingSchedules(false); }
+  }, [error, pickedServiceId]);
+
+  useEffect(() => {
+    void loadSchedules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleToggleTts = async () => {
     if (loading || savingTts) return;
@@ -471,6 +527,138 @@ export default function SettingsPage() {
     } finally { setSavingDisplay(false); }
   };
 
+  // ── Giờ lấy vé helpers ──
+  const getScheduleId = (schedule: ServiceSchedule): string =>
+    schedule.serviceId === "ALL" ? "ALL" : (schedule.serviceId as { _id: string })?._id || "";
+
+  const allSchedule = schedules.find((s) => getScheduleId(s) === "ALL") || null;
+  const perServiceSchedules = schedules.filter((s) => getScheduleId(s) !== "ALL");
+
+  const getServiceName = (id: string) =>
+    services.find((s) => s._id === id)?.name || "Dịch vụ đã xóa";
+
+  const getServiceOverride = (id: string): "open" | "closed" | null => {
+    const svc = services.find((s) => s._id === id);
+    return svc?.manualOverride ?? null;
+  };
+
+  // Slot helpers
+  const addSlot = (setter: React.Dispatch<React.SetStateAction<TimeSlot[]>>) => {
+    setter((prev) => [...prev, { openTime: "13:00", closeTime: "17:00" }]);
+  };
+
+  const removeSlot = (setter: React.Dispatch<React.SetStateAction<TimeSlot[]>>, idx: number) => {
+    setter((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateSlot = (setter: React.Dispatch<React.SetStateAction<TimeSlot[]>>, idx: number, field: keyof TimeSlot, value: string) => {
+    setter((prev) => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
+  };
+
+  const validateSlots = (slots: TimeSlot[]): string | null => {
+    if (slots.length === 0) return "Cần ít nhất 1 ca";
+    for (const s of slots) {
+      if (!s.openTime || !s.closeTime || s.openTime >= s.closeTime)
+        return `Giờ mở phải trước giờ đóng (${s.openTime} - ${s.closeTime})`;
+    }
+    const sorted = [...slots].sort((a, b) => a.openTime.localeCompare(b.openTime));
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].openTime < sorted[i - 1].closeTime)
+        return `Các ca bị chồng giờ nhau`;
+    }
+    return null;
+  };
+
+  const handleSaveAllSchedule = async () => {
+    const err2 = validateSlots(allSlots);
+    if (err2) { error(err2); return; }
+    setSavingScheduleKey("ALL");
+    try {
+      await upsertServiceSchedule({ serviceId: "ALL", slots: allSlots, isEnabled: true });
+      await loadSchedules();
+      success(`Đã lưu ${allSlots.length} ca cho tất cả dịch vụ`);
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Lưu giờ chung thất bại");
+    } finally { setSavingScheduleKey(null); }
+  };
+
+  const handleToggleAllSchedule = async () => {
+    if (!allSchedule) return;
+    setSavingScheduleKey("ALL");
+    try {
+      await toggleServiceSchedule("ALL", !allSchedule.isEnabled);
+      await loadSchedules();
+      success(!allSchedule.isEnabled ? "Đã bật giờ lấy vé chung" : "Đã tắt giờ lấy vé chung");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Cập nhật trạng thái thất bại");
+    } finally { setSavingScheduleKey(null); }
+  };
+
+  const handleDeleteAllSchedule = async () => {
+    setSavingScheduleKey("ALL");
+    try {
+      await deleteServiceSchedule("ALL");
+      await loadSchedules();
+      success("Đã xóa giờ lấy vé chung");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Xóa giờ chung thất bại");
+    } finally { setSavingScheduleKey(null); }
+  };
+
+  const handleSaveServiceSchedule = async () => {
+    if (!pickedServiceId) { error("Vui lòng chọn dịch vụ"); return; }
+    const err2 = validateSlots(svcSlots);
+    if (err2) { error(err2); return; }
+    setSavingScheduleKey(pickedServiceId);
+    try {
+      await upsertServiceSchedule({ serviceId: pickedServiceId, slots: svcSlots, isEnabled: true });
+      await loadSchedules();
+      success(`Đã lưu ${svcSlots.length} ca cho "${getServiceName(pickedServiceId)}"`);
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Lưu giờ thất bại");
+    } finally { setSavingScheduleKey(null); }
+  };
+
+  const handleToggleServiceSchedule = async (schedule: ServiceSchedule) => {
+    const id = getScheduleId(schedule);
+    if (!id) return;
+    setSavingScheduleKey(id);
+    try {
+      await toggleServiceSchedule(id, !schedule.isEnabled);
+      await loadSchedules();
+      success(!schedule.isEnabled ? "Đã bật lịch giờ" : "Đã tắt lịch giờ");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Cập nhật trạng thái thất bại");
+    } finally { setSavingScheduleKey(null); }
+  };
+
+  const handleDeleteServiceSchedule = async (schedule: ServiceSchedule) => {
+    const id = getScheduleId(schedule);
+    if (!id) return;
+    setSavingScheduleKey(id);
+    try {
+      await deleteServiceSchedule(id);
+      await loadSchedules();
+      success("Đã xóa lịch giờ riêng cho dịch vụ này");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Xóa lịch thất bại");
+    } finally { setSavingScheduleKey(null); }
+  };
+
+  const handleSetOverride = async (override: "open" | "closed" | null) => {
+    setSavingOverride(true);
+    try {
+      await setServiceManualOverride(overrideServiceId, override);
+      await loadSchedules();
+      const label = overrideServiceId === "ALL" ? "Tất cả dịch vụ" : getServiceName(overrideServiceId);
+      if (override === null) success(`${label}: trả về chế độ tự động theo lịch`);
+      else if (override === "open") success(`${label}: đã mở ngay lập tức`);
+      else success(`${label}: đã đóng ngay lập tức`);
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Thao tác thất bại");
+    } finally { setSavingOverride(false); }
+  };
+
   const handleResetSite = () => setSiteDraft({ ...siteConfig });
 
   const handleLogoFile = useCallback((file: File | null) => {
@@ -500,6 +688,30 @@ export default function SettingsPage() {
   const isBusy = loading || savingTts || savingReset;
   const isSiteDirty = JSON.stringify(siteDraft) !== JSON.stringify(siteConfig);
 
+  // ── Tính trạng thái override tổng hợp để hiển thị dot trên tiêu đề card ──
+  const overallOverrideStatus: "open" | "closed" | "mixed" | null = (() => {
+    if (services.length === 0) return null;
+    const overrides = services.map((s) => s.manualOverride ?? null);
+    const hasOpen   = overrides.some((o) => o === "open");
+    const hasClosed = overrides.some((o) => o === "closed");
+    if (hasOpen && hasClosed) return "mixed";
+    if (hasOpen)   return "open";
+    if (hasClosed) return "closed";
+    return null;
+  })();
+
+  const overrideDotColor =
+    overallOverrideStatus === "open"   ? "#16a34a" :
+    overallOverrideStatus === "closed" ? "#dc2626" :
+    overallOverrideStatus === "mixed"  ? "#f59e0b" :
+    null;
+
+  const overrideDotTitle =
+    overallOverrideStatus === "open"   ? "Có dịch vụ đang giữ MỞ thủ công" :
+    overallOverrideStatus === "closed" ? "Có dịch vụ đang giữ ĐÓNG thủ công" :
+    overallOverrideStatus === "mixed"  ? "Có dịch vụ vừa mở vừa đóng thủ công" :
+    "";
+
   return (
     <div className="sp">
       <style>{STYLES}</style>
@@ -517,8 +729,9 @@ export default function SettingsPage() {
         {TABS.map(tab => {
           const isActive = tab.id === activeTab;
           const dotColor =
-            tab.id === "tts"   ? (ttsEnabled ? "#16a34a" : "#94a3b8") :
-            tab.id === "reset" ? (autoResetEnabled ? "#16a34a" : "#94a3b8") :
+            tab.id === "tts"          ? (ttsEnabled ? "#16a34a" : "#94a3b8") :
+            tab.id === "reset"        ? (autoResetEnabled ? "#16a34a" : "#94a3b8") :
+            tab.id === "ticket-hours" ? (schedules.some((s) => s.isEnabled) ? "#16a34a" : "#94a3b8") :
             undefined;
           return (
             <button
@@ -700,7 +913,6 @@ export default function SettingsPage() {
                 onClick={() => !savingDisplay && void handleSaveDisplayMode("service")}
               >
                 <div className="sp-display-card-check"><FiCheck size={11} /></div>
-                {/* Mini preview: service layout */}
                 <div className="sp-display-card-preview">
                   <div style={{ background: "#003366", height: "22%", display: "flex", alignItems: "center", padding: "0 6px", gap: 4 }}>
                     <div style={{ width: 14, height: 14, borderRadius: 2, background: "rgba(255,255,255,0.3)" }} />
@@ -736,7 +948,6 @@ export default function SettingsPage() {
                 onClick={() => !savingDisplay && void handleSaveDisplayMode("queue")}
               >
                 <div className="sp-display-card-check"><FiCheck size={11} /></div>
-                {/* Mini preview: queue layout */}
                 <div className="sp-display-card-preview">
                   <div style={{ background: "#003366", height: "22%", display: "flex", alignItems: "center", padding: "0 6px", gap: 4 }}>
                     <div style={{ width: 14, height: 14, borderRadius: 2, background: "rgba(255,255,255,0.3)" }} />
@@ -841,6 +1052,321 @@ export default function SettingsPage() {
                 : "Auto reset chưa kích hoạt"}
             </div>
           </div>
+        )}
+
+        {/* ══ TAB: GIỜ LẤY VÉ ══ */}
+        {activeTab === "ticket-hours" && (
+          <>
+            {/* ─ Giờ chung ─ */}
+            <div className="sp-card">
+              <div className="sp-card-title">Giờ lấy vé chung</div>
+              <span className="sp-hint">
+                Áp dụng cho tất cả dịch vụ. Lịch riêng từng dịch vụ sẽ ưu tiên hơn.
+              </span>
+
+              {allSchedule && (
+                <div className="sp-toggle-row" style={{ marginTop: 12 }}>
+                  <div>
+                    <div className="sp-toggle-lbl">Bật lịch chung</div>
+                    <div className="sp-toggle-hint">
+                      {savingScheduleKey === "ALL" ? "Đang cập nhật..."
+                        : allSchedule.isEnabled
+                          ? `Đang áp dụng ${allSchedule.slots?.length || 1} ca`
+                          : "Đã tắt"}
+                    </div>
+                  </div>
+                  <Toggle checked={allSchedule.isEnabled}
+                    disabled={loadingSchedules || savingScheduleKey === "ALL"}
+                    onChange={() => void handleToggleAllSchedule()} />
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+                {allSlots.map((slot, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, color: "#94a3b8", width: 36, flexShrink: 0 }}>
+                      Ca {idx + 1}
+                    </span>
+                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
+                      value={slot.openTime}
+                      onChange={(e) => updateSlot(setAllSlots, idx, "openTime", e.target.value)}
+                      disabled={loadingSchedules || savingScheduleKey === "ALL"} />
+                    <FiArrowRight size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
+                      value={slot.closeTime}
+                      onChange={(e) => updateSlot(setAllSlots, idx, "closeTime", e.target.value)}
+                      disabled={loadingSchedules || savingScheduleKey === "ALL"} />
+                    <button
+                      className="sp-logo-clear"
+                      style={{ width: 28, height: 28, opacity: allSlots.length > 1 ? 1 : 0, pointerEvents: allSlots.length > 1 ? "auto" : "none" }}
+                      onClick={() => removeSlot(setAllSlots, idx)}
+                      disabled={loadingSchedules || savingScheduleKey === "ALL"}>
+                      <FiX size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="sp-card-footer" style={{ justifyContent: "space-between" }}>
+                <button className="sp-btn"
+                  onClick={() => addSlot(setAllSlots)}
+                  disabled={loadingSchedules || savingScheduleKey === "ALL" || allSlots.length >= 5}>
+                  <FiPlus size={13} /> Thêm ca
+                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {allSchedule && (
+                    <button className="sp-btn"
+                      onClick={() => void handleDeleteAllSchedule()}
+                      disabled={loadingSchedules || savingScheduleKey === "ALL"}>
+                      Xóa lịch
+                    </button>
+                  )}
+                  <button className="sp-btn sp-btn-primary"
+                    onClick={() => void handleSaveAllSchedule()}
+                    disabled={loadingSchedules || savingScheduleKey === "ALL"}>
+                    <FiSave size={13} />
+                    {savingScheduleKey === "ALL" ? "Đang lưu..." : "Lưu"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ─ Giờ riêng ─ */}
+            <div className="sp-card">
+              <div className="sp-card-title">Giờ riêng theo dịch vụ</div>
+              <span className="sp-hint">Ưu tiên hơn lịch chung khi được đặt.</span>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+                <select className="sp-input" style={{ cursor: "pointer" }}
+                  value={pickedServiceId}
+                  onChange={(e) => setPickedServiceId(e.target.value)}
+                  disabled={loadingSchedules || services.length === 0}>
+                  {services.length === 0 && <option value="">Không có dịch vụ</option>}
+                  {services.map((s) => (
+                    <option key={s._id} value={s._id}>{s.name}</option>
+                  ))}
+                </select>
+
+                {svcSlots.map((slot, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, color: "#94a3b8", width: 36, flexShrink: 0 }}>
+                      Ca {idx + 1}
+                    </span>
+                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
+                      value={slot.openTime}
+                      onChange={(e) => updateSlot(setSvcSlots, idx, "openTime", e.target.value)}
+                      disabled={loadingSchedules} />
+                    <FiArrowRight size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
+                      value={slot.closeTime}
+                      onChange={(e) => updateSlot(setSvcSlots, idx, "closeTime", e.target.value)}
+                      disabled={loadingSchedules} />
+                    <button
+                      className="sp-logo-clear"
+                      style={{ width: 28, height: 28, opacity: svcSlots.length > 1 ? 1 : 0, pointerEvents: svcSlots.length > 1 ? "auto" : "none" }}
+                      onClick={() => removeSlot(setSvcSlots, idx)}
+                      disabled={loadingSchedules}>
+                      <FiX size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {perServiceSchedules.length > 0 && (
+                <>
+                  <div className="sp-divider" style={{ marginTop: 16 }} />
+                  <div className="sp-card-title" style={{ marginBottom: 10 }}>
+                    Đã đặt ({perServiceSchedules.length})
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {perServiceSchedules.map((schedule) => {
+                      const id = getScheduleId(schedule);
+                      const isSaving = savingScheduleKey === id;
+                      const slots = schedule.slots?.length
+                        ? schedule.slots
+                        : schedule.openTime ? [{ openTime: schedule.openTime, closeTime: schedule.closeTime ?? "" }] : [];
+                      return (
+                        <div key={id} className="sp-toggle-row">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="sp-toggle-lbl">{getServiceName(id)}</div>
+                            <div className="sp-toggle-hint">
+                              {isSaving ? "Đang cập nhật..."
+                                : slots.map((s) => `${s.openTime}–${s.closeTime}`).join(" · ")}
+                              {" "}
+                              <span className={`sp-badge ${schedule.isEnabled ? "sp-badge-on" : "sp-badge-off"}`}>
+                                {schedule.isEnabled ? "Đang áp dụng" : "Đã tắt"}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <Toggle checked={schedule.isEnabled} disabled={isSaving}
+                              onChange={() => void handleToggleServiceSchedule(schedule)} />
+                            <button className="sp-logo-clear" style={{ width: 26, height: 26 }}
+                              onClick={() => void handleDeleteServiceSchedule(schedule)}
+                              disabled={isSaving}>
+                              <FiTrash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              <div className="sp-card-footer" style={{ justifyContent: "space-between" }}>
+                <button className="sp-btn"
+                  onClick={() => addSlot(setSvcSlots)}
+                  disabled={loadingSchedules || svcSlots.length >= 5}>
+                  <FiPlus size={13} /> Thêm ca
+                </button>
+                <button className="sp-btn sp-btn-primary"
+                  onClick={() => void handleSaveServiceSchedule()}
+                  disabled={loadingSchedules || !pickedServiceId || savingScheduleKey === pickedServiceId}>
+                  <FiSave size={13} />
+                  {savingScheduleKey === pickedServiceId ? "Đang lưu..." : "Lưu giờ riêng"}
+                </button>
+              </div>
+            </div>
+
+            {/* ─ Điều chỉnh thủ công ─ */}
+            <div className="sp-card">
+              {/* Tiêu đề + pulse dot */}
+              <div className="sp-card-title">
+                Điều chỉnh thủ công
+                {overrideDotColor && (
+                  <span
+                    className="sp-override-dot"
+                    title={overrideDotTitle}
+                    style={{ background: overrideDotColor }}
+                  />
+                )}
+              </div>
+              <span className="sp-hint">
+                Ghi đè lịch tự động, có hiệu lực ngay. Chọn &quot;Tự động&quot; để trả lại quyền kiểm soát cho lịch.
+              </span>
+
+              <select
+                className="sp-input"
+                style={{ cursor: "pointer", marginTop: 12 }}
+                value={overrideServiceId}
+                onChange={(e) => setOverrideServiceId(e.target.value)}
+                disabled={savingOverride}
+              >
+                <option value="ALL">Tất cả dịch vụ</option>
+                {services.map((s) => {
+                  const ov = s.manualOverride;
+                  const tag = ov === "open" ? " [Đang mở]" : ov === "closed" ? " [Đã đóng]" : "";
+                  return (
+                    <option key={s._id} value={s._id}>
+                      {s.name}{tag}
+                    </option>
+                  );
+                })}
+              </select>
+
+              {/* ── Trạng thái hiện tại của mục đang chọn ── */}
+              {(() => {
+                const currentOverride =
+                  overrideServiceId === "ALL" ? null : getServiceOverride(overrideServiceId);
+                const isOpen   = currentOverride === "open";
+                const isClosed = currentOverride === "closed";
+                return (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    marginTop: 10, padding: "9px 13px", borderRadius: 9,
+                    background: isOpen ? "#f0fdf4" : isClosed ? "#fef2f2" : "#f8fafc",
+                    border: `1px solid ${isOpen ? "#bbf7d0" : isClosed ? "#fecaca" : "#e2e8f0"}`,
+                  }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                      background: isOpen ? "#16a34a" : isClosed ? "#dc2626" : "#94a3b8",
+                    }} />
+                    <span style={{
+                      fontSize: 12, fontWeight: 600,
+                      color: isOpen ? "#15803d" : isClosed ? "#dc2626" : "#64748b",
+                    }}>
+                      {overrideServiceId === "ALL"
+                        ? "Tất cả dịch vụ — chọn hành động bên dưới"
+                        : isOpen
+                        ? `"${getServiceName(overrideServiceId)}" đang được giữ MỞ thủ công`
+                        : isClosed
+                        ? `"${getServiceName(overrideServiceId)}" đang được giữ ĐÓNG thủ công`
+                        : `"${getServiceName(overrideServiceId)}" đang chạy theo lịch tự động`}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* ── Nút hành động ── */}
+              {(() => {
+                const currentOverride =
+                  overrideServiceId === "ALL" ? null : getServiceOverride(overrideServiceId);
+                const isActiveOpen   = currentOverride === "open";
+                const isActiveClosed = currentOverride === "closed";
+                const isActiveAuto   = currentOverride === null || currentOverride === undefined;
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 10 }}>
+                    <button
+                      className="sp-btn"
+                      style={{
+                        justifyContent: "center",
+                        background:   isActiveOpen ? "#16a34a" : "#f0fdf4",
+                        color:        isActiveOpen ? "#fff"    : "#15803d",
+                        borderColor:  isActiveOpen ? "#16a34a" : "#bbf7d0",
+                        fontWeight:   isActiveOpen ? 700 : 600,
+                        boxShadow:    isActiveOpen ? "0 0 0 3px rgba(22,163,74,0.18)" : "none",
+                      }}
+                      onClick={() => void handleSetOverride("open")}
+                      disabled={savingOverride || loadingSchedules}
+                    >
+                      {isActiveOpen ? "Đang mở ✓" : "Mở ngay"}
+                    </button>
+
+                    <button
+                      className="sp-btn"
+                      style={{
+                        justifyContent: "center",
+                        background:   isActiveClosed ? "#dc2626" : "#fef2f2",
+                        color:        isActiveClosed ? "#fff"    : "#dc2626",
+                        borderColor:  isActiveClosed ? "#dc2626" : "#fecaca",
+                        fontWeight:   isActiveClosed ? 700 : 600,
+                        boxShadow:    isActiveClosed ? "0 0 0 3px rgba(220,38,38,0.18)" : "none",
+                      }}
+                      onClick={() => void handleSetOverride("closed")}
+                      disabled={savingOverride || loadingSchedules}
+                    >
+                      {isActiveClosed ? "Đang đóng ✓" : "Đóng ngay"}
+                    </button>
+
+                    <button
+                      className="sp-btn"
+                      style={{
+                        justifyContent: "center",
+                        background:   isActiveAuto ? "#0f2744"     : "transparent",
+                        color:        isActiveAuto ? "#fff"         : "#475569",
+                        borderColor:  isActiveAuto ? "#0f2744"     : "#e2e8f0",
+                        fontWeight:   isActiveAuto ? 700 : 600,
+                        boxShadow:    isActiveAuto ? "0 0 0 3px rgba(15,39,68,0.14)" : "none",
+                      }}
+                      onClick={() => void handleSetOverride(null)}
+                      disabled={savingOverride || loadingSchedules}
+                    >
+                      <FiRefreshCw size={13} />
+                      {isActiveAuto ? "Tự động ✓" : "Tự động"}
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {savingOverride && (
+                <div className="sp-status" style={{ marginTop: 10 }}>
+                  <span className="sp-status-dot" style={{ background: "#f59e0b" }} />
+                  Đang cập nhật...
+                </div>
+              )}
+            </div>
+          </>
         )}
 
       </div>

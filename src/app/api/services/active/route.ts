@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     });
 
     if (!response.ok) {
-      throw new Error(`Backend error: ${response.statusText}`);
+      throw new Error(`Máy chủ phản hồi lỗi ${response.status}`);
     }
 
     const data = await response.json();
@@ -28,8 +28,8 @@ export async function GET(request: Request) {
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Failed to fetch services",
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "Không thể tải danh sách dịch vụ",
+        message: error instanceof Error ? error.message : "Không thể kết nối máy chủ",
       }),
       {
         status: 500,

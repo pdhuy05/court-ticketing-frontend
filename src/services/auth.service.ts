@@ -13,29 +13,18 @@ const getErrorMessageFromPayload = (
   fallbackMessage: string,
 ) => {
   if (!payload) {
-    if (rawText.trim()) {
-      return rawText.trim();
-    }
-
+    if (rawText.trim()) return rawText.trim();
     return fallbackMessage;
   }
-
   if (typeof payload.message === "string" && payload.message.trim()) {
     return payload.message;
   }
-
   if (payload.errors && typeof payload.errors === "object") {
     for (const value of Object.values(payload.errors)) {
-      if (Array.isArray(value) && value.length > 0) {
-        return String(value[0]);
-      }
-
-      if (typeof value === "string" && value.trim()) {
-        return value;
-      }
+      if (Array.isArray(value) && value.length > 0) return String(value[0]);
+      if (typeof value === "string" && value.trim()) return value;
     }
   }
-
   return fallbackMessage;
 };
 
@@ -47,10 +36,14 @@ const parseJsonSafely = <T>(rawText: string): T | null => {
   }
 };
 
+// ─── Staff Login ──────────────────────────────────────────────────────────────
 export interface StaffLoginResponse {
   success: boolean;
-  data: {
-    token: string;
+  data?: {
+    accessToken: string;
+    refreshToken: string;
+    // backward compat: backend cũ trả token, backend mới trả accessToken
+    token?: string;
     user: {
       id: string;
       username: string;
@@ -67,9 +60,7 @@ export async function loginStaff(
 ): Promise<StaffLoginResponse> {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(credentials),
   });
 
@@ -77,22 +68,21 @@ export async function loginStaff(
   const data = parseJsonSafely<StaffLoginResponse & ApiErrorPayload>(rawText);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessageFromPayload(data, rawText, "Đăng nhập thất bại"),
-    );
+    throw new Error(getErrorMessageFromPayload(data, rawText, "Đăng nhập thất bại"));
   }
-
-  if (!data) {
-    throw new Error("Phản hồi đăng nhập không hợp lệ");
-  }
+  if (!data) throw new Error("Phản hồi đăng nhập không hợp lệ");
 
   return data;
 }
 
+// ─── Admin Login ──────────────────────────────────────────────────────────────
 export interface AdminLoginResponse {
   success: boolean;
   data: {
-    token: string;
+    accessToken: string;
+    refreshToken: string;
+    // backward compat
+    token?: string;
     user: AdminProfile;
   };
   message?: string;
@@ -103,9 +93,7 @@ export async function loginAdmin(
 ): Promise<AdminLoginResponse> {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(credentials),
   });
 
@@ -113,18 +101,14 @@ export async function loginAdmin(
   const data = parseJsonSafely<AdminLoginResponse & ApiErrorPayload>(rawText);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessageFromPayload(data, rawText, "Đăng nhập admin thất bại"),
-    );
+    throw new Error(getErrorMessageFromPayload(data, rawText, "Đăng nhập admin thất bại"));
   }
-
-  if (!data) {
-    throw new Error("Phản hồi đăng nhập admin không hợp lệ");
-  }
+  if (!data) throw new Error("Phản hồi đăng nhập admin không hợp lệ");
 
   return data;
 }
 
+// ─── Profile types ────────────────────────────────────────────────────────────
 export type ProfileCounter = {
   _id?: string;
   id?: string;
@@ -185,13 +169,11 @@ export type UpdateProfileResponse = {
   message?: string;
 };
 
+// ─── Update profile ───────────────────────────────────────────────────────────
 export async function updateMyProfile(payload: UpdateProfilePayload): Promise<AdminProfile> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
-
-  if (!token) {
-    throw new Error("NO_TOKEN");
-  }
+  if (!token) throw new Error("NO_TOKEN");
 
   const response = await fetch(`${API_BASE}/auth/profile`, {
     method: "PUT",
@@ -206,18 +188,14 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<Ad
   const data = parseJsonSafely<UpdateProfileResponse & ApiErrorPayload>(rawText);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessageFromPayload(data, rawText, "Không thể cập nhật hồ sơ"),
-    );
+    throw new Error(getErrorMessageFromPayload(data, rawText, "Không thể cập nhật hồ sơ"));
   }
-
-  if (!data?.data) {
-    throw new Error("Phản hồi không hợp lệ");
-  }
+  if (!data?.data) throw new Error("Phản hồi không hợp lệ");
 
   return data.data;
 }
 
+// ─── Get me ───────────────────────────────────────────────────────────────────
 export type MeResponse = {
   success: boolean;
   data: AdminProfile;
@@ -227,10 +205,7 @@ export type MeResponse = {
 export async function getMyProfile(): Promise<AdminProfile> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
-
-  if (!token) {
-    throw new Error("NO_TOKEN");
-  }
+  if (!token) throw new Error("NO_TOKEN");
 
   const response = await fetch(`${API_BASE}/auth/me`, {
     method: "GET",
@@ -245,14 +220,9 @@ export async function getMyProfile(): Promise<AdminProfile> {
   const data = parseJsonSafely<MeResponse & ApiErrorPayload>(rawText);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessageFromPayload(data, rawText, "Không thể tải hồ sơ"),
-    );
+    throw new Error(getErrorMessageFromPayload(data, rawText, "Không thể tải hồ sơ"));
   }
-
-  if (!data?.data) {
-    throw new Error("Phản hồi hồ sơ không hợp lệ");
-  }
+  if (!data?.data) throw new Error("Phản hồi hồ sơ không hợp lệ");
 
   return data.data;
 }
