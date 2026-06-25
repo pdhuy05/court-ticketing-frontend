@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import {
   FiVolume2, FiRefreshCw, FiClock, FiSave, FiLayout,
   FiMapPin, FiAlignLeft, FiSun, FiImage, FiUpload, FiX,
-  FiCheck, FiAlertCircle, FiSettings, FiMonitor, FiPlus, FiTrash2, FiArrowRight,
+  FiCheck, FiAlertCircle, FiSettings, FiMonitor, FiPlus, FiTrash2,
+  FiSliders, FiGlobe,
 } from "react-icons/fi";
 import ToastContainer from "@/components/ToastContainer";
 import { useToast } from "@/hooks/useToast";
@@ -68,9 +69,6 @@ const STYLES = `
   }
   .sp-topbar-title {
     font-size: 17px; font-weight: 700; color: #0f172a; letter-spacing: -0.4px;
-  }
-  .sp-topbar-sub {
-    font-size: 12px; color: #94a3b8; margin-left: 2px;
   }
 
   /* ── Tab nav ── */
@@ -228,12 +226,12 @@ const STYLES = `
     background: transparent; color: #475569;
     white-space: nowrap;
   }
-
   .sp-btn-primary { background: #0f2744; color: #fff; border-color: transparent; }
   .sp-btn-primary:hover:not(:disabled) { opacity: 0.87; }
   .sp-btn-primary:active:not(:disabled) { transform: translateY(1px); }
   .sp-btn:disabled { opacity: 0.38; cursor: not-allowed; }
   .sp-btn-full { width: 100%; justify-content: center; }
+  .sp-btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
 
   /* ── Footer bar ── */
   .sp-card-footer {
@@ -273,12 +271,13 @@ const STYLES = `
   /* ── Time controls ── */
   .sp-time-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
   .sp-time-input {
-    flex: 1; height: 38px; padding: 0 11px;
+    flex: 1; height: 36px; padding: 0 10px;
     border: 1px solid #e2e8f0; border-radius: 9px;
-    font-size: 14px; font-weight: 500; color: #0f172a;
+    font-size: 13px; font-weight: 500; color: #0f172a;
     background: #f8fafc; outline: none;
     font-family: 'JetBrains Mono', monospace;
     transition: border-color 0.14s, background 0.14s;
+    min-width: 0;
   }
   .sp-time-input:focus { border-color: #94a3b8; background: #fff; }
   .sp-time-input:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -351,9 +350,158 @@ const STYLES = `
     flex-shrink: 0;
     animation: sp-pulse 1.4s ease-in-out infinite;
   }
+
+  /* ── Ticket Hours – segmented pill tab ── */
+  .sp-seg {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #eef1f6;
+    border-radius: 11px;
+    padding: 3px;
+    margin: -4px -4px 16px;
+  }
+  .sp-seg-thumb {
+    position: absolute;
+    top: 3px; bottom: 3px;
+    width: calc(50% - 3px);
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.10), 0 0 0 1px rgba(15,23,42,0.03);
+    transition: transform 0.32s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  .sp-seg-btn {
+    position: relative;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    height: 34px; border: none; background: transparent;
+    font-size: 12.5px; font-weight: 600; color: #64748b;
+    cursor: pointer; border-radius: 8px; z-index: 1;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    transition: color 0.2s;
+  }
+  .sp-seg-btn.active { color: #0f2744; }
+  .sp-seg-count {
+    font-size: 10.5px; font-weight: 700;
+    background: #0f2744; color: #fff;
+    padding: 1px 6px; border-radius: 99px;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .sp-seg-btn:not(.active) .sp-seg-count { background: #cbd5e1; color: #475569; }
+
+  /* ── Pane crossfade between sub-tabs ── */
+  @keyframes sp-pane-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .sp-pane { animation: sp-pane-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+  /* ── Compact slot chips ── */
+  .sp-slots-wrap {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-top: 12px;
+  }
+  @keyframes sp-chip-in {
+    from { opacity: 0; transform: scale(0.9); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes sp-chip-out {
+    from { opacity: 1; transform: scale(1); }
+    to   { opacity: 0; transform: scale(0.85); }
+  }
+  .sp-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 5px 6px 5px 10px;
+    animation: sp-chip-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .sp-chip:hover { border-color: #cbd5e1; background: #fff; }
+  .sp-chip-time {
+    border: none; background: transparent; outline: none;
+    font-size: 12.5px; font-weight: 600; color: #0f172a;
+    font-family: 'JetBrains Mono', monospace;
+    width: 76px; min-width: 76px; text-align: center; cursor: text;
+    border-radius: 6px; padding: 2px 0;
+    transition: background 0.12s;
+  }
+  .sp-chip-time::-webkit-calendar-picker-indicator {
+    margin-left: 2px;
+    opacity: 0.6;
+  }
+  .sp-chip-time:focus { background: #e8edf5; }
+  .sp-chip-time:disabled { opacity: 0.5; cursor: not-allowed; }
+  .sp-chip-sep { color: #cbd5e1; font-size: 12px; flex-shrink: 0; }
+  .sp-chip-x {
+    width: 20px; height: 20px; border-radius: 50%; border: none;
+    background: transparent; color: #94a3b8; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.12s, color 0.12s, transform 0.12s;
+  }
+  .sp-chip-x:hover { background: #fee2e2; color: #ef4444; transform: scale(1.08); }
+  .sp-chip-add {
+    display: flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px;
+    border: 1.5px dashed #cbd5e1; border-radius: 10px;
+    background: transparent; color: #64748b;
+    font-size: 12.5px; font-weight: 600; cursor: pointer;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .sp-chip-add:hover:not(:disabled) { border-color: #0f2744; color: #0f2744; background: #f8fafc; }
+  .sp-chip-add:active:not(:disabled) { transform: scale(0.96); }
+  .sp-chip-add:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Service schedule list item (animated) ── */
+  @keyframes sp-row-in {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .sp-svc-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 8px;
+    border-radius: 9px;
+    animation: sp-row-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transition: background 0.15s;
+  }
+  .sp-svc-row:hover { background: #f8fafc; }
+  .sp-svc-name { flex: 1; font-size: 13px; font-weight: 600; color: #1e293b; min-width: 0; }
+  .sp-svc-time {
+    font-size: 11.5px; color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+
+  /* ── Override action buttons ── */
+  .sp-ov-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .sp-ov-btn {
+    height: 34px; border-radius: 9px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: all 0.15s; border: 1px solid;
+  }
+  .sp-ov-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+  .sp-ov-btn:active:not(:disabled) { transform: scale(0.97); }
+
+  /* ── Card footer compact ── */
+  .sp-card-foot-between {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding-top: 12px; margin-top: 14px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sp-seg-thumb, .sp-pane, .sp-chip, .sp-svc-row, .sp-chip-add, .sp-ov-btn { animation: none !important; transition: none !important; }
+  }
 `;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
 
 function Toggle({ checked, disabled, onChange }: { checked: boolean; disabled: boolean; onChange: () => void }) {
   return (
@@ -369,6 +517,7 @@ function Toggle({ checked, disabled, onChange }: { checked: boolean; disabled: b
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 type TabId = "brand" | "display" | "tts" | "reset" | "ticket-hours";
+type HoursSubTab = "all" | "per-service";
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: "brand",        label: "Giao diện",       icon: <FiLayout size={13} /> },
@@ -386,6 +535,7 @@ export default function SettingsPage() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<TabId>("brand");
+  const [hoursSubTab, setHoursSubTab] = useState<HoursSubTab>("all");
 
   const [ttsEnabled,       setTtsEnabled]       = useState(false);
   const [autoResetEnabled, setAutoResetEnabled] = useState(false);
@@ -437,7 +587,7 @@ export default function SettingsPage() {
     void load();
   }, [error]);
 
-  const loadSchedules = useCallback(async () => {
+  const loadSchedules = useCallback(async (keepPickedId?: string) => {
     setLoadingSchedules(true);
     try {
       const [svcList, scheduleList] = await Promise.all([
@@ -445,8 +595,45 @@ export default function SettingsPage() {
       ]);
       setServices(svcList);
       setSchedules(scheduleList);
-      if (!pickedServiceId && svcList.length > 0) {
-        setPickedServiceId(svcList[0]._id);
+
+      // ── Sync allSlots từ schedule "ALL" trả về từ API ──
+      const allSched = scheduleList.find((s) =>
+        s.serviceId === "ALL"
+      );
+      if (allSched) {
+        if (allSched.slots && allSched.slots.length > 0) {
+          setAllSlots(allSched.slots);
+        } else if (allSched.openTime) {
+          // fallback legacy field
+          setAllSlots([{ openTime: allSched.openTime, closeTime: allSched.closeTime ?? "" }]);
+        }
+      }
+
+      // ── Sync svcSlots cho dịch vụ đang chọn ──
+      const resolvedPickedId = keepPickedId ?? pickedServiceId;
+      const firstSvcId = svcList.length > 0 ? svcList[0]._id : "";
+      const activeId = resolvedPickedId || firstSvcId;
+
+      if (!resolvedPickedId && firstSvcId) {
+        setPickedServiceId(firstSvcId);
+      }
+
+      if (activeId) {
+        const svcSched = scheduleList.find((s) => {
+          if (s.serviceId === "ALL") return false;
+          const id = (s.serviceId as { _id: string })?._id;
+          return id === activeId;
+        });
+        if (svcSched) {
+          if (svcSched.slots && svcSched.slots.length > 0) {
+            setSvcSlots(svcSched.slots);
+          } else if (svcSched.openTime) {
+            setSvcSlots([{ openTime: svcSched.openTime, closeTime: svcSched.closeTime ?? "" }]);
+          }
+        } else {
+          // Dịch vụ này chưa có lịch riêng → reset về default
+          setSvcSlots([{ openTime: "07:30", closeTime: "11:30" }]);
+        }
       }
     } catch (err) {
       error(err instanceof Error ? err.message : "Không lấy được lịch giờ lấy vé");
@@ -542,7 +729,6 @@ export default function SettingsPage() {
     return svc?.manualOverride ?? null;
   };
 
-  // Slot helpers
   const addSlot = (setter: React.Dispatch<React.SetStateAction<TimeSlot[]>>) => {
     setter((prev) => [...prev, { openTime: "13:00", closeTime: "17:00" }]);
   };
@@ -598,7 +784,8 @@ export default function SettingsPage() {
     setSavingScheduleKey("ALL");
     try {
       await deleteServiceSchedule("ALL");
-      await loadSchedules();
+      setAllSlots([{ openTime: "07:30", closeTime: "11:30" }]);
+      await loadSchedules(pickedServiceId);
       success("Đã xóa giờ lấy vé chung");
     } catch (err) {
       error(err instanceof Error ? err.message : "Xóa giờ chung thất bại");
@@ -612,7 +799,7 @@ export default function SettingsPage() {
     setSavingScheduleKey(pickedServiceId);
     try {
       await upsertServiceSchedule({ serviceId: pickedServiceId, slots: svcSlots, isEnabled: true });
-      await loadSchedules();
+      await loadSchedules(pickedServiceId);
       success(`Đã lưu ${svcSlots.length} ca cho "${getServiceName(pickedServiceId)}"`);
     } catch (err) {
       error(err instanceof Error ? err.message : "Lưu giờ thất bại");
@@ -638,7 +825,11 @@ export default function SettingsPage() {
     setSavingScheduleKey(id);
     try {
       await deleteServiceSchedule(id);
-      await loadSchedules();
+      // Nếu xóa chính dịch vụ đang chọn → reset svcSlots về default
+      if (id === pickedServiceId) {
+        setSvcSlots([{ openTime: "07:30", closeTime: "11:30" }]);
+      }
+      await loadSchedules(pickedServiceId);
       success("Đã xóa lịch giờ riêng cho dịch vụ này");
     } catch (err) {
       error(err instanceof Error ? err.message : "Xóa lịch thất bại");
@@ -688,7 +879,7 @@ export default function SettingsPage() {
   const isBusy = loading || savingTts || savingReset;
   const isSiteDirty = JSON.stringify(siteDraft) !== JSON.stringify(siteConfig);
 
-  // ── Tính trạng thái override tổng hợp để hiển thị dot trên tiêu đề card ──
+  // override dot
   const overallOverrideStatus: "open" | "closed" | "mixed" | null = (() => {
     if (services.length === 0) return null;
     const overrides = services.map((s) => s.manualOverride ?? null);
@@ -711,6 +902,56 @@ export default function SettingsPage() {
     overallOverrideStatus === "closed" ? "Có dịch vụ đang giữ ĐÓNG thủ công" :
     overallOverrideStatus === "mixed"  ? "Có dịch vụ vừa mở vừa đóng thủ công" :
     "";
+
+  // ── Slot renderer helper: chip ngang gọn, có nút thêm ca ngay trong dòng ──
+  const renderSlots = (
+    slots: TimeSlot[],
+    setter: React.Dispatch<React.SetStateAction<TimeSlot[]>>,
+    disabled: boolean,
+  ) => (
+    <div className="sp-slots-wrap">
+      {slots.map((slot, idx) => (
+        <div key={idx} className="sp-chip">
+          <input type="time" className="sp-chip-time"
+            value={slot.openTime}
+            onChange={(e) => updateSlot(setter, idx, "openTime", e.target.value)}
+            disabled={disabled} />
+          <span className="sp-chip-sep">–</span>
+          <input type="time" className="sp-chip-time"
+            value={slot.closeTime}
+            onChange={(e) => updateSlot(setter, idx, "closeTime", e.target.value)}
+            disabled={disabled} />
+          <button
+            className="sp-chip-x"
+            style={{ opacity: slots.length > 1 ? 1 : 0, pointerEvents: slots.length > 1 ? "auto" : "none" }}
+            onClick={() => removeSlot(setter, idx)}
+            disabled={disabled}
+            aria-label="Xóa ca">
+            <FiX size={12} />
+          </button>
+        </div>
+      ))}
+      <button
+        className="sp-chip-add"
+        onClick={() => addSlot(setter)}
+        disabled={disabled || slots.length >= 5}>
+        <FiPlus size={13} /> Thêm ca
+      </button>
+    </div>
+  );
+
+  // ── Override current status display ──
+  // Khi chọn "Tất cả dịch vụ", trạng thái nút phải dựa vào tổng hợp toàn bộ
+  // dịch vụ (overallOverrideStatus), không phải gán cứng null — nếu không
+  // nút "Tự động" sẽ luôn sáng dù vừa bấm Mở ngay/Đóng ngay cho tất cả.
+  const currentOverride =
+    overrideServiceId === "ALL"
+      ? (overallOverrideStatus === "open" || overallOverrideStatus === "closed" ? overallOverrideStatus : null)
+      : getServiceOverride(overrideServiceId);
+  const isOvMixed  = overrideServiceId === "ALL" && overallOverrideStatus === "mixed";
+  const isOvOpen   = currentOverride === "open";
+  const isOvClosed = currentOverride === "closed";
+  const isOvAuto   = !isOvOpen && !isOvClosed && !isOvMixed;
 
   return (
     <div className="sp">
@@ -753,7 +994,6 @@ export default function SettingsPage() {
         {/* ══ TAB: GIAO DIỆN ══ */}
         {activeTab === "brand" && (
           <>
-            {/* Brand preview */}
             <div className="sp-brand-preview">
               <div className="sp-brand-avatar" style={{ color: siteDraft.primaryColor }}>
                 {siteDraft.logoUrl ? (
@@ -765,9 +1005,7 @@ export default function SettingsPage() {
                 )}
               </div>
               <div>
-                <div className="sp-brand-name" style={{ color: "#0f172a" }}>
-                  {siteDraft.branchName || "Tòa án nhân dân"}
-                </div>
+                <div className="sp-brand-name">{siteDraft.branchName || "Tòa án nhân dân"}</div>
                 <div className="sp-brand-sub">
                   {siteDraft.workingHours || "Giờ làm việc chưa cài đặt"}
                   {siteDraft.address ? ` · ${siteDraft.address}` : ""}
@@ -775,7 +1013,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Thông tin cơ bản */}
             <div className="sp-card">
               <div className="sp-card-title">Thông tin cơ bản</div>
               <div className="sp-grid-2" style={{ marginBottom: 12 }}>
@@ -820,7 +1057,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Màn hình chờ */}
             <div className="sp-card">
               <div className="sp-card-title">Màn hình chờ</div>
               <div className="sp-grid-2" style={{ marginBottom: 12 }}>
@@ -885,7 +1121,6 @@ export default function SettingsPage() {
                   disabled={loading || savingSite} />
                 <span className="sp-hint">Hiển thị chạy ngang dưới màn hình chờ. Để trống nếu không dùng.</span>
               </div>
-
               <div className="sp-card-footer">
                 <button className="sp-btn" onClick={handleResetSite}
                   disabled={!isSiteDirty || loading || savingSite}>
@@ -905,9 +1140,7 @@ export default function SettingsPage() {
         {activeTab === "display" && (
           <div className="sp-card">
             <div className="sp-card-title">Chế độ hiển thị màn hình quầy</div>
-
             <div className="sp-display-grid">
-              {/* Option: Service mode */}
               <div
                 className={`sp-display-card${displayMode === "service" ? " selected" : ""}`}
                 onClick={() => !savingDisplay && void handleSaveDisplayMode("service")}
@@ -926,7 +1159,7 @@ export default function SettingsPage() {
                           <div style={{ width: "70%", height: 5, borderRadius: 2, background: fg === "#fff" ? "rgba(255,255,255,0.6)" : "rgba(0,51,102,0.35)" }} />
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
-                          <div style={{ width: 18, height: 10, borderRadius: 2, background: fg === "#fff" ? "rgba(255,255,255,0.8)" : "rgba(0,51,102,0.4)", fontFamily: "monospace", fontSize: 7, display: "flex", alignItems: "center", justifyContent: "center", color: fg }} />
+                          <div style={{ width: 18, height: 10, borderRadius: 2, background: fg === "#fff" ? "rgba(255,255,255,0.8)" : "rgba(0,51,102,0.4)" }} />
                           <div style={{ width: "55%", height: 3, borderRadius: 1, background: fg === "#fff" ? "rgba(255,255,255,0.4)" : "rgba(0,51,102,0.2)" }} />
                         </div>
                       </div>
@@ -938,11 +1171,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="sp-display-card-title">Theo Yêu Cầu</div>
                 <div className="sp-display-card-desc">
-                  Mỗi hàng là một loại yêu cầu, hiển thị số phiếu + tên đương sự đang xử lý cho từng yêu cầu.
+                  Mỗi hàng là một loại yêu cầu, hiển thị số phiếu + tên đương sự đang xử lý.
                 </div>
               </div>
 
-              {/* Option: Queue mode */}
               <div
                 className={`sp-display-card${displayMode === "queue" ? " selected" : ""}`}
                 onClick={() => !savingDisplay && void handleSaveDisplayMode("queue")}
@@ -982,11 +1214,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="sp-display-card-title">Danh Sách Chờ</div>
                 <div className="sp-display-card-desc">
-                  Hiển thị danh sách tối đa 5 vé (đang xử lý + đang chờ), có cột Yêu Cầu, Thông Tin và Trạng Thái.
+                  Hiển thị tối đa 5 vé (đang xử lý + đang chờ), có cột Yêu Cầu, Thông Tin và Trạng Thái.
                 </div>
               </div>
             </div>
-
             <div className="sp-status">
               <span className="sp-status-dot" style={{ background: "#0f2744" }} />
               {savingDisplay
@@ -1057,181 +1288,174 @@ export default function SettingsPage() {
         {/* ══ TAB: GIỜ LẤY VÉ ══ */}
         {activeTab === "ticket-hours" && (
           <>
-            {/* ─ Giờ chung ─ */}
+            {/* ─ Card 1: Lịch giờ (2 sub-tab) ─ */}
             <div className="sp-card">
-              <div className="sp-card-title">Giờ lấy vé chung</div>
-              <span className="sp-hint">
-                Áp dụng cho tất cả dịch vụ. Lịch riêng từng dịch vụ sẽ ưu tiên hơn.
-              </span>
-
-              {allSchedule && (
-                <div className="sp-toggle-row" style={{ marginTop: 12 }}>
-                  <div>
-                    <div className="sp-toggle-lbl">Bật lịch chung</div>
-                    <div className="sp-toggle-hint">
-                      {savingScheduleKey === "ALL" ? "Đang cập nhật..."
-                        : allSchedule.isEnabled
-                          ? `Đang áp dụng ${allSchedule.slots?.length || 1} ca`
-                          : "Đã tắt"}
-                    </div>
-                  </div>
-                  <Toggle checked={allSchedule.isEnabled}
-                    disabled={loadingSchedules || savingScheduleKey === "ALL"}
-                    onChange={() => void handleToggleAllSchedule()} />
-                </div>
-              )}
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
-                {allSlots.map((slot, idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 12, color: "#94a3b8", width: 36, flexShrink: 0 }}>
-                      Ca {idx + 1}
-                    </span>
-                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
-                      value={slot.openTime}
-                      onChange={(e) => updateSlot(setAllSlots, idx, "openTime", e.target.value)}
-                      disabled={loadingSchedules || savingScheduleKey === "ALL"} />
-                    <FiArrowRight size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
-                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
-                      value={slot.closeTime}
-                      onChange={(e) => updateSlot(setAllSlots, idx, "closeTime", e.target.value)}
-                      disabled={loadingSchedules || savingScheduleKey === "ALL"} />
-                    <button
-                      className="sp-logo-clear"
-                      style={{ width: 28, height: 28, opacity: allSlots.length > 1 ? 1 : 0, pointerEvents: allSlots.length > 1 ? "auto" : "none" }}
-                      onClick={() => removeSlot(setAllSlots, idx)}
-                      disabled={loadingSchedules || savingScheduleKey === "ALL"}>
-                      <FiX size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="sp-card-footer" style={{ justifyContent: "space-between" }}>
-                <button className="sp-btn"
-                  onClick={() => addSlot(setAllSlots)}
-                  disabled={loadingSchedules || savingScheduleKey === "ALL" || allSlots.length >= 5}>
-                  <FiPlus size={13} /> Thêm ca
+              {/* Segmented pill tab — nền trượt theo lựa chọn */}
+              <div className="sp-seg">
+                <div className="sp-seg-thumb" style={{ transform: hoursSubTab === "all" ? "translateX(0%)" : "translateX(100%)" }} />
+                <button
+                  className={`sp-seg-btn${hoursSubTab === "all" ? " active" : ""}`}
+                  onClick={() => setHoursSubTab("all")}
+                >
+                  <FiGlobe size={12} /> Tất cả dịch vụ
                 </button>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {allSchedule && (
-                    <button className="sp-btn"
-                      onClick={() => void handleDeleteAllSchedule()}
-                      disabled={loadingSchedules || savingScheduleKey === "ALL"}>
-                      Xóa lịch
-                    </button>
+                <button
+                  className={`sp-seg-btn${hoursSubTab === "per-service" ? " active" : ""}`}
+                  onClick={() => setHoursSubTab("per-service")}
+                >
+                  <FiSliders size={12} /> Theo từng dịch vụ
+                  {perServiceSchedules.length > 0 && (
+                    <span className="sp-seg-count">{perServiceSchedules.length}</span>
                   )}
-                  <button className="sp-btn sp-btn-primary"
-                    onClick={() => void handleSaveAllSchedule()}
-                    disabled={loadingSchedules || savingScheduleKey === "ALL"}>
-                    <FiSave size={13} />
-                    {savingScheduleKey === "ALL" ? "Đang lưu..." : "Lưu"}
-                  </button>
-                </div>
+                </button>
               </div>
-            </div>
 
-            {/* ─ Giờ riêng ─ */}
-            <div className="sp-card">
-              <div className="sp-card-title">Giờ riêng theo dịch vụ</div>
-              <span className="sp-hint">Ưu tiên hơn lịch chung khi được đặt.</span>
+              {/* ─ Sub-tab: Tất cả dịch vụ ─ */}
+              {hoursSubTab === "all" && (
+                <div className="sp-pane" key="pane-all">
+                  <div className="sp-toggle-row">
+                    <div>
+                      <div className="sp-toggle-lbl">Áp dụng cho tất cả dịch vụ</div>
+                      <div className="sp-toggle-hint">
+                        {savingScheduleKey === "ALL" ? "Đang cập nhật..."
+                          : allSchedule?.isEnabled
+                            ? `Đang áp dụng ${allSchedule.slots?.length || 1} ca · chưa có lịch riêng sẽ theo giờ này`
+                            : "Chưa bật — đặt giờ rồi bấm Lưu"}
+                      </div>
+                    </div>
+                    {allSchedule && (
+                      <Toggle
+                        checked={allSchedule.isEnabled}
+                        disabled={loadingSchedules || savingScheduleKey === "ALL"}
+                        onChange={() => void handleToggleAllSchedule()}
+                      />
+                    )}
+                  </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
-                <select className="sp-input" style={{ cursor: "pointer" }}
-                  value={pickedServiceId}
-                  onChange={(e) => setPickedServiceId(e.target.value)}
-                  disabled={loadingSchedules || services.length === 0}>
-                  {services.length === 0 && <option value="">Không có dịch vụ</option>}
-                  {services.map((s) => (
-                    <option key={s._id} value={s._id}>{s.name}</option>
-                  ))}
-                </select>
+                  {renderSlots(allSlots, setAllSlots, loadingSchedules || savingScheduleKey === "ALL")}
 
-                {svcSlots.map((slot, idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 12, color: "#94a3b8", width: 36, flexShrink: 0 }}>
-                      Ca {idx + 1}
-                    </span>
-                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
-                      value={slot.openTime}
-                      onChange={(e) => updateSlot(setSvcSlots, idx, "openTime", e.target.value)}
-                      disabled={loadingSchedules} />
-                    <FiArrowRight size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
-                    <input type="time" className="sp-time-input" style={{ flex: 1 }}
-                      value={slot.closeTime}
-                      onChange={(e) => updateSlot(setSvcSlots, idx, "closeTime", e.target.value)}
-                      disabled={loadingSchedules} />
-                    <button
-                      className="sp-logo-clear"
-                      style={{ width: 28, height: 28, opacity: svcSlots.length > 1 ? 1 : 0, pointerEvents: svcSlots.length > 1 ? "auto" : "none" }}
-                      onClick={() => removeSlot(setSvcSlots, idx)}
-                      disabled={loadingSchedules}>
-                      <FiX size={13} />
+                  <div className="sp-card-foot-between">
+                    {allSchedule ? (
+                      <button className="sp-btn sp-btn-sm"
+                        onClick={() => void handleDeleteAllSchedule()}
+                        disabled={loadingSchedules || savingScheduleKey === "ALL"}>
+                        <FiTrash2 size={12} /> Xóa lịch
+                      </button>
+                    ) : <span />}
+                    <button className="sp-btn sp-btn-primary sp-btn-sm"
+                      onClick={() => void handleSaveAllSchedule()}
+                      disabled={loadingSchedules || savingScheduleKey === "ALL"}>
+                      <FiSave size={12} />
+                      {savingScheduleKey === "ALL" ? "Đang lưu..." : "Lưu"}
                     </button>
                   </div>
-                ))}
-              </div>
-
-              {perServiceSchedules.length > 0 && (
-                <>
-                  <div className="sp-divider" style={{ marginTop: 16 }} />
-                  <div className="sp-card-title" style={{ marginBottom: 10 }}>
-                    Đã đặt ({perServiceSchedules.length})
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {perServiceSchedules.map((schedule) => {
-                      const id = getScheduleId(schedule);
-                      const isSaving = savingScheduleKey === id;
-                      const slots = schedule.slots?.length
-                        ? schedule.slots
-                        : schedule.openTime ? [{ openTime: schedule.openTime, closeTime: schedule.closeTime ?? "" }] : [];
-                      return (
-                        <div key={id} className="sp-toggle-row">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="sp-toggle-lbl">{getServiceName(id)}</div>
-                            <div className="sp-toggle-hint">
-                              {isSaving ? "Đang cập nhật..."
-                                : slots.map((s) => `${s.openTime}–${s.closeTime}`).join(" · ")}
-                              {" "}
-                              <span className={`sp-badge ${schedule.isEnabled ? "sp-badge-on" : "sp-badge-off"}`}>
-                                {schedule.isEnabled ? "Đang áp dụng" : "Đã tắt"}
-                              </span>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <Toggle checked={schedule.isEnabled} disabled={isSaving}
-                              onChange={() => void handleToggleServiceSchedule(schedule)} />
-                            <button className="sp-logo-clear" style={{ width: 26, height: 26 }}
-                              onClick={() => void handleDeleteServiceSchedule(schedule)}
-                              disabled={isSaving}>
-                              <FiTrash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
+                </div>
               )}
 
-              <div className="sp-card-footer" style={{ justifyContent: "space-between" }}>
-                <button className="sp-btn"
-                  onClick={() => addSlot(setSvcSlots)}
-                  disabled={loadingSchedules || svcSlots.length >= 5}>
-                  <FiPlus size={13} /> Thêm ca
-                </button>
-                <button className="sp-btn sp-btn-primary"
-                  onClick={() => void handleSaveServiceSchedule()}
-                  disabled={loadingSchedules || !pickedServiceId || savingScheduleKey === pickedServiceId}>
-                  <FiSave size={13} />
-                  {savingScheduleKey === pickedServiceId ? "Đang lưu..." : "Lưu giờ riêng"}
-                </button>
-              </div>
+              {/* ─ Sub-tab: Theo từng dịch vụ ─ */}
+              {hoursSubTab === "per-service" && (
+                <div className="sp-pane" key="pane-per-service">
+                  <span className="sp-hint">Lịch riêng sẽ ưu tiên hơn lịch chung khi được đặt.</span>
+
+                  <div style={{ marginTop: 10 }}>
+                    <select
+                      className="sp-input"
+                      style={{ cursor: "pointer", marginBottom: 0 }}
+                      value={pickedServiceId}
+                      onChange={(e) => {
+                        const newId = e.target.value;
+                        setPickedServiceId(newId);
+                        // Populate svcSlots với giờ đã lưu của dịch vụ này (nếu có)
+                        const existing = schedules.find((s) => {
+                          if (s.serviceId === "ALL") return false;
+                          return (s.serviceId as { _id: string })?._id === newId;
+                        });
+                        if (existing) {
+                          if (existing.slots && existing.slots.length > 0) {
+                            setSvcSlots(existing.slots);
+                          } else if (existing.openTime) {
+                            setSvcSlots([{ openTime: existing.openTime, closeTime: existing.closeTime ?? "" }]);
+                          }
+                        } else {
+                          setSvcSlots([{ openTime: "07:30", closeTime: "11:30" }]);
+                        }
+                      }}
+                      disabled={loadingSchedules || services.length === 0}>
+                      {services.length === 0 && <option value="">Không có dịch vụ</option>}
+                      {services.map((s) => (
+                        <option key={s._id} value={s._id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {renderSlots(svcSlots, setSvcSlots, loadingSchedules)}
+
+                  <div className="sp-card-foot-between">
+                    <span className="sp-hint" style={{ margin: 0 }}>
+                      {pickedServiceId ? `Đang chỉnh: ${getServiceName(pickedServiceId)}` : ""}
+                    </span>
+                    <button className="sp-btn sp-btn-primary sp-btn-sm"
+                      onClick={() => void handleSaveServiceSchedule()}
+                      disabled={loadingSchedules || !pickedServiceId || savingScheduleKey === pickedServiceId}>
+                      <FiSave size={12} />
+                      {savingScheduleKey === pickedServiceId ? "Đang lưu..." : "Lưu giờ riêng"}
+                    </button>
+                  </div>
+
+                  {/* Existing per-service schedules */}
+                  {perServiceSchedules.length > 0 && (
+                    <>
+                      <div className="sp-divider" style={{ marginTop: 14 }} />
+                      <div style={{
+                        fontSize: 11, fontWeight: 700, color: "#94a3b8",
+                        textTransform: "uppercase", letterSpacing: "0.7px",
+                        marginBottom: 4,
+                      }}>
+                        Đã đặt ({perServiceSchedules.length})
+                      </div>
+                      <div>
+                        {perServiceSchedules.map((schedule, i) => {
+                          const id = getScheduleId(schedule);
+                          const isSaving = savingScheduleKey === id;
+                          const slots = schedule.slots?.length
+                            ? schedule.slots
+                            : schedule.openTime ? [{ openTime: schedule.openTime, closeTime: schedule.closeTime ?? "" }] : [];
+                          return (
+                            <div key={id} className="sp-svc-row" style={{ animationDelay: `${i * 0.03}s` }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="sp-svc-name">{getServiceName(id)}</div>
+                                <div className="sp-svc-time">
+                                  {isSaving ? "Đang cập nhật..." : slots.map((s) => `${s.openTime}–${s.closeTime}`).join(" · ")}
+                                </div>
+                              </div>
+                              <span className={`sp-badge ${schedule.isEnabled ? "sp-badge-on" : "sp-badge-off"}`}>
+                                {schedule.isEnabled ? "Bật" : "Tắt"}
+                              </span>
+                              <Toggle
+                                checked={schedule.isEnabled}
+                                disabled={isSaving}
+                                onChange={() => void handleToggleServiceSchedule(schedule)}
+                              />
+                              <button
+                                className="sp-logo-clear"
+                                style={{ width: 26, height: 26 }}
+                                onClick={() => void handleDeleteServiceSchedule(schedule)}
+                                disabled={isSaving}
+                                aria-label="Xóa lịch">
+                                <FiTrash2 size={13} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* ─ Điều chỉnh thủ công ─ */}
+            {/* ─ Card 2: Điều chỉnh thủ công ─ */}
             <div className="sp-card">
-              {/* Tiêu đề + pulse dot */}
               <div className="sp-card-title">
                 Điều chỉnh thủ công
                 {overrideDotColor && (
@@ -1246,118 +1470,93 @@ export default function SettingsPage() {
                 Ghi đè lịch tự động, có hiệu lực ngay. Chọn &quot;Tự động&quot; để trả lại quyền kiểm soát cho lịch.
               </span>
 
-              <select
-                className="sp-input"
-                style={{ cursor: "pointer", marginTop: 12 }}
-                value={overrideServiceId}
-                onChange={(e) => setOverrideServiceId(e.target.value)}
-                disabled={savingOverride}
-              >
-                <option value="ALL">Tất cả dịch vụ</option>
-                {services.map((s) => {
-                  const ov = s.manualOverride;
-                  const tag = ov === "open" ? " [Đang mở]" : ov === "closed" ? " [Đã đóng]" : "";
-                  return (
-                    <option key={s._id} value={s._id}>
-                      {s.name}{tag}
-                    </option>
-                  );
-                })}
-              </select>
+              <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                <select
+                  className="sp-input"
+                  style={{ cursor: "pointer" }}
+                  value={overrideServiceId}
+                  onChange={(e) => setOverrideServiceId(e.target.value)}
+                  disabled={savingOverride}>
+                  <option value="ALL">Tất cả dịch vụ</option>
+                  {services.map((s) => {
+                    const ov = s.manualOverride;
+                    const tag = ov === "open" ? " [Đang mở]" : ov === "closed" ? " [Đã đóng]" : "";
+                    return (
+                      <option key={s._id} value={s._id}>{s.name}{tag}</option>
+                    );
+                  })}
+                </select>
+              </div>
 
-              {/* ── Trạng thái hiện tại của mục đang chọn ── */}
-              {(() => {
-                const currentOverride =
-                  overrideServiceId === "ALL" ? null : getServiceOverride(overrideServiceId);
-                const isOpen   = currentOverride === "open";
-                const isClosed = currentOverride === "closed";
-                return (
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    marginTop: 10, padding: "9px 13px", borderRadius: 9,
-                    background: isOpen ? "#f0fdf4" : isClosed ? "#fef2f2" : "#f8fafc",
-                    border: `1px solid ${isOpen ? "#bbf7d0" : isClosed ? "#fecaca" : "#e2e8f0"}`,
-                  }}>
-                    <span style={{
-                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                      background: isOpen ? "#16a34a" : isClosed ? "#dc2626" : "#94a3b8",
-                    }} />
-                    <span style={{
-                      fontSize: 12, fontWeight: 600,
-                      color: isOpen ? "#15803d" : isClosed ? "#dc2626" : "#64748b",
-                    }}>
-                      {overrideServiceId === "ALL"
-                        ? "Tất cả dịch vụ — chọn hành động bên dưới"
-                        : isOpen
-                        ? `"${getServiceName(overrideServiceId)}" đang được giữ MỞ thủ công`
-                        : isClosed
-                        ? `"${getServiceName(overrideServiceId)}" đang được giữ ĐÓNG thủ công`
-                        : `"${getServiceName(overrideServiceId)}" đang chạy theo lịch tự động`}
-                    </span>
-                  </div>
-                );
-              })()}
+              {/* Status indicator */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                marginTop: 10, padding: "8px 12px", borderRadius: 9,
+                background: isOvOpen ? "#f0fdf4" : isOvClosed ? "#fef2f2" : isOvMixed ? "#fffbeb" : "#f8fafc",
+                border: `1px solid ${isOvOpen ? "#bbf7d0" : isOvClosed ? "#fecaca" : isOvMixed ? "#fde68a" : "#f1f5f9"}`,
+                fontSize: 12, fontWeight: 600,
+                color: isOvOpen ? "#15803d" : isOvClosed ? "#dc2626" : isOvMixed ? "#b45309" : "#64748b",
+              }}>
+                <span style={{
+                  width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+                  background: isOvOpen ? "#16a34a" : isOvClosed ? "#dc2626" : isOvMixed ? "#f59e0b" : "#94a3b8",
+                  display: "inline-block",
+                }} />
+                {overrideServiceId === "ALL"
+                  ? isOvOpen
+                    ? "Tất cả dịch vụ đang được giữ mở thủ công"
+                    : isOvClosed
+                      ? "Tất cả dịch vụ đang được giữ đóng thủ công"
+                      : isOvMixed
+                        ? "Các dịch vụ đang ở trạng thái thủ công khác nhau"
+                        : "Tất cả dịch vụ đang chạy theo lịch tự động"
+                  : isOvOpen
+                    ? `"${getServiceName(overrideServiceId)}" đang được giữ MỞ thủ công`
+                    : isOvClosed
+                      ? `"${getServiceName(overrideServiceId)}" đang được giữ ĐÓNG thủ công`
+                      : `"${getServiceName(overrideServiceId)}" đang chạy theo lịch tự động`}
+              </div>
 
-              {/* ── Nút hành động ── */}
-              {(() => {
-                const currentOverride =
-                  overrideServiceId === "ALL" ? null : getServiceOverride(overrideServiceId);
-                const isActiveOpen   = currentOverride === "open";
-                const isActiveClosed = currentOverride === "closed";
-                const isActiveAuto   = currentOverride === null || currentOverride === undefined;
-                return (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 10 }}>
-                    <button
-                      className="sp-btn"
-                      style={{
-                        justifyContent: "center",
-                        background:   isActiveOpen ? "#16a34a" : "#f0fdf4",
-                        color:        isActiveOpen ? "#fff"    : "#15803d",
-                        borderColor:  isActiveOpen ? "#16a34a" : "#bbf7d0",
-                        fontWeight:   isActiveOpen ? 700 : 600,
-                        boxShadow:    isActiveOpen ? "0 0 0 3px rgba(22,163,74,0.18)" : "none",
-                      }}
-                      onClick={() => void handleSetOverride("open")}
-                      disabled={savingOverride || loadingSchedules}
-                    >
-                      {isActiveOpen ? "Đang mở ✓" : "Mở ngay"}
-                    </button>
-
-                    <button
-                      className="sp-btn"
-                      style={{
-                        justifyContent: "center",
-                        background:   isActiveClosed ? "#dc2626" : "#fef2f2",
-                        color:        isActiveClosed ? "#fff"    : "#dc2626",
-                        borderColor:  isActiveClosed ? "#dc2626" : "#fecaca",
-                        fontWeight:   isActiveClosed ? 700 : 600,
-                        boxShadow:    isActiveClosed ? "0 0 0 3px rgba(220,38,38,0.18)" : "none",
-                      }}
-                      onClick={() => void handleSetOverride("closed")}
-                      disabled={savingOverride || loadingSchedules}
-                    >
-                      {isActiveClosed ? "Đang đóng ✓" : "Đóng ngay"}
-                    </button>
-
-                    <button
-                      className="sp-btn"
-                      style={{
-                        justifyContent: "center",
-                        background:   isActiveAuto ? "#0f2744"     : "transparent",
-                        color:        isActiveAuto ? "#fff"         : "#475569",
-                        borderColor:  isActiveAuto ? "#0f2744"     : "#e2e8f0",
-                        fontWeight:   isActiveAuto ? 700 : 600,
-                        boxShadow:    isActiveAuto ? "0 0 0 3px rgba(15,39,68,0.14)" : "none",
-                      }}
-                      onClick={() => void handleSetOverride(null)}
-                      disabled={savingOverride || loadingSchedules}
-                    >
-                      <FiRefreshCw size={13} />
-                      {isActiveAuto ? "Tự động ✓" : "Tự động"}
-                    </button>
-                  </div>
-                );
-              })()}
+              {/* Action buttons */}
+              <div className="sp-ov-grid">
+                <button
+                  className="sp-ov-btn"
+                  style={{
+                    background:  isOvOpen ? "#16a34a" : "#f0fdf4",
+                    color:       isOvOpen ? "#fff"    : "#15803d",
+                    borderColor: isOvOpen ? "#16a34a" : "#bbf7d0",
+                    boxShadow:   isOvOpen ? "0 0 0 3px rgba(22,163,74,0.15)" : "none",
+                  }}
+                  onClick={() => void handleSetOverride("open")}
+                  disabled={savingOverride || loadingSchedules}>
+                  {isOvOpen ? "Đang mở" : "Mở ngay"}
+                </button>
+                <button
+                  className="sp-ov-btn"
+                  style={{
+                    background:  isOvClosed ? "#dc2626" : "#fef2f2",
+                    color:       isOvClosed ? "#fff"    : "#dc2626",
+                    borderColor: isOvClosed ? "#dc2626" : "#fecaca",
+                    boxShadow:   isOvClosed ? "0 0 0 3px rgba(220,38,38,0.15)" : "none",
+                  }}
+                  onClick={() => void handleSetOverride("closed")}
+                  disabled={savingOverride || loadingSchedules}>
+                  {isOvClosed ? "Đang đóng" : "Đóng ngay"}
+                </button>
+                <button
+                  className="sp-ov-btn"
+                  style={{
+                    background:  isOvAuto ? "#0f2744"   : "transparent",
+                    color:       isOvAuto ? "#fff"       : "#475569",
+                    borderColor: isOvAuto ? "#0f2744"   : "#e2e8f0",
+                    boxShadow:   isOvAuto ? "0 0 0 3px rgba(15,39,68,0.12)" : "none",
+                  }}
+                  onClick={() => void handleSetOverride(null)}
+                  disabled={savingOverride || loadingSchedules}>
+                  <FiRefreshCw size={12} />
+                  {isOvAuto ? "Tự động" : "Tự động"}
+                </button>
+              </div>
 
               {savingOverride && (
                 <div className="sp-status" style={{ marginTop: 10 }}>
