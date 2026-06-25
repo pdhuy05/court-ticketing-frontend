@@ -514,7 +514,7 @@ export default function HomePage() {
 
                 <div className="closed-modal-message">
                   <p className="closed-modal-message-notice">
-                    Thời gian tiếp nhận hồ sơ trong ngày hôm nay đã kết thúc theo quy định.
+                    Thời gian tiếp nhận hồ sơ trong ngày hôm nay đã kết thúc.
                   </p>
                   <p className="closed-modal-message-action">
                     Quý ông bà vui lòng quay lại buổi làm việc tiếp theo.
