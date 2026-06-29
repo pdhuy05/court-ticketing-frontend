@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { io, Socket } from "socket.io-client";
 import { RiArrowLeftLine } from "react-icons/ri";
 import { Service } from "@/mock/services";
 import { createTicket, printTicket } from "@/services/ticket.service";
@@ -11,6 +12,7 @@ import { Ticket } from "@/mock/data";
 import Toast from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import AppErrorState from "@/components/AppErrorState";
+import { getSocketBaseUrl } from "@/lib/runtime-config";
 
 interface DisplayTicket extends Ticket {
   _id?: string;
@@ -30,7 +32,6 @@ const sanitizeFullName = (value: string) =>
 
 const normalizeFullName = (value: string) => sanitizeFullName(value).trim();
 
-// Viết hoa đầu mỗi từ — chỉ gọi khi onBlur, không gọi realtime để tránh lỗi IME tiếng Việt
 const capitalizeName = (value: string): string =>
   value.replace(/(?:^|\s)\S/g, (char) => char.toLocaleUpperCase("vi-VN"));
 
@@ -112,6 +113,53 @@ function ServiceTicketContent() {
   }, [loadService]);
 
   useEffect(() => {
+    const url = getSocketBaseUrl();
+    if (!url) return;
+
+    const socket: Socket = io(url, {
+      transports: ["websocket", "polling"],
+    });
+
+    const handleServicesUpdated = (payload?: { serviceId?: string; isOpen?: boolean }) => {
+      const affectsThisService =
+        !payload?.serviceId ||
+        payload.serviceId === "ALL" ||
+        payload.serviceId === serviceId;
+
+      if (!affectsThisService) return;
+
+      void (async () => {
+        try {
+          const response = await fetch("/api/services/active", { cache: "no-store" });
+          if (!response.ok) return;
+          const data = await response.json();
+          const found = Array.isArray(data?.data)
+            ? (data.data as Service[]).find((s) => s._id === serviceId)
+            : null;
+
+          const stillTakeable = found && found.isActive && found.isOpen !== false;
+          if (!stillTakeable && step === "form") {
+            showToast(
+              "Quầy này vừa đóng (hết giờ nhận số). Vui lòng quay lại trang chủ.",
+              "warning",
+            );
+            setTimeout(() => router.push("/"), 1500);
+          }
+        } catch {
+          /* bỏ qua, lần submit tiếp theo server vẫn sẽ chặn nếu đã đóng */
+        }
+      })();
+    };
+
+    socket.on("services-updated", handleServicesUpdated);
+
+    return () => {
+      socket.off("services-updated", handleServicesUpdated);
+      socket.disconnect();
+    };
+  }, [serviceId, step, router]);
+
+  useEffect(() => {
     if (step === "done" && nameContainerRef.current && nameRef.current) {
       const containerWidth = nameContainerRef.current.offsetWidth;
       const nameWidth = nameRef.current.scrollWidth;
@@ -164,7 +212,6 @@ function ServiceTicketContent() {
       return false;
     }
 
-    // Lấy chỉ các chữ số, bỏ qua khoảng trắng và ký tự phân cách
     const rawPhone = phoneNumber.replace(/\D/g, "");
 
     if (!rawPhone) {
@@ -193,7 +240,6 @@ function ServiceTicketContent() {
       const result = await createTicket({
         serviceId,
         name,
-        // Gửi lên server chỉ các chữ số, bỏ khoảng trắng/dấu gạch
         phone: phoneNumber.replace(/\D/g, ""),
         counterId: selectedCounterId || undefined,
       });
@@ -430,7 +476,6 @@ function ServiceTicketContent() {
                 type="tel"
                 value={phoneNumber}
                 onChange={(e) => {
-                  // Chỉ cho phép nhập số, khoảng trắng, dấu +, -, (, )
                   setPhoneNumber(e.target.value.replace(/[^\d\s\-+()]/g, ""));
                 }}
                 onFocus={(e) => {
