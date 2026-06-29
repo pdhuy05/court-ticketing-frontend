@@ -1,145 +1,51 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   FiShield, FiSearch, FiRefreshCw, FiChevronLeft, FiChevronRight,
   FiCheckCircle, FiXCircle, FiAlertCircle, FiLogIn, FiLogOut,
   FiKey, FiTrash2, FiEdit2, FiToggleRight, FiUpload, FiSettings,
-  FiSliders, FiClock, FiMoreHorizontal,
+  FiSliders, FiClock, FiChevronDown, FiX, FiInbox,
 } from "react-icons/fi";
 import { getAuditLogs, type AuditLog, type AuditLogFilter } from "@/services/admin.service";
 
-// ─── Action metadata ──────────────────────────────────────────────────────────
-const ACTION_META: Record<string, {
+/* ════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — nguồn duy nhất cho màu / spacing / chuyển động.
+   Đổi ở đây sẽ đổi toàn bộ trang, không cần sửa rải rác.
+   ════════════════════════════════════════════════════════════════════════ */
+const TOKENS = {
+  ink:        "#0f172a",
+  inkSoft:    "#475569",
+  inkFaint:   "#94a3b8",
+  line:       "#eef1f6",
+  surface:    "#ffffff",
+  canvas:     "#f8fafc",
+  brand:      "#1e3c72",
+  brandSoft:  "#eef2ff",
+  ok:         "#15803d",
+  okSoft:     "#f0fdf4",
+  danger:     "#b91c1c",
+  dangerSoft: "#fef2f2",
+  warn:       "#92400e",
+  warnSoft:   "#fffbeb",
+  ease:       "cubic-bezier(.22,1,.36,1)",
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   ACTION REGISTRY — nhãn, icon, sắc thái và cách đọc "detail" cho mỗi
+   loại hành động. Đây là phần DUY NHẤT cần sửa khi backend có thêm action
+   mới — không phải lục cả file để thêm dòng ở nhiều nơi.
+   ════════════════════════════════════════════════════════════════════════ */
+type Tone = "success" | "danger" | "info" | "warning" | "neutral";
+
+type DetailLine = { label: string; value: string; emphasis?: boolean };
+
+type ActionDef = {
   label: string;
+  group: string;
   icon: React.ReactNode;
-  variant: "success" | "danger" | "info" | "warning" | "neutral";
-}> = {
-  LOGIN_SUCCESS:              { label: "Đăng nhập",        icon: <FiLogIn size={11} />,      variant: "success" },
-  LOGIN_FAILED:               { label: "Đăng nhập thất bại", icon: <FiAlertCircle size={11} />, variant: "danger" },
-  LOGOUT:                     { label: "Đăng xuất",        icon: <FiLogOut size={11} />,     variant: "neutral" },
-  PASSWORD_CHANGED:           { label: "Đổi mật khẩu",     icon: <FiKey size={11} />,        variant: "info" },
-  TICKET_RESET_DAY:           { label: "Reset vé ngày",     icon: <FiRefreshCw size={11} />,  variant: "warning" },
-  TICKET_RESET_ALL:           { label: "Reset toàn bộ vé",  icon: <FiRefreshCw size={11} />,  variant: "danger" },
-  TICKET_AUTO_RESET:          { label: "Auto reset vé",     icon: <FiRefreshCw size={11} />,  variant: "neutral" },
-  SERVICE_CREATE:             { label: "Tạo quầy",          icon: <FiEdit2 size={11} />,      variant: "info" },
-  SERVICE_UPDATE:             { label: "Sửa quầy",          icon: <FiEdit2 size={11} />,      variant: "info" },
-  SERVICE_DELETE:             { label: "Xóa quầy",          icon: <FiTrash2 size={11} />,     variant: "danger" },
-  SERVICE_TOGGLE:             { label: "Bật/tắt quầy",      icon: <FiToggleRight size={11} />,variant: "info" },
-  COUNTER_CREATE:             { label: "Tạo phòng",         icon: <FiEdit2 size={11} />,      variant: "info" },
-  COUNTER_UPDATE:             { label: "Sửa phòng",         icon: <FiEdit2 size={11} />,      variant: "info" },
-  COUNTER_DELETE:             { label: "Xóa phòng",         icon: <FiTrash2 size={11} />,     variant: "danger" },
-  COUNTER_TOGGLE:             { label: "Bật/tắt phòng",     icon: <FiToggleRight size={11} />,variant: "info" },
-  USER_CREATE:                { label: "Tạo người dùng",    icon: <FiEdit2 size={11} />,      variant: "info" },
-  USER_UPDATE:                { label: "Sửa người dùng",    icon: <FiEdit2 size={11} />,      variant: "info" },
-  USER_DELETE:                { label: "Xóa người dùng",    icon: <FiTrash2 size={11} />,     variant: "danger" },
-  USER_TOGGLE:                { label: "Bật/tắt tài khoản", icon: <FiToggleRight size={11} />,variant: "info" },
-  USER_PERMISSION_UPDATE:     { label: "Cập nhật quyền",    icon: <FiSliders size={11} />,    variant: "info" },
-  STAFF_SHIFT_START:          { label: "Bắt đầu ca",        icon: <FiClock size={11} />,      variant: "success" },
-  STAFF_SHIFT_END:            { label: "Kết thúc ca",       icon: <FiClock size={11} />,      variant: "neutral" },
-  SETTING_TTS_UPDATE:         { label: "Cài đặt TTS",       icon: <FiSettings size={11} />,   variant: "info" },
-  SETTING_AUTO_RESET_UPDATE:  { label: "Cài đặt auto reset",icon: <FiSettings size={11} />,   variant: "info" },
-  SETTING_SITE_CONFIG_UPDATE: { label: "Cài đặt giao diện", icon: <FiSettings size={11} />,   variant: "info" },
-  SETTING_DISPLAY_MODE_UPDATE:{ label: "Cài đặt màn hình",  icon: <FiSettings size={11} />,   variant: "info" },
-  SETTING_LOGO_UPLOAD:        { label: "Upload logo",        icon: <FiUpload size={11} />,     variant: "info" },
-};
-
-const getActionMeta = (action: string) =>
-  ACTION_META[action] ?? { label: action, icon: <FiSettings size={11} />, variant: "neutral" as const };
-
-// ─── Filter groups (quick chips) ──────────────────────────────────────────────
-type QuickFilter = { label: string; key: string; type: "date" | "action" | "status" };
-const QUICK_FILTERS: QuickFilter[] = [
-  { label: "Hôm nay",   key: "today",         type: "date" },
-  { label: "7 ngày",    key: "7d",            type: "date" },
-  { label: "30 ngày",   key: "30d",           type: "date" },
-];
-const ACTION_FILTERS: QuickFilter[] = [
-  { label: "Đăng nhập", key: "LOGIN_SUCCESS",              type: "action" },
-  { label: "Người dùng",key: "USER_CREATE",                type: "action" },
-  { label: "Cài đặt",   key: "SETTING_SITE_CONFIG_UPDATE", type: "action" },
-  { label: "Reset vé",  key: "TICKET_RESET_DAY",           type: "action" },
-  { label: "Thất bại",  key: "failed",                     type: "status" },
-];
-
-const today = () => new Date().toISOString().slice(0, 10);
-const daysAgo = (n: number) => {
-  const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10);
-};
-
-const formatTime = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    time: d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    date: d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }),
-  };
-};
-
-const initials = (name: string) =>
-  name.split("_").map(p => p[0]?.toUpperCase() ?? "").join("").slice(0, 2) || name.slice(0, 2).toUpperCase();
-
-// ─── Badge component ──────────────────────────────────────────────────────────
-const VARIANT_STYLE: Record<string, { bg: string; color: string }> = {
-  success: { bg: "#f0fdf4", color: "#15803d" },
-  danger:  { bg: "#fef2f2", color: "#b91c1c" },
-  info:    { bg: "#eff6ff", color: "#1d4ed8" },
-  warning: { bg: "#fffbeb", color: "#92400e" },
-  neutral: { bg: "#f8fafc", color: "#475569" },
-};
-
-function Badge({ variant, icon, label }: { variant: string; icon: React.ReactNode; label: string }) {
-  const s = VARIANT_STYLE[variant] ?? VARIANT_STYLE.neutral;
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      padding: "2px 8px", borderRadius: 99,
-      fontSize: 11.5, fontWeight: 500,
-      background: s.bg, color: s.color,
-      whiteSpace: "nowrap",
-    }}>
-      {icon}{label}
-    </span>
-  );
-}
-
-// ─── Avatar ───────────────────────────────────────────────────────────────────
-const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
-  admin:  { bg: "#eff6ff", color: "#1d4ed8" },
-  staff:  { bg: "#f0fdf4", color: "#15803d" },
-  system: { bg: "#f1f5f9", color: "#64748b" },
-};
-
-function Avatar({ username, role }: { username: string; role: string }) {
-  const c = AVATAR_COLORS[role] ?? AVATAR_COLORS.system;
-  return (
-    <div style={{
-      width: 28, height: 28, borderRadius: "50%",
-      background: c.bg, color: c.color,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: 10.5, fontWeight: 600, flexShrink: 0,
-    }}>
-      {initials(username)}
-    </div>
-  );
-}
-
-// ─── Detail renderer ─────────────────────────────────────────────────────────
-// ─── Helpers cho DetailCell ───────────────────────────────────────────────────
-const PERM_VI: Record<string, string> = {
-  dashboard:    "Thống kê",
-  users:        "Nhân viên",
-  counter:      "Phòng",
-  services:     "Quầy",
-  printers:     "Máy in",
-  settings:     "Cài đặt",
-  reports:      "Báo cáo",
-  search:       "Tra cứu",
-  "audit-logs": "Nhật ký",
-  shift:        "Ca làm",
-};
-
-const ROLE_VI: Record<string, string> = {
-  admin: "Admin", staff: "Nhân viên", system: "Hệ thống",
+  tone: Tone;
+  describe: (d: Record<string, unknown> | null, log: AuditLog) => DetailLine[];
 };
 
 const TARGET_VI: Record<string, string> = {
@@ -147,154 +53,552 @@ const TARGET_VI: Record<string, string> = {
   counter: "Phòng", setting: "Cài đặt", printer: "Máy in",
 };
 
-function formatPerms(raw: unknown): string {
+const PERM_VI: Record<string, string> = {
+  dashboard: "Thống kê", users: "Nhân viên", counter: "Phòng", services: "Quầy",
+  printers: "Máy in", settings: "Cài đặt", reports: "Báo cáo", search: "Tra cứu",
+  "audit-logs": "Nhật ký", shift: "Ca làm",
+};
+
+const CHANGE_FIELD_VI: Record<string, string> = {
+  name: "Tên", code: "Mã", number: "Số phòng", note: "Ghi chú",
+  isActive: "Hoạt động", displayOrder: "Thứ tự", backgroundColor: "Màu nền",
+  prefixNumber: "Prefix số", fullName: "Họ tên", email: "Email",
+  phone: "SĐT", address: "Địa chỉ", counterId: "Phòng",
+};
+
+const shortId = (v: unknown) => "…" + String(v).slice(-8);
+
+const fmtChangeValue = (v: unknown): string => {
+  if (v === null || v === undefined || v === "") return "(trống)";
+  if (typeof v === "boolean") return v ? "Có" : "Không";
+  if (Array.isArray(v)) return v.length === 0 ? "(trống)" : v.map((x) => shortId(x)).join(", ");
+  return String(v);
+};
+
+const fmtChanges = (raw: unknown): string => {
+  if (!raw || typeof raw !== "object") return "";
+  const entries = Object.entries(raw as Record<string, unknown>).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return "";
+  return entries.map(([k, v]) => `${CHANGE_FIELD_VI[k] ?? k}: ${fmtChangeValue(v)}`).join(" · ");
+};
+
+const fmtPerms = (raw: unknown): string => {
   if (!raw) return "";
-  const list = String(raw).split(",").map(p => PERM_VI[p.trim()] ?? p.trim()).filter(Boolean);
-  if (list.length === 0) return "Không có quyền";
-  return list.join(", ");
-}
+  const list = String(raw).split(",").map((p) => PERM_VI[p.trim()] ?? p.trim()).filter(Boolean);
+  return list.length === 0 ? "Không có quyền" : list.join(", ");
+};
 
-type DetailLine = { label: string; value: string; highlight?: boolean };
-
-function buildDetailLines(log: AuditLog): DetailLine[] {
-  const d = log.detail as Record<string, unknown> | null;
-  const lines: DetailLine[] = [];
-
-  // Tài khoản bị tác động (dùng actorUsername từ detail nếu có, hoặc targetId)
-  const addTarget = () => {
-    const name = d?.username ?? d?.targetUsername ?? d?.name;
-    if (name) {
-      lines.push({ label: TARGET_VI[log.targetType ?? ""] ?? "Đối tượng", value: String(name), highlight: true });
-    } else if (log.targetId) {
-      const label = TARGET_VI[log.targetType ?? ""] ?? log.targetType ?? "ID";
-      lines.push({ label, value: "…" + log.targetId.slice(-8) });
-    }
-  };
-
-  switch (log.action) {
-    case "LOGIN_SUCCESS":
-    case "LOGIN_FAILED": {
-      const role = d?.role ? ROLE_VI[String(d.role)] ?? String(d.role) : null;
-      if (role) lines.push({ label: "Vai trò", value: role });
-      if (d?.reason) lines.push({ label: "Lý do", value: String(d.reason) });
-      break;
-    }
-    case "USER_PERMISSION_UPDATE": {
-      addTarget();
+/** Mỗi action chỉ cần khai báo 1 lần ở đây — nhãn, icon, nhóm lọc, và
+ *  hàm describe() đọc field nào từ `detail` để hiển thị khi mở rộng dòng. */
+const ACTIONS: Record<string, ActionDef> = {
+  LOGIN_SUCCESS: {
+    label: "Đăng nhập", group: "auth", icon: <FiLogIn />, tone: "success",
+    describe: (d) => {
+      const lines: DetailLine[] = [];
+      if (d?.role) lines.push({ label: "Vai trò", value: String(d.role) === "admin" ? "Admin" : String(d.role) === "staff" ? "Nhân viên" : String(d.role) });
+      return lines;
+    },
+  },
+  LOGIN_FAILED: {
+    label: "Đăng nhập thất bại", group: "auth", icon: <FiAlertCircle />, tone: "danger",
+    describe: (d) => (d?.reason ? [{ label: "Lý do", value: String(d.reason) }] : []),
+  },
+  LOGOUT: {
+    label: "Đăng xuất", group: "auth", icon: <FiLogOut />, tone: "neutral",
+    describe: () => [],
+  },
+  PASSWORD_CHANGED: {
+    label: "Đổi mật khẩu", group: "auth", icon: <FiKey />, tone: "info",
+    describe: () => [],
+  },
+  TICKET_RESET_DAY: {
+    label: "Reset vé ngày", group: "ticket", icon: <FiRefreshCw />, tone: "warning",
+    describe: (d) => resetLines(d),
+  },
+  TICKET_RESET_ALL: {
+    label: "Reset toàn bộ vé", group: "ticket", icon: <FiRefreshCw />, tone: "danger",
+    describe: (d) => resetLines(d),
+  },
+  TICKET_AUTO_RESET: {
+    label: "Auto reset vé", group: "ticket", icon: <FiRefreshCw />, tone: "neutral",
+    describe: (d) => resetLines(d),
+  },
+  SERVICE_CREATE: {
+    label: "Tạo quầy", group: "service", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => nameCodeLines(d),
+  },
+  SERVICE_UPDATE: {
+    label: "Sửa quầy", group: "service", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => updateLines(d),
+  },
+  SERVICE_DELETE: {
+    label: "Xóa quầy", group: "service", icon: <FiTrash2 />, tone: "danger",
+    describe: (d) => nameCodeLines(d),
+  },
+  SERVICE_TOGGLE: {
+    label: "In 2 vé", group: "service", icon: <FiToggleRight />, tone: "info",
+    describe: (d) => {
+      const lines: DetailLine[] = [];
+      if (d?.name) lines.push({ label: "Tên", value: String(d.name), emphasis: true });
+      if (d?.doublePrint !== undefined) lines.push({ label: "In 2 vé", value: d.doublePrint ? "Bật" : "Tắt" });
+      return lines;
+    },
+  },
+  SERVICE_COUNTER_ADD: {
+    label: "Thêm phòng vào quầy", group: "service", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => addRemoveLines(d, "counterIds", "addedCounters"),
+  },
+  SERVICE_COUNTER_REMOVE: {
+    label: "Gỡ phòng khỏi quầy", group: "service", icon: <FiTrash2 />, tone: "warning",
+    describe: (d) => removeOneLines(d, "counterId"),
+  },
+  COUNTER_CREATE: {
+    label: "Tạo phòng", group: "counter", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => nameCodeLines(d),
+  },
+  COUNTER_UPDATE: {
+    label: "Sửa phòng", group: "counter", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => updateLines(d),
+  },
+  COUNTER_DELETE: {
+    label: "Xóa phòng", group: "counter", icon: <FiTrash2 />, tone: "danger",
+    describe: (d) => nameCodeLines(d),
+  },
+  COUNTER_TOGGLE: {
+    label: "Bật/tắt phòng", group: "counter", icon: <FiToggleRight />, tone: "info",
+    describe: (d) => activeStateLines(d),
+  },
+  COUNTER_TTS_TOGGLE: {
+    label: "Loa TTS", group: "counter", icon: <FiToggleRight />, tone: "info",
+    describe: (d) => {
+      const lines: DetailLine[] = [];
+      if (d?.name) lines.push({ label: "Tên", value: String(d.name), emphasis: true });
+      if (d?.ttsEnabled !== undefined) lines.push({ label: "Loa TTS", value: d.ttsEnabled ? "Bật" : "Tắt" });
+      return lines;
+    },
+  },
+  COUNTER_SERVICE_ADD: {
+    label: "Thêm quầy vào phòng", group: "counter", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => addRemoveLines(d, "serviceIds", "addedCount"),
+  },
+  COUNTER_SERVICE_REMOVE: {
+    label: "Gỡ quầy khỏi phòng", group: "counter", icon: <FiTrash2 />, tone: "warning",
+    describe: (d) => removeOneLines(d, "serviceId"),
+  },
+  USER_CREATE: {
+    label: "Tạo người dùng", group: "user", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => userTargetLines(d),
+  },
+  USER_UPDATE: {
+    label: "Sửa người dùng", group: "user", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => {
+      const lines = userTargetLines(d);
+      if (d?.passwordChanged) lines.push({ label: "Mật khẩu", value: "Đã đổi" });
+      const ch = fmtChanges(d?.changes);
+      if (ch) lines.push({ label: "Thay đổi", value: ch });
+      return lines;
+    },
+  },
+  USER_DELETE: {
+    label: "Xóa người dùng", group: "user", icon: <FiTrash2 />, tone: "danger",
+    describe: (d) => userTargetLines(d),
+  },
+  USER_TOGGLE: {
+    label: "Bật/tắt tài khoản", group: "user", icon: <FiToggleRight />, tone: "info",
+    describe: (d) => userTargetLines(d),
+  },
+  USER_PERMISSION_UPDATE: {
+    label: "Cập nhật quyền", group: "user", icon: <FiSliders />, tone: "info",
+    describe: (d) => {
+      const lines = userTargetLines(d);
       const perms = d?.permissions;
       if (perms === null || perms === "null") {
         lines.push({ label: "Quyền", value: "Toàn quyền (mặc định)" });
       } else if (perms !== undefined) {
-        const formatted = formatPerms(perms);
-        lines.push({ label: "Quyền được cấp", value: formatted || "Không có quyền" });
+        lines.push({ label: "Quyền được cấp", value: fmtPerms(perms) || "Không có quyền" });
       }
-      const isSuper = d?.isSuperAdmin;
-      if (isSuper === true || isSuper === "true") lines.push({ label: "Super Admin", value: "Bật" });
-      break;
-    }
-    case "USER_CREATE":
-    case "USER_UPDATE":
-    case "USER_DELETE":
-    case "USER_TOGGLE": {
-      addTarget();
-      if (d?.active !== undefined) lines.push({ label: "Trạng thái", value: d.active ? "Hoạt động" : "Đã khóa" });
-      break;
-    }
-    case "TICKET_RESET_DAY":
-    case "TICKET_RESET_ALL":
-    case "TICKET_AUTO_RESET": {
-      if (d?.date) lines.push({ label: "Ngày", value: String(d.date) });
-      if (d?.tickets !== undefined) lines.push({ label: "Số vé", value: String(d.tickets) });
-      break;
-    }
-    case "SERVICE_CREATE":
-    case "SERVICE_UPDATE":
-    case "SERVICE_DELETE":
-    case "SERVICE_TOGGLE":
-    case "COUNTER_CREATE":
-    case "COUNTER_UPDATE":
-    case "COUNTER_DELETE":
-    case "COUNTER_TOGGLE": {
-      addTarget();
-      if (d?.active !== undefined) lines.push({ label: "Trạng thái", value: d.active ? "Hoạt động" : "Tắt" });
-      break;
-    }
-    case "SETTING_TTS_UPDATE":
-    case "SETTING_AUTO_RESET_UPDATE":
-    case "SETTING_SITE_CONFIG_UPDATE":
-    case "SETTING_DISPLAY_MODE_UPDATE": {
-      if (d?.field) lines.push({ label: "Trường", value: String(d.field) });
-      if (d?.value !== undefined) lines.push({ label: "Giá trị", value: String(d.value) });
-      break;
-    }
-    case "PASSWORD_CHANGED": {
-      addTarget();
-      break;
-    }
-    case "STAFF_SHIFT_START":
-    case "STAFF_SHIFT_END": {
-      if (d?.counter) lines.push({ label: "Phòng", value: String(d.counter) });
-      break;
-    }
-    default: {
-      // Generic: hiển thị tối đa 2 cặp key-value từ detail
-      if (d) {
-        Object.entries(d)
-          .filter(([, v]) => v !== null && v !== undefined && v !== "")
-          .slice(0, 2)
-          .forEach(([k, v]) => lines.push({ label: k, value: String(v) }));
+      if (d?.isSuperAdmin === true || d?.isSuperAdmin === "true") {
+        lines.push({ label: "Super Admin", value: "Bật" });
       }
-      addTarget();
-    }
-  }
+      return lines;
+    },
+  },
+  STAFF_COUNTER_ASSIGN: {
+    label: "Gán phòng", group: "shift", icon: <FiEdit2 />, tone: "info",
+    describe: (d) => {
+      const lines = userTargetLines(d);
+      if (d?.counterId) lines.push({ label: "Phòng", value: shortId(d.counterId) });
+      return lines;
+    },
+  },
+  STAFF_COUNTER_REMOVE: {
+    label: "Gỡ phòng", group: "shift", icon: <FiTrash2 />, tone: "warning",
+    describe: (d) => userTargetLines(d),
+  },
+  STAFF_SERVICES_ASSIGN: {
+    label: "Gán quầy nhân viên", group: "shift", icon: <FiSliders />, tone: "info",
+    describe: (d) => {
+      const lines = userTargetLines(d);
+      const ids = d?.serviceIds;
+      if (Array.isArray(ids)) lines.push({ label: "Số quầy được gán", value: String(ids.length) });
+      return lines;
+    },
+  },
+  STAFF_SHIFT_START: {
+    label: "Bắt đầu ca", group: "shift", icon: <FiClock />, tone: "success",
+    describe: (d) => shiftLines(d),
+  },
+  STAFF_SHIFT_END: {
+    label: "Kết thúc ca", group: "shift", icon: <FiClock />, tone: "neutral",
+    describe: (d) => shiftLines(d),
+  },
+  SETTING_TTS_UPDATE: {
+    label: "Cài đặt TTS", group: "setting", icon: <FiSettings />, tone: "info",
+    describe: (d) => fieldValueLines(d),
+  },
+  SETTING_AUTO_RESET_UPDATE: {
+    label: "Cài đặt auto reset", group: "setting", icon: <FiSettings />, tone: "info",
+    describe: (d) => fieldValueLines(d),
+  },
+  SETTING_SITE_CONFIG_UPDATE: {
+    label: "Cài đặt giao diện", group: "setting", icon: <FiSettings />, tone: "info",
+    describe: (d) => fieldValueLines(d),
+  },
+  SETTING_DISPLAY_MODE_UPDATE: {
+    label: "Cài đặt màn hình", group: "setting", icon: <FiSettings />, tone: "info",
+    describe: (d) => fieldValueLines(d),
+  },
+  SETTING_LOGO_UPLOAD: {
+    label: "Upload logo", group: "setting", icon: <FiUpload />, tone: "info",
+    describe: (d) => (d?.logoUrl ? [{ label: "Tệp", value: String(d.logoUrl) }] : []),
+  },
+};
 
+/* ── Các describe() dùng lại nhiều action — tách ra để không lặp code ── */
+function userTargetLines(d: Record<string, unknown> | null): DetailLine[] {
+  const lines: DetailLine[] = [];
+  const name = d?.username ?? d?.fullName;
+  if (name) lines.push({ label: "Tài khoản", value: String(name), emphasis: true });
+  if (d?.isActive !== undefined) lines.push({ label: "Trạng thái", value: d.isActive ? "Hoạt động" : "Đã khóa" });
+  return lines;
+}
+function nameCodeLines(d: Record<string, unknown> | null): DetailLine[] {
+  const lines: DetailLine[] = [];
+  if (d?.name) lines.push({ label: "Tên", value: String(d.name), emphasis: true });
+  if (d?.code) lines.push({ label: "Mã", value: String(d.code) });
+  return lines;
+}
+function updateLines(d: Record<string, unknown> | null): DetailLine[] {
+  const lines: DetailLine[] = [];
+  if (d?.name) lines.push({ label: "Tên", value: String(d.name), emphasis: true });
+  const ch = fmtChanges(d?.changes);
+  if (ch) lines.push({ label: "Thay đổi", value: ch });
+  return lines;
+}
+function activeStateLines(d: Record<string, unknown> | null): DetailLine[] {
+  const lines: DetailLine[] = [];
+  if (d?.name) lines.push({ label: "Tên", value: String(d.name), emphasis: true });
+  if (d?.isActive !== undefined) lines.push({ label: "Trạng thái", value: d.isActive ? "Hoạt động" : "Tắt" });
+  return lines;
+}
+function resetLines(d: Record<string, unknown> | null): DetailLine[] {
+  const lines: DetailLine[] = [];
+  if (d?.date) lines.push({ label: "Ngày", value: String(d.date), emphasis: true });
+  if (d?.resetCount !== undefined) lines.push({ label: "Số phòng reset", value: String(d.resetCount) });
+  if (d?.counterCount !== undefined) lines.push({ label: "Số phòng", value: String(d.counterCount) });
+  if (d?.reason) lines.push({ label: "Lý do lỗi", value: String(d.reason) });
+  return lines;
+}
+function shiftLines(d: Record<string, unknown> | null): DetailLine[] {
+  const lines = userTargetLines(d);
+  if (d?.reason) lines.push({ label: "Lý do", value: String(d.reason) });
+  if (d?.waitingTicketsCount !== undefined) lines.push({ label: "Vé đang chờ", value: String(d.waitingTicketsCount) });
+  return lines;
+}
+function fieldValueLines(d: Record<string, unknown> | null): DetailLine[] {
+  const lines: DetailLine[] = [];
+  if (d?.field) lines.push({ label: "Trường", value: String(d.field) });
+  if (d?.value !== undefined) lines.push({ label: "Giá trị", value: String(d.value) });
+  return lines;
+}
+function addRemoveLines(d: Record<string, unknown> | null, idsKey: string, countKey: string): DetailLine[] {
+  const lines: DetailLine[] = [];
+  if (d?.name) lines.push({ label: "Tên", value: String(d.name), emphasis: true });
+  const ids = d?.[idsKey];
+  if (Array.isArray(ids)) lines.push({ label: "Số lượng thêm", value: String((d?.[countKey] as number) ?? ids.length) });
+  return lines;
+}
+function removeOneLines(d: Record<string, unknown> | null, idKey: string): DetailLine[] {
+  const lines: DetailLine[] = [];
+  if (d?.name) lines.push({ label: "Tên", value: String(d.name), emphasis: true });
+  if (d?.[idKey]) lines.push({ label: "ID gỡ", value: shortId(d[idKey]) });
   return lines;
 }
 
-function DetailCell({ log }: { log: AuditLog }) {
-  const lines = buildDetailLines(log);
-  if (lines.length === 0) return <span style={{ color: "#94a3b8" }}>—</span>;
+const DEFAULT_ACTION: ActionDef = {
+  label: "Khác", group: "other", icon: <FiSettings />, tone: "neutral",
+  describe: (d) => {
+    if (!d) return [];
+    return Object.entries(d)
+      .filter(([, v]) => v !== null && v !== undefined && v !== "")
+      .slice(0, 3)
+      .map(([k, v]) => ({ label: k, value: String(v) }));
+  },
+};
+
+const getAction = (action: string): ActionDef & { key: string } => ({
+  key: action,
+  ...(ACTIONS[action] ?? { ...DEFAULT_ACTION, label: action }),
+});
+
+const TONE_STYLE: Record<Tone, { fg: string; bg: string }> = {
+  success: { fg: TOKENS.ok, bg: TOKENS.okSoft },
+  danger:  { fg: TOKENS.danger, bg: TOKENS.dangerSoft },
+  info:    { fg: "#1d4ed8", bg: "#eff6ff" },
+  warning: { fg: TOKENS.warn, bg: TOKENS.warnSoft },
+  neutral: { fg: TOKENS.inkSoft, bg: TOKENS.canvas },
+};
+
+const GROUP_FILTERS: { key: string; label: string }[] = [
+  { key: "auth",    label: "Đăng nhập" },
+  { key: "user",    label: "Người dùng" },
+  { key: "shift",   label: "Ca làm" },
+  { key: "service", label: "Quầy" },
+  { key: "counter", label: "Phòng" },
+  { key: "ticket",  label: "Vé" },
+  { key: "setting", label: "Cài đặt" },
+];
+
+/* ════════════════════════════════════════════════════════════════════════
+   HELPERS thời gian
+   ════════════════════════════════════════════════════════════════════════ */
+const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+const today = () => isoDate(new Date());
+const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return isoDate(d); };
+
+const dayLabel = (iso: string): string => {
+  const d = new Date(iso + "T00:00:00");
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((t.getTime() - d.getTime()) / 86_400_000);
+  if (diffDays === 0) return "Hôm nay";
+  if (diffDays === 1) return "Hôm qua";
+  return d.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
+const timeOnly = (iso: string) =>
+  new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+const initials = (name: string) => {
+  const cleaned = name.replace(/[._-]+/g, " ").trim();
+  const parts = cleaned.split(" ").filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: ActionBadge — viên thuốc icon + nhãn, tái dùng khắp nơi
+   ════════════════════════════════════════════════════════════════════════ */
+function ActionBadge({ def }: { def: ActionDef }) {
+  const s = TONE_STYLE[def.tone];
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <span className="nk-badge" style={{ color: s.fg, background: s.bg }}>
+      <span className="nk-badge-icon">{def.icon}</span>
+      {def.label}
+    </span>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: ActorAvatar — chữ cái đầu theo vai trò, tái dùng được
+   ════════════════════════════════════════════════════════════════════════ */
+function ActorAvatar({ username, role }: { username: string; role: string }) {
+  const roleClass = role === "admin" ? "is-admin" : role === "staff" ? "is-staff" : "is-system";
+  return <div className={`nk-avatar ${roleClass}`}>{initials(username)}</div>;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: StatusDot
+   ════════════════════════════════════════════════════════════════════════ */
+function StatusDot({ ok }: { ok: boolean }) {
+  return ok
+    ? <FiCheckCircle className="nk-status is-ok" size={16} />
+    : <FiXCircle className="nk-status is-bad" size={16} />;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: DetailGrid — lưới chi tiết khi mở rộng 1 dòng nhật ký
+   ════════════════════════════════════════════════════════════════════════ */
+function DetailGrid({ lines }: { lines: DetailLine[] }) {
+  if (lines.length === 0) {
+    return <div className="nk-detail-empty">Không có dữ liệu chi tiết cho hành động này.</div>;
+  }
+  return (
+    <div className="nk-detail-grid">
       {lines.map((l, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 4, minWidth: 0 }}>
-          <span style={{ fontSize: 10.5, color: "#94a3b8", flexShrink: 0, fontWeight: 500 }}>
-            {l.label}
-          </span>
-          <span style={{
-            fontSize: 12,
-            color: l.highlight ? "#0f172a" : "#475569",
-            fontWeight: l.highlight ? 600 : 400,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            maxWidth: 200,
-          }}>
-            {l.value}
-          </span>
+        <div className="nk-detail-item" key={i} style={{ animationDelay: `${i * 35}ms` }}>
+          <span className="nk-detail-label">{l.label}</span>
+          <span className={`nk-detail-value ${l.emphasis ? "is-emphasis" : ""}`}>{l.value}</span>
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: LogRow — một dòng nhật ký, mở rộng mượt bằng grid-rows
+   ════════════════════════════════════════════════════════════════════════ */
+function LogRow({ log, index }: { log: AuditLog; index: number }) {
+  const [open, setOpen] = useState(false);
+  const def = useMemo(() => getAction(log.action), [log.action]);
+  const lines = useMemo(() => def.describe(log.detail as Record<string, unknown> | null, log), [def, log]);
+  const hasDetail = lines.length > 0;
+  const ok = log.status === "success";
+
+  return (
+    <li className="nk-row" style={{ animationDelay: `${Math.min(index, 14) * 28}ms` }}>
+      <button
+        type="button"
+        className={`nk-row-head ${open ? "is-open" : ""} ${!hasDetail ? "is-static" : ""}`}
+        onClick={() => hasDetail && setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className="nk-row-time">{timeOnly(log.createdAt)}</span>
+
+        <ActorAvatar username={log.actorUsername} role={log.actorRole} />
+
+        <span className="nk-row-actor">
+          <span className="nk-row-actor-name">{log.actorUsername}</span>
+          <span className="nk-row-actor-role">
+            {log.actorRole === "admin" ? "Admin" : log.actorRole === "staff" ? "Nhân viên" : "Hệ thống"}
+          </span>
+        </span>
+
+        <span className="nk-row-action"><ActionBadge def={def} /></span>
+
+        <span className="nk-row-ip">{log.ipAddress ?? "—"}</span>
+
+        <StatusDot ok={ok} />
+
+        <FiChevronDown className={`nk-row-chevron ${open ? "is-open" : ""} ${!hasDetail ? "is-hidden" : ""}`} size={15} />
+      </button>
+
+      <div className="nk-row-detail" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
+        <div className="nk-row-detail-inner">
+          <DetailGrid lines={lines} />
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: DayGroup — gom các log trong cùng ngày dưới 1 nhãn mốc thời gian
+   ════════════════════════════════════════════════════════════════════════ */
+function DayGroup({ dateKey, items, baseIndex }: { dateKey: string; items: AuditLog[]; baseIndex: number }) {
+  return (
+    <div className="nk-day-group">
+      <div className="nk-day-label">
+        <span className="nk-day-dot" />
+        {dayLabel(dateKey)}
+        <span className="nk-day-count">{items.length} hoạt động</span>
+      </div>
+      <ul className="nk-rows">
+        {items.map((log, i) => <LogRow key={log._id} log={log} index={baseIndex + i} />)}
+      </ul>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: SkeletonRow — trạng thái loading có nhịp thở, không phải spinner
+   ════════════════════════════════════════════════════════════════════════ */
+function SkeletonRow({ delay }: { delay: number }) {
+  return (
+    <div className="nk-skeleton-row" style={{ animationDelay: `${delay}ms` }}>
+      <div className="nk-sk nk-sk-time" />
+      <div className="nk-sk nk-sk-avatar" />
+      <div className="nk-sk nk-sk-actor" />
+      <div className="nk-sk nk-sk-badge" />
+      <div className="nk-sk nk-sk-ip" />
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: EmptyState
+   ════════════════════════════════════════════════════════════════════════ */
+function EmptyState() {
+  return (
+    <div className="nk-empty">
+      <FiInbox size={28} />
+      <p>Không có hoạt động nào khớp với bộ lọc hiện tại.</p>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPONENT: Pagination
+   ════════════════════════════════════════════════════════════════════════ */
+function Pagination({
+  page, totalPages, total, limit, onPage,
+}: { page: number; totalPages: number; total: number; limit: number; onPage: (p: number) => void }) {
+  const pages = useMemo<(number | "…")[]>(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const list: (number | "…")[] = [1];
+    if (page > 3) list.push("…");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) list.push(i);
+    if (page < totalPages - 2) list.push("…");
+    list.push(totalPages);
+    return list;
+  }, [page, totalPages]);
+
+  return (
+    <div className="nk-pager">
+      <span className="nk-pager-info">
+        {(page - 1) * limit + 1}–{Math.min(page * limit, total)} / {total} bản ghi
+      </span>
+      <div className="nk-pager-btns">
+        <button className="nk-pgbtn" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Trang trước">
+          <FiChevronLeft size={14} />
+        </button>
+        {pages.map((p, i) =>
+          p === "…"
+            ? <span key={`e${i}`} className="nk-pgdot">⋯</span>
+            : (
+              <button key={p} className={`nk-pgbtn ${p === page ? "is-active" : ""}`} onClick={() => onPage(p)}>
+                {p}
+              </button>
+            )
+        )}
+        <button className="nk-pgbtn" disabled={page >= totalPages} onClick={() => onPage(page + 1)} aria-label="Trang sau">
+          <FiChevronRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   PAGE
+   ════════════════════════════════════════════════════════════════════════ */
+type DateRangeKey = "today" | "7d" | "30d";
+
 export default function AuditLogPage() {
-  const [logs,       setLogs]       = useState<AuditLog[]>([]);
-  const [total,      setTotal]      = useState(0);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [page,       setPage]       = useState(1);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-  const [activeDate, setActiveDate] = useState("7d");
-  const [activeAction, setActiveAction] = useState<string | null>(null);
-  const [searchVal,  setSearchVal]  = useState("");
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeRange, setActiveRange] = useState<DateRangeKey>("7d");
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [onlyFailed, setOnlyFailed] = useState(false);
+  const [searchVal, setSearchVal] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [filter, setFilter] = useState<AuditLogFilter>({
-    dateFrom: daysAgo(6), dateTo: today(), page: 1, limit: 10,
+    dateFrom: daysAgo(6), dateTo: today(), page: 1, limit: 20,
   });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchLogs = useCallback(async (f: AuditLogFilter) => {
     setLoading(true); setError(null);
@@ -304,7 +608,9 @@ export default function AuditLogPage() {
       setTotalPages(res.totalPages); setPage(res.page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không tải được nhật ký");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void fetchLogs(filter); }, []); // eslint-disable-line
@@ -314,19 +620,28 @@ export default function AuditLogPage() {
     setFilter(next); void fetchLogs(next);
   };
 
-  const handleDateChip = (key: string) => {
-    setActiveDate(key);
+  const handleRange = (key: DateRangeKey) => {
+    setActiveRange(key);
     if (key === "today") applyFilter({ dateFrom: today(), dateTo: today() });
     else if (key === "7d") applyFilter({ dateFrom: daysAgo(6), dateTo: today() });
-    else if (key === "30d") applyFilter({ dateFrom: daysAgo(29), dateTo: today() });
+    else applyFilter({ dateFrom: daysAgo(29), dateTo: today() });
   };
 
-  const handleActionChip = (chip: QuickFilter) => {
-    const next = activeAction === chip.key ? null : chip.key;
-    setActiveAction(next);
-    if (!next) { applyFilter({ action: "", status: "" }); return; }
-    if (chip.type === "status") applyFilter({ action: "", status: "failed" });
-    else applyFilter({ action: next, status: "" });
+  // Lọc theo nhóm action thực hiện ở client vì danh sách action khá lớn —
+  // tránh phải thêm field "group" vào backend chỉ để phục vụ UI.
+  const groupActionKeys = useMemo(
+    () => (activeGroup ? Object.entries(ACTIONS).filter(([, v]) => v.group === activeGroup).map(([k]) => k) : []),
+    [activeGroup],
+  );
+
+  const handleGroupChip = (key: string) => {
+    setActiveGroup((cur) => (cur === key ? null : key));
+  };
+
+  const toggleFailedChip = () => {
+    const next = !onlyFailed;
+    setOnlyFailed(next);
+    applyFilter({ status: next ? "failed" : "" });
   };
 
   const handleSearch = (val: string) => {
@@ -339,272 +654,319 @@ export default function AuditLogPage() {
     const next = { ...filter, page: p }; setFilter(next); void fetchLogs(next);
   };
 
-  const renderPages = () => {
-    const pages: (number | "…")[] = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (page > 3) pages.push("…");
-      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
-      if (page < totalPages - 2) pages.push("…");
-      pages.push(totalPages);
+  // Lọc nhóm action ở client + nhóm theo ngày để hiển thị timeline.
+  const grouped = useMemo(() => {
+    const visible = activeGroup ? logs.filter((l) => groupActionKeys.includes(l.action)) : logs;
+    const map = new Map<string, AuditLog[]>();
+    for (const log of visible) {
+      const key = log.createdAt.slice(0, 10);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(log);
     }
-    return pages.map((p, i) =>
-      p === "…"
-        ? <span key={`e${i}`} style={{ fontSize: 12, color: "#94a3b8", padding: "0 2px", alignSelf: "center" }}>…</span>
-        : <button key={p} className={`al-pgbtn${p === page ? " active" : ""}`} onClick={() => goPage(p as number)}>{p}</button>
-    );
-  };
+    return Array.from(map.entries());
+  }, [logs, activeGroup, groupActionKeys]);
+
+  let runningIndex = 0;
 
   return (
-    <div className="al-wrap">
-      <style>{`
-        .al-wrap { font-family: 'Be Vietnam Pro', system-ui, sans-serif; color: #0f172a; }
+    <div className="nk-page">
+      <style>{STYLES}</style>
 
-        /* Top bar */
-        .al-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:12px; }
-        .al-title-row { display:flex; align-items:center; gap:10px; }
-        .al-icon-wrap { width:34px;height:34px;border-radius:10px;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;color:#475569; }
-        .al-title { font-size:16px;font-weight:700;letter-spacing:-0.3px; }
-        .al-sub { font-size:12px;color:#94a3b8;margin-top:1px; }
-        .al-top-actions { display:flex;align-items:center;gap:8px; }
-
-        /* Search */
-        .al-search { display:flex;align-items:center;gap:7px;padding:0 11px;height:34px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-size:13px;color:#0f172a;font-family:inherit; }
-        .al-search input { border:none;background:transparent;outline:none;font-size:13px;color:#0f172a;font-family:inherit;width:160px; }
-        .al-search input::placeholder { color:#94a3b8; }
-
-        /* Refresh btn */
-        .al-refresh { display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font-size:13px;font-weight:500;color:#475569;cursor:pointer;font-family:inherit;transition:background .13s; }
-        .al-refresh:hover { background:#f8fafc; }
-
-        /* Filter chips */
-        .al-chips { display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:14px; }
-        .al-chip { display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;font-size:12px;color:#64748b;cursor:pointer;font-family:inherit;transition:all .13s; }
-        .al-chip:hover { border-color:#cbd5e1;color:#334155; }
-        .al-chip.on { background:#0f172a;color:#fff;border-color:#0f172a;font-weight:600; }
-        .al-chip.on-action { background:#1e40af;color:#fff;border-color:#1e40af;font-weight:500; }
-        .al-divider { width:1px;height:18px;background:#e2e8f0; }
-
-        /* Table */
-        .al-table-wrap { border:1px solid #e8edf3;border-radius:12px;overflow:hidden;background:#fff; }
-        .al-table { width:100%;border-collapse:collapse;table-layout:fixed; }
-        .al-th { padding:9px 14px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;text-align:left;background:#f8fafc;border-bottom:1px solid #f1f5f9;white-space:nowrap; }
-        .al-td { padding:11px 14px;font-size:13px;border-bottom:1px solid #f8fafc;vertical-align:middle; }
-        .al-tr:last-child .al-td { border-bottom:none; }
-        .al-tr:hover .al-td { background:#fafbfc; }
-
-        /* Time */
-        .al-time { font-size:12.5px;font-family:'JetBrains Mono',monospace;color:#334155; }
-        .al-date { font-size:11px;color:#94a3b8;margin-top:1px; }
-
-        /* Actor */
-        .al-actor { display:flex;align-items:center;gap:8px; }
-        .al-actor-name { font-size:13px;font-weight:600;color:#0f172a; }
-        .al-actor-role { font-size:11px;color:#94a3b8; }
-
-        /* IP */
-        .al-ip { font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#94a3b8; }
-
-        /* Status dot */
-        .al-ok { color:#15803d; }
-        .al-err { color:#b91c1c; }
-
-        /* Pagination */
-        .al-pager { display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid #f1f5f9;flex-wrap:wrap;gap:8px; }
-        .al-pager-info { font-size:12px;color:#94a3b8; }
-        .al-pgbtns { display:flex;gap:3px;align-items:center; }
-        .al-pgbtn { min-width:28px;height:28px;padding:0 4px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:500;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .13s; }
-        .al-pgbtn:hover:not(:disabled) { background:#f1f5f9;border-color:#cbd5e1; }
-        .al-pgbtn:disabled { opacity:.3;cursor:not-allowed; }
-        .al-pgbtn.active { background:#0f172a;color:#fff;border-color:#0f172a; }
-
-        /* States */
-        .al-loading { display:flex;align-items:center;justify-content:center;gap:8px;padding:52px;color:#94a3b8;font-size:13px; }
-        .al-empty { text-align:center;padding:52px;color:#94a3b8;font-size:13px; }
-        .al-error { color:#ef4444;text-align:center;padding:52px;font-size:13px;font-weight:500; }
-        @keyframes spin { to { transform:rotate(360deg); } }
-        .spin { animation:spin .8s linear infinite; }
-      `}</style>
-
-      {/* Top bar */}
-      <div className="al-top">
-        <div className="al-title-row">
-          <div className="al-icon-wrap"><FiShield size={16} /></div>
+      {/* ── Header ───────────────────────────────────────────────────── */}
+      <header className="nk-header">
+        <div className="nk-header-title">
+          <div className="nk-header-icon"><FiShield size={17} /></div>
           <div>
-            <div className="al-title">Nhật ký hoạt động</div>
-            <div className="al-sub">Theo dõi mọi thao tác nhạy cảm trong hệ thống</div>
+            <h1>Nhật ký hoạt động</h1>
+            <p>Theo dõi mọi thao tác nhạy cảm trong hệ thống</p>
           </div>
         </div>
-        <div className="al-top-actions">
-          <div className="al-search">
-            <FiSearch size={13} color="#94a3b8" />
+
+        <div className="nk-header-actions">
+          <label className="nk-search">
+            <FiSearch size={14} />
             <input
-              placeholder="Tìm tài khoản..."
+              placeholder="Tìm theo tài khoản…"
               value={searchVal}
-              onChange={e => handleSearch(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
             />
-          </div>
-          <button className="al-refresh" onClick={() => void fetchLogs(filter)}>
-            <FiRefreshCw size={13} className={loading ? "spin" : ""} />
+            {searchVal && (
+              <button className="nk-search-clear" onClick={() => handleSearch("")} aria-label="Xóa tìm kiếm">
+                <FiX size={13} />
+              </button>
+            )}
+          </label>
+          <button className="nk-refresh" onClick={() => void fetchLogs(filter)} disabled={loading}>
+            <FiRefreshCw size={14} className={loading ? "nk-spin" : ""} />
             Làm mới
           </button>
         </div>
+      </header>
+
+      {/* ── Filter bar ───────────────────────────────────────────────── */}
+      <div className="nk-filterbar">
+        <div className="nk-chip-row">
+          {([
+            { key: "today", label: "Hôm nay" },
+            { key: "7d", label: "7 ngày" },
+            { key: "30d", label: "30 ngày" },
+          ] as { key: DateRangeKey; label: string }[]).map((f) => (
+            <button
+              key={f.key}
+              className={`nk-chip is-date ${activeRange === f.key ? "is-active" : ""}`}
+              onClick={() => handleRange(f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="nk-divider" />
+
+        <div className="nk-chip-row nk-chip-row-scroll">
+          {GROUP_FILTERS.map((g) => (
+            <button
+              key={g.key}
+              className={`nk-chip ${activeGroup === g.key ? "is-active" : ""}`}
+              onClick={() => handleGroupChip(g.key)}
+            >
+              {g.label}
+            </button>
+          ))}
+          <button className={`nk-chip is-warn ${onlyFailed ? "is-active" : ""}`} onClick={toggleFailedChip}>
+            Thất bại
+          </button>
+        </div>
       </div>
 
-      {/* Filter chips */}
-      <div className="al-chips">
-        {QUICK_FILTERS.map(f => (
-          <button
-            key={f.key}
-            className={`al-chip${activeDate === f.key ? " on" : ""}`}
-            onClick={() => handleDateChip(f.key)}
-          >
-            {f.label}
-          </button>
-        ))}
-        <div className="al-divider" />
-        {ACTION_FILTERS.map(f => (
-          <button
-            key={f.key}
-            className={`al-chip${activeAction === f.key ? " on-action" : ""}`}
-            onClick={() => handleActionChip(f)}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="al-table-wrap">
+      {/* ── Timeline ─────────────────────────────────────────────────── */}
+      <div className="nk-timeline-wrap">
         {error ? (
-          <div className="al-error">{error}</div>
+          <div className="nk-error">{error}</div>
         ) : loading ? (
-          <div className="al-loading">
-            <FiRefreshCw size={15} className="spin" /> Đang tải...
+          <div className="nk-skeleton-list">
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} delay={i * 50} />)}
           </div>
-        ) : logs.length === 0 ? (
-          <div className="al-empty">Không có bản ghi nào phù hợp</div>
+        ) : grouped.length === 0 ? (
+          <EmptyState />
         ) : (
-          <>
-            <table className="al-table">
-              <thead>
-                <tr>
-                  <th className="al-th" style={{ width: 100 }}>Thời gian</th>
-                  <th className="al-th" style={{ width: 155 }}>Tài khoản</th>
-                  <th className="al-th" style={{ width: 175 }}>Hành động</th>
-                  <th className="al-th" style={{ width: 72 }}>Kết quả</th>
-                  <th className="al-th" style={{ width: 105 }}>IP</th>
-                  <th className="al-th" style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map(log => {
-                  const meta = getActionMeta(log.action);
-                  const { time, date } = formatTime(log.createdAt);
-                  const ok = log.status === "success";
-                  const isExpanded = expandedId === log._id;
-                  const lines = buildDetailLines(log);
-                  return (
-                    <>
-                      <tr
-                        key={log._id}
-                        className="al-tr"
-                        style={{ cursor: lines.length > 0 ? "pointer" : "default" }}
-                        onClick={() => lines.length > 0 && setExpandedId(isExpanded ? null : log._id)}
-                      >
-                        <td className="al-td">
-                          <div className="al-time">{time}</div>
-                          <div className="al-date">{date}</div>
-                        </td>
-                        <td className="al-td">
-                          <div className="al-actor">
-                            <Avatar username={log.actorUsername} role={log.actorRole} />
-                            <div>
-                              <div className="al-actor-name">{log.actorUsername}</div>
-                              <div className="al-actor-role">
-                                {log.actorRole === "admin" ? "Admin" : log.actorRole === "staff" ? "Nhân viên" : "Hệ thống"}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="al-td">
-                          <Badge variant={meta.variant} icon={meta.icon} label={meta.label} />
-                        </td>
-                        <td className="al-td">
-                          {ok
-                            ? <FiCheckCircle size={16} className="al-ok" />
-                            : <FiXCircle size={16} className="al-err" />}
-                        </td>
-                        <td className="al-td">
-                          <span className="al-ip">{log.ipAddress ?? "—"}</span>
-                        </td>
-                        <td className="al-td" style={{ textAlign: "center", color: "#94a3b8" }}>
-                          {lines.length > 0 && (
-                            <FiChevronRight
-                              size={14}
-                              style={{
-                                transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                                transition: "transform 0.2s ease",
-                                display: "inline-block",
-                              }}
-                            />
-                          )}
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr key={`${log._id}-detail`} className="al-tr-detail">
-                          <td colSpan={6} style={{ padding: 0, borderBottom: "1px solid #f1f5f9" }}>
-                            <div style={{
-                              background: "#f8fafc",
-                              borderTop: "1px solid #f1f5f9",
-                              padding: "12px 20px",
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "16px 32px",
-                            }}>
-                              {lines.map((l, i) => (
-                                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                  <span style={{ fontSize: 10.5, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                    {l.label}
-                                  </span>
-                                  <span style={{
-                                    fontSize: 13,
-                                    color: l.highlight ? "#0f172a" : "#475569",
-                                    fontWeight: l.highlight ? 600 : 400,
-                                  }}>
-                                    {l.value}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-
-            <div className="al-pager">
-              <span className="al-pager-info">
-                {(page - 1) * (filter.limit ?? 10) + 1}–{Math.min(page * (filter.limit ?? 10), total)} / {total} bản ghi
-              </span>
-              <div className="al-pgbtns">
-                <button className="al-pgbtn" disabled={page <= 1} onClick={() => goPage(page - 1)}>
-                  <FiChevronLeft size={13} />
-                </button>
-                {renderPages()}
-                <button className="al-pgbtn" disabled={page >= totalPages} onClick={() => goPage(page + 1)}>
-                  <FiChevronRight size={13} />
-                </button>
-              </div>
-            </div>
-          </>
+          <div className="nk-timeline">
+            {grouped.map(([dateKey, items]) => {
+              const base = runningIndex;
+              runningIndex += items.length;
+              return <DayGroup key={dateKey} dateKey={dateKey} items={items} baseIndex={base} />;
+            })}
+          </div>
         )}
       </div>
+
+      {!loading && !error && grouped.length > 0 && (
+        <Pagination page={page} totalPages={totalPages} total={total} limit={filter.limit ?? 20} onPage={goPage} />
+      )}
     </div>
   );
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   STYLES
+   Toàn bộ CSS dùng custom properties từ TOKENS phía trên qua inline style
+   ở mức cao nhất, còn lại là class thuần để dễ đọc và dễ tách file sau.
+   ════════════════════════════════════════════════════════════════════════ */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
+  .nk-page { font-family: 'Be Vietnam Pro', system-ui, sans-serif; color: ${TOKENS.ink}; }
+  .nk-page * { box-sizing: border-box; }
+
+  @keyframes nk-fade-up { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes nk-fade-in { from { opacity:0; } to { opacity:1; } }
+  @keyframes nk-spin { to { transform: rotate(360deg); } }
+  @keyframes nk-pulse { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+  @keyframes nk-pop { 0% { transform: scale(.92); opacity:0; } 100% { transform: scale(1); opacity:1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nk-page *, .nk-page *::before, .nk-page *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* ── Header ── */
+  .nk-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; animation: nk-fade-up .4s ${TOKENS.ease}; }
+  .nk-header-title { display:flex; align-items:center; gap:12px; }
+  .nk-header-icon {
+    width:38px; height:38px; border-radius:11px; flex-shrink:0;
+    background: linear-gradient(135deg, ${TOKENS.brand} 0%, #2a5298 100%);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 6px 16px rgba(30,60,114,0.28);
+  }
+  .nk-header-title h1 { margin:0; font-size:17px; font-weight:800; letter-spacing:-0.3px; }
+  .nk-header-title p { margin:1px 0 0; font-size:12.5px; color:${TOKENS.inkFaint}; }
+
+  .nk-header-actions { display:flex; align-items:center; gap:8px; }
+
+  .nk-search {
+    display:flex; align-items:center; gap:7px; height:36px; padding:0 12px;
+    border:1px solid ${TOKENS.line}; border-radius:10px; background:${TOKENS.canvas};
+    color:${TOKENS.inkFaint}; transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .nk-search:focus-within { border-color:${TOKENS.brand}; background:#fff; box-shadow: 0 0 0 3px rgba(30,60,114,0.08); }
+  .nk-search input { border:none; outline:none; background:transparent; font-size:13px; color:${TOKENS.ink}; font-family:inherit; width:170px; }
+  .nk-search input::placeholder { color:${TOKENS.inkFaint}; }
+  .nk-search-clear { display:flex; border:none; background:transparent; color:${TOKENS.inkFaint}; cursor:pointer; padding:2px; border-radius:50%; transition: background .15s, color .15s; }
+  .nk-search-clear:hover { background:${TOKENS.line}; color:${TOKENS.ink}; }
+
+  .nk-refresh {
+    display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px;
+    border-radius:10px; border:1px solid ${TOKENS.line}; background:#fff;
+    font-size:13px; font-weight:600; color:${TOKENS.inkSoft}; cursor:pointer; font-family:inherit;
+    transition: background .15s, border-color .15s, transform .12s;
+  }
+  .nk-refresh:hover:not(:disabled) { background:${TOKENS.canvas}; border-color:#cbd5e1; }
+  .nk-refresh:active:not(:disabled) { transform: scale(.97); }
+  .nk-refresh:disabled { opacity:.6; cursor:default; }
+  .nk-spin { animation: nk-spin .7s linear infinite; }
+
+  /* ── Filter bar ── */
+  .nk-filterbar {
+    display:flex; align-items:center; gap:10px; margin-bottom:16px; padding:10px 12px;
+    background:${TOKENS.surface}; border:1px solid ${TOKENS.line}; border-radius:12px;
+    flex-wrap:wrap; animation: nk-fade-up .45s ${TOKENS.ease} .05s backwards;
+  }
+  .nk-chip-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .nk-chip-row-scroll { flex:1; min-width:0; }
+  .nk-divider { width:1px; height:20px; background:${TOKENS.line}; flex-shrink:0; }
+
+  .nk-chip {
+    display:inline-flex; align-items:center; gap:5px; padding:6px 13px; border-radius:999px;
+    border:1px solid ${TOKENS.line}; background:#fff; font-size:12.5px; font-weight:600;
+    color:${TOKENS.inkSoft}; cursor:pointer; font-family:inherit;
+    transition: background .16s ${TOKENS.ease}, color .16s, border-color .16s, transform .12s;
+  }
+  .nk-chip:hover { border-color:#cbd5e1; color:${TOKENS.ink}; }
+  .nk-chip:active { transform: scale(.96); }
+  .nk-chip.is-active { background:${TOKENS.ink}; color:#fff; border-color:${TOKENS.ink}; }
+  .nk-chip.is-date.is-active { background: linear-gradient(135deg, ${TOKENS.brand}, #2a5298); border-color:transparent; }
+  .nk-chip.is-warn.is-active { background:${TOKENS.danger}; border-color:transparent; }
+
+  /* ── Timeline ── */
+  .nk-timeline-wrap { min-height:240px; }
+  .nk-timeline { display:flex; flex-direction:column; gap:22px; }
+
+  .nk-day-group { animation: nk-fade-up .4s ${TOKENS.ease} backwards; }
+  .nk-day-label {
+    display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700;
+    color:${TOKENS.inkSoft}; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; padding-left:2px;
+  }
+  .nk-day-dot { width:6px; height:6px; border-radius:50%; background:${TOKENS.brand}; flex-shrink:0; }
+  .nk-day-count { margin-left:auto; font-weight:500; text-transform:none; color:${TOKENS.inkFaint}; letter-spacing:0; }
+
+  .nk-rows { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+
+  .nk-row {
+    background:#fff; border:1px solid ${TOKENS.line}; border-radius:12px; overflow:hidden;
+    animation: nk-fade-up .38s ${TOKENS.ease} backwards;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .nk-row:hover { border-color:#dbe3ee; box-shadow: 0 2px 10px rgba(15,23,42,0.05); }
+
+  .nk-row-head {
+    width:100%; display:grid; align-items:center; gap:14px; text-align:left;
+    grid-template-columns: 52px 30px minmax(0,1fr) minmax(0,170px) 100px 18px 16px;
+    padding:10px 14px; border:none; background:transparent; cursor:pointer; font-family:inherit;
+    transition: background .15s;
+  }
+  .nk-row-head.is-static { cursor:default; }
+  .nk-row-head:hover { background:${TOKENS.canvas}; }
+  .nk-row-head.is-open { background:${TOKENS.canvas}; }
+
+  .nk-row-time { font-size:12px; font-family:'JetBrains Mono',monospace; color:${TOKENS.inkSoft}; }
+
+  .nk-avatar {
+    width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:700; flex-shrink:0;
+  }
+  .nk-avatar.is-admin  { background:#eff6ff; color:#1d4ed8; }
+  .nk-avatar.is-staff  { background:${TOKENS.okSoft}; color:${TOKENS.ok}; }
+  .nk-avatar.is-system { background:${TOKENS.canvas}; color:${TOKENS.inkFaint}; }
+
+  .nk-row-actor { display:flex; flex-direction:column; min-width:0; gap:1px; }
+  .nk-row-actor-name { font-size:13px; font-weight:600; color:${TOKENS.ink}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nk-row-actor-role { font-size:10.5px; color:${TOKENS.inkFaint}; }
+
+  .nk-row-action { min-width:0; overflow:hidden; }
+
+  .nk-badge {
+    display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px;
+    font-size:11.5px; font-weight:600; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+  }
+  .nk-badge-icon { display:flex; flex-shrink:0; font-size:11px; }
+
+  .nk-row-ip { font-size:11.5px; font-family:'JetBrains Mono',monospace; color:${TOKENS.inkFaint}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .nk-status.is-ok  { color:${TOKENS.ok}; }
+  .nk-status.is-bad { color:${TOKENS.danger}; }
+
+  .nk-row-chevron { color:${TOKENS.inkFaint}; transition: transform .25s ${TOKENS.ease}; }
+  .nk-row-chevron.is-open { transform: rotate(180deg); }
+  .nk-row-chevron.is-hidden { opacity:0; }
+
+  /* Mở rộng chi tiết bằng grid-template-rows: mượt hơn height:auto vì
+     không cần đo DOM, và mượt hơn display:none vì có animation thật. */
+  .nk-row-detail { display:grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ${TOKENS.ease}; }
+  .nk-row-detail-inner { overflow:hidden; min-height:0; }
+
+  .nk-detail-grid { display:flex; flex-wrap:wrap; gap:14px 28px; padding:14px 16px 16px 96px; border-top:1px dashed ${TOKENS.line}; }
+  .nk-detail-empty { padding:14px 16px 16px 96px; font-size:12.5px; color:${TOKENS.inkFaint}; border-top:1px dashed ${TOKENS.line}; }
+
+  .nk-detail-item { display:flex; flex-direction:column; gap:2px; animation: nk-fade-in .25s ${TOKENS.ease} backwards; }
+  .nk-detail-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:${TOKENS.inkFaint}; }
+  .nk-detail-value { font-size:13px; color:${TOKENS.inkSoft}; max-width:320px; }
+  .nk-detail-value.is-emphasis { color:${TOKENS.ink}; font-weight:600; }
+
+  /* ── Skeleton loading ── */
+  .nk-skeleton-list { display:flex; flex-direction:column; gap:6px; }
+  .nk-skeleton-row {
+    display:grid; grid-template-columns: 52px 30px 1fr 140px 90px; gap:14px; align-items:center;
+    padding:14px; border:1px solid ${TOKENS.line}; border-radius:12px; background:#fff;
+    animation: nk-fade-in .3s ${TOKENS.ease} backwards;
+  }
+  .nk-sk { background: linear-gradient(90deg, #eef1f6, #f5f7fa, #eef1f6); border-radius:6px; animation: nk-pulse 1.4s ease-in-out infinite; }
+  .nk-sk-time   { height:11px; width:38px; }
+  .nk-sk-avatar { height:28px; width:28px; border-radius:50%; }
+  .nk-sk-actor  { height:11px; width:60%; }
+  .nk-sk-badge  { height:20px; width:100px; border-radius:999px; }
+  .nk-sk-ip     { height:11px; width:70px; }
+
+  /* ── Empty / error ── */
+  .nk-empty {
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    padding:64px 20px; color:${TOKENS.inkFaint}; text-align:center;
+    animation: nk-pop .35s ${TOKENS.ease};
+  }
+  .nk-empty p { margin:0; font-size:13px; max-width:280px; }
+  .nk-error { padding:48px 20px; text-align:center; color:${TOKENS.danger}; font-size:13px; font-weight:600; }
+
+  /* ── Pagination ── */
+  .nk-pager { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  .nk-pager-info { font-size:12px; color:${TOKENS.inkFaint}; }
+  .nk-pager-btns { display:flex; gap:3px; align-items:center; }
+  .nk-pgdot { font-size:12px; color:${TOKENS.inkFaint}; padding:0 2px; }
+  .nk-pgbtn {
+    min-width:28px; height:28px; padding:0 6px; border-radius:7px; border:1px solid ${TOKENS.line};
+    background:#fff; font-size:12px; font-weight:600; color:${TOKENS.inkSoft}; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-family:inherit;
+    transition: background .15s, border-color .15s, transform .12s;
+  }
+  .nk-pgbtn:hover:not(:disabled) { background:${TOKENS.canvas}; border-color:#cbd5e1; }
+  .nk-pgbtn:active:not(:disabled) { transform: scale(.93); }
+  .nk-pgbtn:disabled { opacity:.35; cursor:not-allowed; }
+  .nk-pgbtn.is-active { background:${TOKENS.ink}; color:#fff; border-color:${TOKENS.ink}; }
+
+  /* ── Responsive: ẩn bớt cột trên màn hẹp, giữ thông tin quan trọng nhất ── */
+  @media (max-width: 760px) {
+    .nk-row-head { grid-template-columns: 30px minmax(0,1fr) auto 16px; }
+    .nk-row-time, .nk-row-ip { display:none; }
+    .nk-detail-grid, .nk-detail-empty { padding-left:16px; }
+    .nk-header-actions { width:100%; }
+    .nk-search { flex:1; }
+    .nk-search input { width:100%; }
+  }
+`;
