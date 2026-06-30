@@ -16,12 +16,13 @@ import { hasPermission, ROUTE_PERMISSION_MAP, type AdminPermission } from "@/lib
 import {
   FiActivity, FiFileText, FiLogOut, FiPrinter,
   FiSearch, FiSettings, FiUsers, FiChevronLeft,
-  FiChevronRight, FiUser, FiShield, FiClock,
+  FiChevronRight, FiChevronDown, FiUser, FiShield, FiClock, FiCpu,
 } from "react-icons/fi";
 import { TbBuildingBank, TbLayoutGrid } from "react-icons/tb";
 import { IconType } from "react-icons";
 
-type NavItem = { href: string; label: string; icon: IconType };
+type NavChild = { href: string; label: string };
+type NavItem = { href: string; label: string; icon: IconType; children?: NavChild[] };
 
 const getCachedAdminUser = (): AdminProfile | null => {
   if (typeof window === "undefined") return null;
@@ -43,6 +44,15 @@ const navItems: NavItem[] = [
   { href: "/admin/counter",     label: "Phòng",      icon: TbBuildingBank },
   { href: "/admin/services",    label: "Quầy",       icon: TbLayoutGrid   },
   { href: "/admin/printers",    label: "Máy in",     icon: FiPrinter      },
+  {
+    href: "/admin/ai-assistant",
+    label: "Trợ lý AI",
+    icon: FiCpu,
+    children: [
+      { href: "/admin/ai-assistant", label: "Trợ lý nội bộ" },
+      { href: "/admin/public-ai",    label: "AI tra cứu (Dân)" },
+    ],
+  },
   { href: "/admin/settings",    label: "Cài đặt",    icon: FiSettings     },
   { href: "/admin/reports",     label: "Báo cáo",    icon: FiFileText     },
   { href: "/admin/search",      label: "Tra cứu vé", icon: FiSearch       },
@@ -69,6 +79,7 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(getCachedAdminUser);
   const [showLogoutConfirm,  setShowLogoutConfirm  ] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed ] = useState(false);
+  const [openGroup,          setOpenGroup          ] = useState<string | null>(null);
 
   // base = "/p-xxxxx" (secret path hiện tại) hoặc "/admin" nếu không có cookie (fallback an toàn)
   const base = adminPath("/admin");
@@ -107,6 +118,16 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
     const href = adminPath(internalHref);
     return href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
   };
+
+  const isGroupActive = (item: NavItem) =>
+    item.children ? item.children.some((c) => isActive(c.href)) : isActive(item.href);
+
+  // Tự mở nhóm chứa trang đang xem (vd: vào thẳng link /admin/public-ai).
+  useEffect(() => {
+    const activeParent = navItems.find((item) => item.children && isGroupActive(item));
+    if (activeParent) setOpenGroup(activeParent.href);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const handleLogout        = () => setShowLogoutConfirm(true);
   const handleConfirmLogout = () => {
@@ -171,13 +192,25 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
           <nav className="flex-1 overflow-y-auto py-6" style={{ paddingLeft: "10px", paddingRight: "10px" }}>
             <ul className="space-y-2">
               {navItems
-                .filter((item) => {
+                .map((item) => {
+                  if (!item.children) return item;
+                  // Lọc children theo quyền, ẩn cả nhóm nếu không còn child nào được phép xem.
+                  const visibleChildren = item.children.filter((c) => {
+                    const perm = ROUTE_PERMISSION_MAP[c.href] as AdminPermission | undefined;
+                    if (!perm) return true;
+                    return hasPermission(adminUser, perm);
+                  });
+                  return visibleChildren.length > 0 ? { ...item, children: visibleChildren } : null;
+                })
+                .filter((item): item is NavItem => {
+                  if (item === null) return false;
                   // Mục "Phân quyền" chỉ dành cho superAdmin hoặc admin toàn quyền
                   if (item.href === "/admin/permissions") {
                     return adminUser?.isSuperAdmin || adminUser?.adminPermissions == null;
                   }
                   // /admin/profile luôn hiển thị
                   if (item.href === "/admin/profile") return true;
+                  if (item.children) return true; // đã lọc quyền ở bước trên
                   // Các route khác: kiểm tra permission tương ứng (bao gồm audit-logs)
                   const perm = ROUTE_PERMISSION_MAP[item.href] as AdminPermission | undefined;
                   if (!perm) return true;
@@ -185,7 +218,73 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                 })
                 .map((item) => {
                 const Icon   = item.icon;
-                const active = isActive(item.href);
+                const active = isGroupActive(item);
+
+                // ── Mục có nhóm con (vd: "Trợ lý AI") ──────────────────
+                if (item.children) {
+                  const isOpen = openGroup === item.href && !isSidebarCollapsed;
+                  return (
+                    <li key={item.href}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          isSidebarCollapsed
+                            ? routerRef.current.push(adminPath(item.children![0].href))
+                            : setOpenGroup(isOpen ? null : item.href)
+                        }
+                        className={`flex w-full items-center rounded-2xl py-3 text-sm font-medium transition-all ${
+                          isSidebarCollapsed ? "justify-center px-0" : "gap-3 px-4"
+                        }`}
+                        style={active && !isOpen ? {
+                          background: siteConfig.primaryColor || "#2563eb",
+                          color: "#fff",
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                        } : {}}
+                      >
+                        <Icon size={22} className="flex-shrink-0" style={!(active && !isOpen) ? { color: "#4b5563" } : {}} />
+                        {!isSidebarCollapsed && (
+                          <>
+                            <span className="flex-1 text-left">{item.label}</span>
+                            <FiChevronDown
+                              size={16}
+                              className={`flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                              style={!(active && !isOpen) ? { color: "#9ca3af" } : {}}
+                            />
+                          </>
+                        )}
+                      </button>
+
+                      {isOpen && (
+                        <ul className="mt-1 space-y-1 pl-4">
+                          {item.children.map((child) => {
+                            const childActive = isActive(child.href);
+                            return (
+                              <li key={child.href}>
+                                <Link
+                                  href={adminPath(child.href)}
+                                  prefetch={true}
+                                  className="flex items-center gap-2.5 rounded-xl py-2.5 pl-3 pr-3 text-sm font-medium transition-all"
+                                  style={childActive ? {
+                                    background: siteConfig.primaryColor ? `${siteConfig.primaryColor}15` : "#eff6ff",
+                                    color: siteConfig.primaryColor || "#2563eb",
+                                  } : { color: "#6b7280" }}
+                                >
+                                  <span
+                                    className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                                    style={{ background: childActive ? (siteConfig.primaryColor || "#2563eb") : "#d1d5db" }}
+                                  />
+                                  {child.label}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                }
+
+                // ── Mục thường (không có nhóm con) ─────────────────────
                 return (
                   <li key={item.href}>
                     <Link
