@@ -5,7 +5,7 @@ import {
   FiShield, FiSearch, FiRefreshCw, FiChevronLeft, FiChevronRight,
   FiCheckCircle, FiXCircle, FiAlertCircle, FiLogIn, FiLogOut,
   FiKey, FiTrash2, FiEdit2, FiToggleRight, FiUpload, FiSettings,
-  FiSliders, FiClock, FiChevronDown, FiX, FiInbox,
+  FiSliders, FiClock, FiChevronDown, FiX, FiInbox, FiDownload,
 } from "react-icons/fi";
 import { getAuditLogs, type AuditLog, type AuditLogFilter } from "@/services/admin.service";
 
@@ -272,6 +272,24 @@ const ACTIONS: Record<string, ActionDef> = {
     label: "Upload logo", group: "setting", icon: <FiUpload />, tone: "info",
     describe: (d) => (d?.logoUrl ? [{ label: "Tệp", value: String(d.logoUrl) }] : []),
   },
+  REPORT_EXPORT: {
+    label: "Xuất báo cáo", group: "report", icon: <FiDownload />, tone: "info",
+    describe: (d) => {
+      const TYPE_VI: Record<string, string> = {
+        all: "Toàn bộ", longest_wait: "Chờ lâu nhất", longest_process: "Xử lý lâu nhất",
+        by_status: "Theo trạng thái", by_service: "Theo dịch vụ", by_counter: "Theo quầy",
+      };
+      const FORMAT_VI: Record<string, string> = { excel: "Excel (.xlsx)", csv: "CSV (.csv)", pdf: "PDF (.pdf)" };
+
+      const lines: DetailLine[] = [];
+      if (d?.reportType) lines.push({ label: "Loại báo cáo", value: TYPE_VI[String(d.reportType)] ?? String(d.reportType), emphasis: true });
+      if (d?.format)     lines.push({ label: "Định dạng",    value: FORMAT_VI[String(d.format)] ?? String(d.format) });
+      if (d?.startDate && d?.endDate) lines.push({ label: "Khoảng ngày", value: `${d.startDate} → ${d.endDate}` });
+      if (d?.topN !== undefined)      lines.push({ label: "Lấy top",     value: String(d.topN) });
+      if (d?.status)                  lines.push({ label: "Trạng thái vé", value: String(d.status) });
+      return lines;
+    },
+  },
 };
 
 /* ── Các describe() dùng lại nhiều action — tách ra để không lặp code ── */
@@ -367,6 +385,7 @@ const GROUP_FILTERS: { key: string; label: string }[] = [
   { key: "counter", label: "Phòng" },
   { key: "ticket",  label: "Vé" },
   { key: "setting", label: "Cài đặt" },
+  { key: "report",  label: "Báo cáo" },
 ];
 
 /* ════════════════════════════════════════════════════════════════════════

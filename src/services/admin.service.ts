@@ -995,15 +995,33 @@ export async function updateStaffServices(
   throw new Error(data.message || "Lỗi cập nhật quầy nhân viên");
 }
 // ==================== REPORT EXPORT ====================
-export async function exportReport(startDate: string, endDate: string): Promise<void> {
+export interface ReportFilters {
+  startDate: string;
+  endDate: string;
+  format: "excel" | "csv" | "pdf";
+  reportType?: "all" | "longest_wait" | "longest_process" | "by_status" | "by_service" | "by_counter";
+  status?: string;
+  serviceId?: string;
+  counterId?: string;
+  topN?: number;
+}
+
+export async function exportReport(filters: ReportFilters): Promise<void> {
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const response = await fetch(
-    `${API_BASE}/reports/export?startDate=${startDate}&endDate=${endDate}`,
-    { headers }
-  );
+  const { format, startDate, endDate, reportType = "all", status, serviceId, counterId, topN = 20 } = filters;
+
+  const extMap: Record<string, string> = { excel: "xlsx", csv: "csv", pdf: "pdf" };
+  const endpoint = format === "excel" ? "export/excel" : format === "csv" ? "export/csv" : "export/pdf";
+
+  const params = new URLSearchParams({ startDate, endDate, reportType, topN: String(topN) });
+  if (status) params.set("status", status);
+  if (serviceId) params.set("serviceId", serviceId);
+  if (counterId) params.set("counterId", counterId);
+
+  const response = await fetch(`${API_BASE}/reports/${endpoint}?${params}`, { headers });
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -1014,7 +1032,8 @@ export async function exportReport(startDate: string, endDate: string): Promise<
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `bao-cao-${startDate}_${endDate}.xlsx`;
+  const typeSuffix = reportType !== "all" ? `-${reportType}` : "";
+  a.download = `bao-cao${typeSuffix}-${startDate}_${endDate}.${extMap[format]}`;
   document.body.appendChild(a);
   a.click();
   a.remove();
