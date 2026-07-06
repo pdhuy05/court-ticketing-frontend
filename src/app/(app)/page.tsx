@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { io, Socket } from "socket.io-client";
 import * as RiIcons from "react-icons/ri";
 import type { IconType } from "react-icons";
 import AppErrorState from "@/components/AppErrorState";
-import { getPublicApiBase, getSocketBaseUrl } from "@/lib/runtime-config";
+import { getPublicApiBase } from "@/lib/runtime-config";
 
 interface Service {
   _id: string;
@@ -80,10 +79,9 @@ export default function HomePage() {
     [closeModal],
   );
 
-  const loadServices = useCallback(async (options?: { silent?: boolean }) => {
-    const silent = options?.silent ?? false;
-    if (!silent) setLoading(true);
-    if (!silent) setError(null);
+  const loadServices = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const response = await fetch("/api/services/active");
       if (!response.ok) throw new Error("Không thể tải danh sách dịch vụ");
@@ -92,15 +90,10 @@ export default function HomePage() {
         (a: Service, b: Service) => a.displayOrder - b.displayOrder,
       );
       setServicesList(sorted);
-      if (silent) setError(null);
     } catch (err) {
-      // Refresh ngầm bị lỗi (mất mạng tạm thời) thì giữ nguyên danh sách cũ,
-      // không hiện lỗi đè lên màn hình kiosk đang chạy bình thường.
-      if (!silent) {
-        setError(err instanceof Error ? err.message : "Không thể kết nối máy chủ");
-      }
+      setError(err instanceof Error ? err.message : "Không thể kết nối máy chủ");
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
     }
   }, []);
 
@@ -126,33 +119,6 @@ export default function HomePage() {
 
   useEffect(() => {
     void loadServices();
-  }, [loadServices]);
-
-  // ── Lắng nghe realtime khi lịch giờ quầy tự động đóng/mở ──
-  // Refresh âm thầm (silent: true) — chỉ cập nhật data, không hiện lại "Đang tải..."
-  // để tránh giật màn hình kiosk.
-  useEffect(() => {
-    const url = getSocketBaseUrl();
-    if (!url) return;
-
-    const socket: Socket = io(url, {
-      transports: ["websocket", "polling"],
-    });
-
-    const handleServicesUpdated = () => {
-      void loadServices({ silent: true });
-    };
-
-    socket.on("services-updated", handleServicesUpdated);
-    // Nếu socket vừa reconnect (ví dụ rớt mạng rồi nối lại), đồng bộ lại 1 lần
-    // cho chắc — vẫn silent, không giật.
-    socket.on("connect", handleServicesUpdated);
-
-    return () => {
-      socket.off("services-updated", handleServicesUpdated);
-      socket.off("connect", handleServicesUpdated);
-      socket.disconnect();
-    };
   }, [loadServices]);
 
   // Cleanup on unmount

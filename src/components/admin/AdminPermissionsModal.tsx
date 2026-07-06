@@ -170,12 +170,17 @@ export default function AdminPermissionsModal({
       .then((d) => {
         setData(d);
         setIsSuperAdmin(d.isSuperAdmin);
-        if (d.adminPermissions === null) {
+        // Coi "đủ cả 9 quyền" (mảng) và "null" (Toàn quyền) là MỘT trạng thái duy
+        // nhất, tránh tình trạng tick đủ từng ô trông khác với bật Toàn quyền.
+        const isFull =
+          d.adminPermissions === null ||
+          (Array.isArray(d.adminPermissions) && d.adminPermissions.length === ALL_ADMIN_PERMISSIONS.length);
+        if (isFull) {
           setIsFullAccess(true);
           setSelectedPerms(new Set(ALL_ADMIN_PERMISSIONS));
         } else {
           setIsFullAccess(false);
-          setSelectedPerms(new Set(d.adminPermissions));
+          setSelectedPerms(new Set(d.adminPermissions ?? []));
         }
       })
       .catch((e) => setError(e.message))
@@ -187,6 +192,9 @@ export default function AdminPermissionsModal({
       const next = new Set(prev);
       if (next.has(perm)) next.delete(perm);
       else next.add(perm);
+      // Tick đủ hết từng ô thủ công cũng tự chuyển thành "Toàn quyền" — không còn
+      // khác biệt so với bật công tắc Toàn quyền.
+      setIsFullAccess(next.size === ALL_ADMIN_PERMISSIONS.length);
       return next;
     });
   };
@@ -194,6 +202,7 @@ export default function AdminPermissionsModal({
   const handleToggleFullAccess = (checked: boolean) => {
     setIsFullAccess(checked);
     if (checked) setSelectedPerms(new Set(ALL_ADMIN_PERMISSIONS));
+    else setSelectedPerms(new Set());
   };
 
   const handleSave = async () => {
@@ -203,7 +212,7 @@ export default function AdminPermissionsModal({
     setError("");
     try {
       const permissions = isFullAccess ? null : Array.from(selectedPerms);
-      await updateAdminPermissions(adminId, { permissions, isSuperAdmin });
+      await updateAdminPermissions(adminId, { permissions });
       setSaveState("success");
       onUpdated?.();
       setTimeout(() => setSaveState("idle"), 2000);
@@ -216,7 +225,7 @@ export default function AdminPermissionsModal({
     }
   };
 
-  const countLabel = isSuperAdmin || isFullAccess ? "Full" : String(selectedPerms.size);
+  const countLabel = isSuperAdmin ? "Super Admin" : isFullAccess ? "Full" : String(selectedPerms.size);
 
   return (
     <>
@@ -441,25 +450,6 @@ export default function AdminPermissionsModal({
 
             {!loading && data && (
               <>
-                <div>
-                  <div className="amp-section-label">Cấp độ truy cập</div>
-                  <div
-                    className={`amp-toggle-card${isSuperAdmin ? " amp-active" : ""}${isSelf ? " amp-disabled" : ""}`}
-                    onClick={() => !isSelf && setIsSuperAdmin((v) => !v)}
-                  >
-                    <div className="amp-card-svg-wrap">
-                      <IconCrown size={15} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Super Admin</div>
-                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, lineHeight: 1.5 }}>
-                        Toàn quyền hệ thống, vượt qua mọi giới hạn phân quyền
-                      </div>
-                    </div>
-                    <div className={`amp-switch${isSuperAdmin ? " amp-on" : ""}`} />
-                  </div>
-                </div>
-
                 {!isSuperAdmin && (
                   <div className="amp-perms-section">
                     <div className="amp-section-label">Quyền cụ thể</div>
@@ -513,7 +503,15 @@ export default function AdminPermissionsModal({
             )}
           </div>
 
-          {!loading && !isSelf && (
+          {!loading && !isSelf && isSuperAdmin && (
+            <div className="amp-footer">
+              <button className="amp-btn amp-btn-cancel" onClick={onClose}>
+                <IconX size={12} color="#6b7280" /> Đóng
+              </button>
+            </div>
+          )}
+
+          {!loading && !isSelf && !isSuperAdmin && (
             <div className="amp-footer">
               <button className="amp-btn amp-btn-cancel" onClick={onClose}>
                 <IconX size={12} color="#6b7280" /> Hủy

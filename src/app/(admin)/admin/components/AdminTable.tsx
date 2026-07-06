@@ -22,7 +22,7 @@ type FormData = {
   username: string;
   password: string;
   fullName: string;
-  isSuperAdmin: boolean;
+  isFullAccess: boolean;
   permissions: string[];
 };
 
@@ -31,7 +31,7 @@ type EditFormData = {
   fullName: string;
 };
 
-const EMPTY_FORM: FormData = { username: "", password: "", fullName: "", isSuperAdmin: false, permissions: [] };
+const EMPTY_FORM: FormData = { username: "", password: "", fullName: "", isFullAccess: false, permissions: [] };
 const EMPTY_EDIT: EditFormData = { password: "", fullName: "" };
 
 const getCachedAdmin = (): AdminProfile | null => {
@@ -204,7 +204,10 @@ export default function AdminTable() {
     if (!form.username || !form.password || !form.fullName) { setCreateError("Vui lòng điền đầy đủ thông tin"); return; }
     setCreating(true); setCreateError("");
     try {
-      await createAdmin({ username: form.username, password: form.password, fullName: form.fullName, isSuperAdmin: form.isSuperAdmin, adminPermissions: form.isSuperAdmin ? null : form.permissions } as CreateAdminPayload);
+      // Không bao giờ cấp isSuperAdmin từ form này — "Toàn quyền" chỉ có nghĩa là
+      // được cấp đủ mọi quyền chức năng (adminPermissions: null), KHÔNG đồng nghĩa
+      // với việc trở thành Super Admin (Admin Chính, có quyền quản lý admin khác).
+      await createAdmin({ username: form.username, password: form.password, fullName: form.fullName, adminPermissions: form.isFullAccess ? null : form.permissions } as CreateAdminPayload);
       setShowCreate(false); setForm(EMPTY_FORM); load();
     } catch (e: unknown) { setCreateError(e instanceof Error ? e.message : "Lỗi tạo admin"); }
     finally { setCreating(false); }
@@ -342,13 +345,19 @@ export default function AdminTable() {
         {!loading && filtered.map((admin, idx) => {
           const isSelf = admin._id === currentUserId;
           const av = getAvatarColor(admin.fullName);
-          const permCount = admin.isSuperAdmin || admin.adminPermissions === null
+          const isFullAccessRole =
+            admin.adminPermissions === null ||
+            (Array.isArray(admin.adminPermissions) && admin.adminPermissions.length === ALL_PERMISSIONS.length);
+          // "Loại" chỉ hiện "Super Admin" khi ĐÚNG là Admin Chính (isSuperAdmin === true).
+          // Tick đủ cả 9 quyền thủ công hoặc bật "Toàn quyền" đều là admin thường có
+          // full quyền chức năng — không phải Super Admin.
+          const permCount = admin.isSuperAdmin || isFullAccessRole
             ? "Toàn quyền"
-            : `${admin.adminPermissions.length}/${ALL_PERMISSIONS.length} quyền`;
-          const isSuperAdminRole = admin.isSuperAdmin || admin.adminPermissions === null;
+            : `${admin.adminPermissions!.length}/${ALL_PERMISSIONS.length} quyền`;
+          const isSuperAdminRole = admin.isSuperAdmin === true;
           const permStyle = isSelf
             ? { bg: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }
-            : isSuperAdminRole
+            : (isSuperAdminRole || isFullAccessRole)
               ? { bg: "#ede9fe", color: "#5b21b6", border: "none" }
               : { bg: "#f0f9ff", color: "#0369a1", border: "none" };
 
@@ -411,7 +420,9 @@ export default function AdminTable() {
                   ? <span className="at-badge" style={{ background: isSelf ? "#fef3c7" : "#fef9c3", color: isSelf ? "#92400e" : "#854d0e", border: `1px solid ${isSelf ? "#fde68a" : "#fef08a"}` }}>
                       Super Admin
                     </span>
-                  : <span className="at-badge" style={{ background: "#f0f9ff", color: "#0369a1" }}>Admin</span>}
+                  : isFullAccessRole
+                    ? <span className="at-badge" style={{ background: "#ede9fe", color: "#5b21b6" }}>Toàn quyền</span>
+                    : <span className="at-badge" style={{ background: "#f0f9ff", color: "#0369a1" }}>Admin</span>}
               </div>
 
               {/* Quyền */}
@@ -495,20 +506,21 @@ export default function AdminTable() {
                 <label style={labelStyle}>Mật khẩu *</label>
                 <input className="at-input" style={inputStyle} type="password" placeholder="Tối thiểu 8 ký tự" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
               </div>
-              {/* Super Admin toggle */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: form.isSuperAdmin ? 22 : 14, cursor: "pointer", padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${form.isSuperAdmin ? "#fde68a" : "#e2e8f0"}`, background: form.isSuperAdmin ? "#fffbeb" : "#f8fafc" }}>
-                <input type="checkbox" checked={form.isSuperAdmin} onChange={e => setForm(f => ({ ...f, isSuperAdmin: e.target.checked, permissions: e.target.checked ? [] : f.permissions }))} style={{ width: 16, height: 16, accentColor: "#f59e0b", marginTop: 1, flexShrink: 0 }} />
+              {/* Toàn quyền toggle — KHÔNG còn tùy chọn "Super Admin" ở đây.
+                  Admin phụ được cấp tối đa là "Toàn quyền chức năng", không thể
+                  trở thành Admin Chính (Super Admin) qua form này. */}
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: form.isFullAccess ? 22 : 14, cursor: "pointer", padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${form.isFullAccess ? "#bbf7d0" : "#e2e8f0"}`, background: form.isFullAccess ? "#f0fdf4" : "#f8fafc" }}>
+                <input type="checkbox" checked={form.isFullAccess} onChange={e => setForm(f => ({ ...f, isFullAccess: e.target.checked, permissions: e.target.checked ? [] : f.permissions }))} style={{ width: 16, height: 16, accentColor: "#16a34a", marginTop: 1, flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", display: "flex", alignItems: "center", gap: 6 }}>
-
-                    Super Admin
+                    Toàn quyền (tất cả chức năng)
                   </div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Toàn quyền hệ thống, không thể bị giới hạn</div>
+                  {/* <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Được dùng mọi tính năng, nhưng không thể quản lý tài khoản admin khác</div> */}
                 </div>
               </label>
 
-              {/* Permissions grid — chỉ hiện khi KHÔNG phải Super Admin */}
-              {!form.isSuperAdmin && (
+              {/* Permissions grid — chỉ hiện khi KHÔNG chọn Toàn quyền */}
+              {!form.isFullAccess && (
                 <div style={{ marginBottom: 22 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 8 }}>
                     Phân quyền
@@ -524,12 +536,18 @@ export default function AdminTable() {
                           <input
                             type="checkbox"
                             checked={checked}
-                            onChange={e => setForm(f => ({
-                              ...f,
-                              permissions: e.target.checked
+                            onChange={e => setForm(f => {
+                              const nextPermissions = e.target.checked
                                 ? [...f.permissions, p.key]
-                                : f.permissions.filter(x => x !== p.key)
-                            }))}
+                                : f.permissions.filter(x => x !== p.key);
+                              // Tick đủ hết các quyền thủ công cũng coi như "Toàn quyền",
+                              // để không còn khác biệt so với việc bật công tắc Toàn quyền.
+                              return {
+                                ...f,
+                                permissions: nextPermissions,
+                                isFullAccess: nextPermissions.length === ALL_PERMISSIONS.length,
+                              };
+                            })}
                             style={{ width: 14, height: 14, accentColor: "#2563eb", flexShrink: 0 }}
                           />
                           <span style={{ fontSize: 12, fontWeight: checked ? 600 : 400, color: checked ? "#1d4ed8" : "#475569" }}>
@@ -541,11 +559,11 @@ export default function AdminTable() {
                   </div>
                   {/* Select all / Deselect all */}
                   <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button type="button" onClick={() => setForm(f => ({ ...f, permissions: ALL_PERMISSIONS.map(p => p.key) }))} style={{ fontSize: 11, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: "2px 0", fontWeight: 500 }}>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, isFullAccess: true, permissions: ALL_PERMISSIONS.map(p => p.key) }))} style={{ fontSize: 11, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: "2px 0", fontWeight: 500 }}>
                       Chọn tất cả
                     </button>
                     <span style={{ color: "#e2e8f0" }}>|</span>
-                    <button type="button" onClick={() => setForm(f => ({ ...f, permissions: [] }))} style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: "2px 0", fontWeight: 500 }}>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, isFullAccess: false, permissions: [] }))} style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: "2px 0", fontWeight: 500 }}>
                       Bỏ chọn tất cả
                     </button>
                   </div>

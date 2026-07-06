@@ -5,10 +5,10 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FiEdit3, FiMail, FiMapPin, FiPhone, FiShield,
-  FiUser, FiClock, FiHash, FiLayers,
-  FiCheckCircle, FiXCircle, FiCalendar, FiGrid,
+  FiUser, FiClock, FiHash,
+  FiCheckCircle, FiXCircle, FiCalendar,
   FiActivity, FiMonitor, FiLogOut, FiLock, FiSave, FiX,
-  FiAlertCircle, FiEye, FiEyeOff,
+  FiAlertCircle, FiEye, FiEyeOff, FiAward, FiZap,
 } from "react-icons/fi";
 import ToastContainer from "@/components/ToastContainer";
 import { clearAdminSession } from "@/lib/admin-auth";
@@ -19,28 +19,33 @@ import { AdminProfile, getMyProfile, updateMyProfile } from "@/services/auth.ser
 const getLoginPath = () => adminPath("/admin/login");
 
 const STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap');
 
   .pp *, .pp *::before, .pp *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .pp {
     min-height: 100%;
-    padding: 28px 32px;
+    padding: 28px 32px 48px;
     font-family: 'Outfit', system-ui, sans-serif;
     color: #0f172a;
-    background: #f0f4f8;
+    background:
+      radial-gradient(900px 500px at 8% -8%, rgba(59,130,246,0.08), transparent 60%),
+      radial-gradient(700px 500px at 100% 0%, rgba(139,92,246,0.06), transparent 55%),
+      #f0f4f8;
+    position: relative;
   }
 
+  /* ── entrance animations ── */
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(22px) scale(0.985); filter: blur(3px); }
+    to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
   }
-  .anim { opacity: 0; animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) forwards; }
-  .d0 { animation-delay: 0s; }
-  .d1 { animation-delay: 0.07s; }
-  .d2 { animation-delay: 0.14s; }
-  .d3 { animation-delay: 0.21s; }
-  .d4 { animation-delay: 0.28s; }
+  .anim { opacity: 0; animation: fadeUp 0.6s cubic-bezier(0.19,1,0.22,1) forwards; }
+  .d0 { animation-delay: 0.02s; }
+  .d1 { animation-delay: 0.09s; }
+  .d2 { animation-delay: 0.16s; }
+  .d3 { animation-delay: 0.23s; }
+  .d4 { animation-delay: 0.30s; }
 
   @keyframes pulse {
     0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.55); }
@@ -53,6 +58,33 @@ const STYLES = `
     100% { transform: translateX(100%); }
   }
 
+  @keyframes floatBlob1 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50%      { transform: translate(14px,-10px) scale(1.08); }
+  }
+  @keyframes floatBlob2 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50%      { transform: translate(-12px,12px) scale(1.1); }
+  }
+  @keyframes spinRing { to { transform: rotate(360deg); } }
+  @keyframes ringPulse {
+    0%,100% { opacity: 0.75; }
+    50%     { opacity: 1; }
+  }
+  @keyframes drawLine {
+    from { transform: scaleY(0); }
+    to   { transform: scaleY(1); }
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes gradientMove {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
   .pp-grid {
     display: grid;
     grid-template-columns: 300px 1fr;
@@ -63,16 +95,23 @@ const STYLES = `
 
   .sidebar { display: flex; flex-direction: column; gap: 14px; }
 
+  /* ══ HERO ══ */
   .hero-card {
-    border-radius: 20px;
+    border-radius: 22px;
     background: #0f2744;
     padding: 0;
     overflow: hidden;
     position: relative;
+    box-shadow: 0 10px 34px -12px rgba(15,39,68,0.45);
+    transition: box-shadow 0.25s;
   }
+  .hero-card:hover { box-shadow: 0 16px 44px -12px rgba(15,39,68,0.55); }
+
   .hero-banner {
-    height: 72px;
-    background: linear-gradient(135deg, #1a3a5c 0%, #0a1f38 100%);
+    height: 88px;
+    background: linear-gradient(120deg, #14335a 0%, #0a1f38 45%, #1c4270 100%);
+    background-size: 200% 200%;
+    animation: gradientMove 10s ease-in-out infinite;
     position: relative;
     overflow: hidden;
   }
@@ -85,32 +124,40 @@ const STYLES = `
       rgba(255,255,255,0.025) 6px, rgba(255,255,255,0.025) 7px
     );
   }
-  .hero-banner-circle {
-    position: absolute; right: -30px; top: -30px;
-    width: 120px; height: 120px; border-radius: 50%;
-    background: rgba(255,255,255,0.04);
+  .hero-blob {
+    position: absolute; border-radius: 50%; filter: blur(2px);
   }
-  .hero-banner-circle2 {
-    position: absolute; left: 20px; bottom: -40px;
-    width: 90px; height: 90px; border-radius: 50%;
-    background: rgba(255,255,255,0.03);
+  .hero-blob-a {
+    right: -34px; top: -34px; width: 130px; height: 130px;
+    background: radial-gradient(circle, rgba(96,165,250,0.22), transparent 70%);
+    animation: floatBlob1 7s ease-in-out infinite;
+  }
+  .hero-blob-b {
+    left: 10px; bottom: -46px; width: 100px; height: 100px;
+    background: radial-gradient(circle, rgba(167,139,250,0.18), transparent 70%);
+    animation: floatBlob2 8.5s ease-in-out infinite;
   }
 
   .hero-body { padding: 0 22px 22px; }
 
-  .avatar-wrap { margin-top: -30px; margin-bottom: 12px; position: relative; display: inline-flex; }
+  .avatar-wrap { margin-top: -34px; margin-bottom: 12px; position: relative; display: inline-flex; }
+  .avatar-ring {
+    position: absolute; inset: -3px; border-radius: 20px;
+    background: conic-gradient(from 0deg, #60a5fa, #a78bfa, #60a5fa 100%);
+    animation: spinRing 5s linear infinite, ringPulse 2.4s ease-in-out infinite;
+  }
   .avatar {
-    width: 72px; height: 72px; border-radius: 16px;
+    width: 72px; height: 72px; border-radius: 17px;
     background: linear-gradient(135deg, #1e5ba8, #0f3870);
     border: 3px solid #0f2744;
     display: flex; align-items: center; justify-content: center;
     font-size: 24px; font-weight: 800; color: #fff;
-    letter-spacing: -1px; position: relative; overflow: hidden;
+    letter-spacing: -1px; position: relative; overflow: hidden; z-index: 1;
   }
   .avatar::after {
     content: '';
     position: absolute; inset: 0;
-    background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,0.15) 50%, transparent 75%);
+    background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,0.16) 50%, transparent 75%);
     animation: shimmer 2.8s ease-in-out infinite;
   }
   .status-ring {
@@ -118,6 +165,7 @@ const STYLES = `
     width: 18px; height: 18px; border-radius: 50%;
     border: 3px solid #0f2744;
     display: flex; align-items: center; justify-content: center;
+    z-index: 2;
   }
   .status-ring-dot { width: 8px; height: 8px; border-radius: 50%; }
 
@@ -131,7 +179,9 @@ const STYLES = `
   .hero-stat {
     display: flex; align-items: center; gap: 10px;
     padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: transform 0.15s;
   }
+  .hero-stat:hover { transform: translateX(2px); }
   .hero-stat:last-child { border-bottom: none; padding-bottom: 0; }
   .hero-stat-ico { color: rgba(255,255,255,0.28); display: flex; flex-shrink: 0; }
   .hero-stat-lbl { font-size: 11px; color: rgba(255,255,255,0.38); flex: 1; }
@@ -139,20 +189,23 @@ const STYLES = `
 
   .side-actions { display: flex; gap: 8px; }
   .side-btn {
-    flex: 1; height: 40px; border-radius: 11px;
+    flex: 1; height: 42px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center; gap: 7px;
     font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid;
-    font-family: 'Outfit', inherit; transition: all 0.17s;
+    font-family: 'Outfit', inherit; transition: all 0.2s cubic-bezier(.22,1,.36,1);
   }
   .side-btn-edit { background: #fff; color: #0f2744; border-color: #dde5ef; }
-  .side-btn-edit:hover { background: #f7faff; border-color: #b8ccdf; box-shadow: 0 3px 10px rgba(15,39,68,0.1); transform: translateY(-1px); }
+  .side-btn-edit:hover { background: #f7faff; border-color: #b8ccdf; box-shadow: 0 6px 16px rgba(15,39,68,0.14); transform: translateY(-2px); }
   .side-btn-logout { background: #fff5f5; color: #dc2626; border-color: #fecaca; }
-  .side-btn-logout:hover { background: #fee2e2; box-shadow: 0 3px 10px rgba(220,38,38,0.1); transform: translateY(-1px); }
+  .side-btn-logout:hover { background: #fee2e2; box-shadow: 0 6px 16px rgba(220,38,38,0.14); transform: translateY(-2px); }
+  .side-btn:active { transform: translateY(0) scale(0.98); }
 
   .counter-card {
-    background: #fff; border-radius: 14px;
+    background: #fff; border-radius: 16px;
     border: 1px solid #e4eaf1; overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
   }
+  .counter-card:hover { box-shadow: 0 10px 28px -10px rgba(15,39,68,0.18); transform: translateY(-2px); }
   .counter-head {
     display: flex; align-items: center; gap: 8px;
     padding: 11px 16px; border-bottom: 1px solid #f1f5f9;
@@ -166,39 +219,63 @@ const STYLES = `
 
   .pp-main { display: flex; flex-direction: column; gap: 16px; }
 
+  /* ══ STAT BAR ══ */
   .stat-bar {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
   }
   .stat-card {
-    background: #fff; border-radius: 14px; border: 1px solid #e4eaf1;
+    background: #fff; border-radius: 16px; border: 1px solid #e4eaf1;
     padding: 16px 18px; display: flex; align-items: center; gap: 14px;
-    transition: box-shadow 0.17s;
+    transition: transform 0.22s cubic-bezier(.22,1,.36,1), box-shadow 0.22s;
+    position: relative; overflow: hidden; cursor: default;
   }
-  .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+  .stat-card::before {
+    content: ''; position: absolute; inset: 0; opacity: 0;
+    background: linear-gradient(120deg, transparent, rgba(59,130,246,0.05), transparent);
+    transition: opacity 0.25s;
+  }
+  .stat-card:hover { box-shadow: 0 12px 28px -10px rgba(15,23,42,0.14); transform: translateY(-3px); }
+  .stat-card:hover::before { opacity: 1; }
   .stat-ico {
-    width: 40px; height: 40px; border-radius: 11px;
+    width: 42px; height: 42px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
   }
+  .stat-card:hover .stat-ico { transform: rotate(-8deg) scale(1.08); }
   .stat-lbl { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
   .stat-val { font-size: 16px; font-weight: 700; color: #0f172a; }
 
+  /* ══ TABS (sliding pill) ══ */
   .tabs {
-    display: flex; gap: 3px;
-    background: #fff; border: 1px solid #e4eaf1; border-radius: 13px; padding: 5px;
+    position: relative;
+    display: flex; gap: 2px;
+    background: #fff; border: 1px solid #e4eaf1; border-radius: 14px; padding: 5px;
+  }
+  .tabs-slider {
+    position: absolute; top: 5px; left: 5px;
+    height: calc(100% - 10px); border-radius: 10px;
+    background: linear-gradient(135deg, #14335a, #0a1f38);
+    transition: transform 0.38s cubic-bezier(0.22,1,0.36,1);
+    z-index: 0;
+    box-shadow: 0 4px 12px -2px rgba(15,39,68,0.35);
   }
   .tab {
-    display: inline-flex; align-items: center; gap: 6px;
+    position: relative; z-index: 1;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    flex: 1;
     height: 34px; padding: 0 14px; border-radius: 9px;
     font-size: 13px; font-weight: 600; cursor: pointer;
     border: none; background: transparent; color: #64748b;
-    transition: all 0.16s; font-family: 'Outfit', inherit; white-space: nowrap;
+    transition: color 0.2s; font-family: 'Outfit', inherit; white-space: nowrap;
   }
-  .tab:hover:not(.tab-active) { color: #0f2744; background: #f0f4f8; }
-  .tab.tab-active { background: #0f2744; color: #fff; }
+  .tab:hover:not(.tab-active) { color: #0f2744; }
+  .tab.tab-active { color: #fff; }
 
   .panel {
-    background: #fff; border: 1px solid #e4eaf1; border-radius: 16px; overflow: hidden;
+    background: #fff; border: 1px solid #e4eaf1; border-radius: 18px; overflow: hidden;
+    transition: box-shadow 0.2s;
   }
+  .panel:hover { box-shadow: 0 8px 26px -14px rgba(15,23,42,0.16); }
   .panel-head {
     display: flex; align-items: center; gap: 10px;
     padding: 14px 20px; border-bottom: 1px solid #f1f5f9; background: #fafbfd;
@@ -222,25 +299,23 @@ const STYLES = `
     width: 32px; height: 32px; border-radius: 8px;
     background: #f1f5f9; color: #64748b;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    transition: background 0.14s, color 0.14s;
+    transition: background 0.14s, color 0.14s, transform 0.2s;
   }
-  .field:hover .field-ico { background: #eef3fa; color: #0f2744; }
+  .field:hover .field-ico { background: #eef3fa; color: #0f2744; transform: scale(1.08); }
   .field-lbl { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
   .field-val { font-size: 13.5px; font-weight: 500; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .field-val.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #475569; }
 
+  /* ══ TIMELINE (drawing line) ══ */
   .timeline { padding: 6px 20px 10px; }
-  .tl-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f8fafc; }
+  .tl-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f8fafc; opacity: 0; animation: fadeUp 0.45s cubic-bezier(.19,1,.22,1) forwards; }
   .tl-item:last-child { border-bottom: none; }
   .tl-col { display: flex; flex-direction: column; align-items: center; }
-  .tl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
-  .tl-line { width: 1px; flex: 1; background: #e8edf3; margin-top: 5px; }
+  .tl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1) backwards; animation-delay: inherit; box-shadow: 0 0 0 4px rgba(0,0,0,0.04); }
+  .tl-line { width: 1.5px; flex: 1; background: #e8edf3; margin-top: 5px; transform-origin: top; animation: drawLine 0.5s ease-out forwards; animation-delay: inherit; }
   .tl-body { flex: 1; }
   .tl-ttl { font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 2px; }
   .tl-time { font-size: 11px; color: #94a3b8; font-family: 'JetBrains Mono', monospace; }
-
-  .services-wrap { padding: 18px 20px; display: flex; flex-wrap: wrap; gap: 8px; }
-  .svc-empty { padding: 36px 20px; text-align: center; color: #94a3b8; font-size: 14px; }
 
   .pill {
     display: inline-flex; align-items: center; gap: 5px;
@@ -257,6 +332,7 @@ const STYLES = `
   .pill-gw     { background:rgba(74,222,128,0.18); color:#86efac; border-color:rgba(74,222,128,0.3); }
   .pill-rw     { background:rgba(252,165,165,0.18); color:#fca5a5; border-color:rgba(252,165,165,0.3); }
   .pill-amber  { background:#fef3c7; color:#b45309; border-color:#fde68a; }
+  .pill-gold   { background: linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; border-color:#fcd34d; }
 
   /* ─── MODAL ─── */
   .modal-backdrop {
@@ -265,6 +341,7 @@ const STYLES = `
     backdrop-filter: blur(4px);
     display: flex; align-items: center; justify-content: center;
     padding: 16px;
+    animation: fadeUp 0.2s ease-out;
   }
   @keyframes modalIn {
     from { opacity: 0; transform: scale(0.95) translateY(12px); }
@@ -277,7 +354,7 @@ const STYLES = `
     max-width: 540px;
     max-height: 90vh;
     overflow-y: auto;
-    animation: modalIn 0.25s cubic-bezier(0.22,1,0.36,1);
+    animation: modalIn 0.3s cubic-bezier(0.22,1,0.36,1);
     box-shadow: 0 24px 60px rgba(0,0,0,0.2);
   }
   .modal-head {
@@ -303,7 +380,7 @@ const STYLES = `
     cursor: pointer; color: #64748b; transition: all 0.15s;
     flex-shrink: 0; margin-left: auto;
   }
-  .modal-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+  .modal-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; transform: rotate(90deg); }
 
   .modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
 
@@ -693,7 +770,7 @@ function EditModal({
   );
 }
 
-type Tab = "info" | "activity" | "services";
+type Tab = "info" | "activity";
 
 export default function AdminProfilePage() {
   const router = useRouter();
@@ -721,14 +798,12 @@ export default function AdminProfilePage() {
 
   const name      = getName(adminUser);
   const initials  = getInit(name);
-  const services  = adminUser.effectiveServices || [];
-  const available = adminUser.availableServices || [];
 
   const tabs: { key: Tab; label: string; icon: ReactNode }[] = [
-    { key: "info",     label: "Thông tin",                    icon: <FiUser size={13} /> },
-    { key: "activity", label: "Hoạt động",                    icon: <FiActivity size={13} /> },
-    { key: "services", label: `Dịch vụ (${services.length})`, icon: <FiLayers size={13} /> },
+    { key: "info",     label: "Thông tin",  icon: <FiUser size={13} /> },
+    { key: "activity", label: "Hoạt động",  icon: <FiActivity size={13} /> },
   ];
+  const tabIdx = tabs.findIndex(t => t.key === tab);
 
   const handleLogout = () => { clearAdminSession(); router.replace(getLoginPath()); };
 
@@ -760,11 +835,12 @@ export default function AdminProfilePage() {
           {/* Hero card */}
           <div className="hero-card anim d0">
             <div className="hero-banner">
-              <div className="hero-banner-circle" />
-              <div className="hero-banner-circle2" />
+              <div className="hero-blob hero-blob-a" />
+              <div className="hero-blob hero-blob-b" />
             </div>
             <div className="hero-body">
               <div className="avatar-wrap">
+                <div className="avatar-ring" />
                 <div className="avatar">
                   {initials}
                   <div className="status-ring" style={{ background: "#0f2744" }}>
@@ -777,7 +853,11 @@ export default function AdminProfilePage() {
               <div className="hero-username">@{adminUser.username || "unknown"}</div>
 
               <div className="hero-pills">
-                <Pill cls="pill-white">{fmt(adminUser.role)}</Pill>
+                {adminUser.isSuperAdmin ? (
+                  <span className="pill pill-gold"><FiAward size={11} />Super Admin</span>
+                ) : (
+                  <Pill cls="pill-white">{fmt(adminUser.role)}</Pill>
+                )}
                 {adminUser.isActive
                   ? <Pill cls="pill-gw">Hoạt động</Pill>
                   : <Pill cls="pill-rw">Bị khóa</Pill>}
@@ -823,6 +903,9 @@ export default function AdminProfilePage() {
             <button className="side-btn side-btn-edit" onClick={() => setShowEdit(true)}>
               <FiEdit3 size={14} /> Chỉnh sửa
             </button>
+            <button className="side-btn side-btn-logout" onClick={handleLogout}>
+              <FiLogOut size={14} /> Đăng xuất
+            </button>
           </div>
 
           {/* Counter card */}
@@ -856,7 +939,7 @@ export default function AdminProfilePage() {
               </div>
               <div>
                 <div className="stat-lbl">Vai trò</div>
-                <div className="stat-val">{fmt(adminUser.role)}</div>
+                <div className="stat-val">{adminUser.isSuperAdmin ? "Super Admin" : fmt(adminUser.role)}</div>
               </div>
             </div>
             <div className="stat-card">
@@ -869,18 +952,22 @@ export default function AdminProfilePage() {
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-ico" style={{ background: "#fef3c7", color: "#b45309" }}>
-                <FiLayers size={18} />
+              <div className="stat-ico" style={{ background: adminUser.isActive ? "#dcfce7" : "#fee2e2", color: adminUser.isActive ? "#15803d" : "#dc2626" }}>
+                <FiZap size={18} />
               </div>
               <div>
-                <div className="stat-lbl">Dịch vụ</div>
-                <div className="stat-val">{services.length} dịch vụ</div>
+                <div className="stat-lbl">Trạng thái</div>
+                <div className="stat-val">{adminUser.isActive ? "Đang hoạt động" : "Bị khóa"}</div>
               </div>
             </div>
           </div>
 
           {/* Tabs */}
           <div className="tabs anim d2">
+            <div
+              className="tabs-slider"
+              style={{ width: `calc(${100 / tabs.length}% - ${tabIdx === tabs.length - 1 ? 5 : 3}px)`, transform: `translateX(${tabIdx * 100}%)` }}
+            />
             {tabs.map((t) => (
               <button
                 key={t.key}
@@ -941,10 +1028,10 @@ export default function AdminProfilePage() {
                   ]
                     .filter(i => i.show)
                     .map((item, idx, arr) => (
-                      <div className="tl-item" key={idx}>
+                      <div className="tl-item" key={idx} style={{ animationDelay: `${idx * 0.08}s` }}>
                         <div className="tl-col">
-                          <div className="tl-dot" style={{ background: item.dot }} />
-                          {idx < arr.length - 1 && <div className="tl-line" />}
+                          <div className="tl-dot" style={{ background: item.dot, animationDelay: `${idx * 0.08}s` }} />
+                          {idx < arr.length - 1 && <div className="tl-line" style={{ animationDelay: `${idx * 0.08}s` }} />}
                         </div>
                         <div className="tl-body">
                           <div className="tl-ttl">{item.title}</div>
@@ -959,39 +1046,6 @@ export default function AdminProfilePage() {
                   )}
                 </div>
               </Panel>
-            </div>
-          )}
-
-          {/* ── Tab: Dịch vụ ── */}
-          {tab === "services" && (
-            <div className="anim d3" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {services.length > 0 && (
-                <Panel title="Dịch vụ hiệu lực" icon={<FiLayers size={13} />}>
-                  <div className="services-wrap">
-                    {services.map((s) => (
-                      <Pill key={s.id || s._id || s.code || s.name} cls="pill-blue">
-                        {s.name || s.code || "Dịch vụ"}
-                      </Pill>
-                    ))}
-                  </div>
-                </Panel>
-              )}
-              {available.length > 0 && (
-                <Panel title="Dịch vụ khả dụng" icon={<FiGrid size={13} />}>
-                  <div className="services-wrap">
-                    {available.map((s) => (
-                      <Pill key={s.id || s._id || s.code || s.name} cls="pill-gray">
-                        {s.name || s.code || "Dịch vụ"}
-                      </Pill>
-                    ))}
-                  </div>
-                </Panel>
-              )}
-              {services.length === 0 && available.length === 0 && (
-                <div className="panel">
-                  <div className="svc-empty">Chưa được phân quyền dịch vụ nào</div>
-                </div>
-              )}
             </div>
           )}
 

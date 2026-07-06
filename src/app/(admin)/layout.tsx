@@ -39,11 +39,17 @@ const hasAdminToken = () =>
   typeof window !== "undefined" && Boolean(localStorage.getItem("adminToken"));
 
 const navItems: NavItem[] = [
-  { href: "/admin",             label: "Thống kê",   icon: FiActivity     },
-  { href: "/admin/users",       label: "Nhân viên",  icon: FiUsers        },
+  { href: "/admin",             label: "Thống kê",   icon: FiActivity },
+
   { href: "/admin/counter",     label: "Phòng",      icon: TbBuildingBank },
-  { href: "/admin/services",    label: "Quầy",       icon: TbLayoutGrid   },
-  { href: "/admin/printers",    label: "Máy in",     icon: FiPrinter      },
+  { href: "/admin/services",    label: "Quầy",       icon: TbLayoutGrid },
+  { href: "/admin/users",       label: "Nhân viên",  icon: FiUsers },
+
+  { href: "/admin/search",      label: "Tra cứu vé", icon: FiSearch },
+  { href: "/admin/reports",     label: "Báo cáo",    icon: FiFileText },
+  { href: "/admin/audit-logs",  label: "Nhật ký",    icon: FiClock },
+
+  { href: "/admin/printers",    label: "Máy in",     icon: FiPrinter },
   {
     href: "/admin/ai-assistant",
     label: "Trợ lý AI",
@@ -53,12 +59,10 @@ const navItems: NavItem[] = [
       { href: "/admin/public-ai",    label: "AI tra cứu (Dân)" },
     ],
   },
-  { href: "/admin/settings",    label: "Cài đặt",    icon: FiSettings     },
-  { href: "/admin/reports",     label: "Báo cáo",    icon: FiFileText     },
-  { href: "/admin/search",      label: "Tra cứu vé", icon: FiSearch       },
-  { href: "/admin/permissions", label: "Phân quyền", icon: FiShield       },
-  { href: "/admin/audit-logs",  label: "Nhật ký",    icon: FiClock        },
-  { href: "/admin/profile",     label: "Hồ sơ",      icon: FiUser         },
+
+  { href: "/admin/settings",    label: "Cài đặt",    icon: FiSettings },
+  { href: "/admin/permissions", label: "Phân quyền", icon: FiShield },
+  { href: "/admin/profile",     label: "Hồ sơ",      icon: FiUser },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -204,9 +208,13 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                 })
                 .filter((item): item is NavItem => {
                   if (item === null) return false;
-                  // Mục "Phân quyền" chỉ dành cho superAdmin hoặc admin toàn quyền
+                  // Mục "Phân quyền" (quản lý admin khác + cấp/thu hồi Super Admin)
+                  // chỉ dành cho Super Admin thật (isSuperAdmin === true). Trước đây
+                  // còn cho phép cả admin "Toàn quyền" (adminPermissions == null) vào,
+                  // nhưng đó là quyền truy cập TÍNH NĂNG, không phải quyền quản trị admin
+                  // khác — gây ra lỗi admin phụ có thể chỉnh cờ Super Admin của người khác.
                   if (item.href === "/admin/permissions") {
-                    return adminUser?.isSuperAdmin || adminUser?.adminPermissions == null;
+                    return adminUser?.isSuperAdmin === true;
                   }
                   // /admin/profile luôn hiển thị
                   if (item.href === "/admin/profile") return true;
