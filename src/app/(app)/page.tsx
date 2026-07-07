@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import * as RiIcons from "react-icons/ri";
 import type { IconType } from "react-icons";
+import { io, Socket } from "socket.io-client";
 import AppErrorState from "@/components/AppErrorState";
-import { getPublicApiBase } from "@/lib/runtime-config";
+import { getPublicApiBase, getSocketBaseUrl } from "@/lib/runtime-config";
 
 interface Service {
   _id: string;
@@ -119,6 +120,29 @@ export default function HomePage() {
 
   useEffect(() => {
     void loadServices();
+  }, [loadServices]);
+
+  // Lắng nghe realtime: mỗi khi admin lưu/xóa/bật/tắt "giờ lấy vé" (schedule) hoặc
+  // mở/đóng thủ công 1 dịch vụ, backend sẽ bắn socket "services-updated" —
+  // ta tải lại danh sách dịch vụ ngay để khoá/mở nút mà KHÔNG cần reload trang.
+  useEffect(() => {
+    const url = getSocketBaseUrl();
+    if (!url) return;
+
+    const socket: Socket = io(url, {
+      transports: ["websocket", "polling"],
+    });
+
+    const handleServicesUpdated = () => {
+      void loadServices();
+    };
+
+    socket.on("services-updated", handleServicesUpdated);
+
+    return () => {
+      socket.off("services-updated", handleServicesUpdated);
+      socket.disconnect();
+    };
   }, [loadServices]);
 
   // Cleanup on unmount
