@@ -11,6 +11,20 @@ import {
   onSocketError,
   onStaffDisplayUpdated,
 } from "@/lib/staff-socket";
+import { useTTS } from "@/hooks/useTTS";
+import { getPublicApiBase } from "@/lib/runtime-config";
+
+// Các "reason" mà backend gửi kèm sự kiện staff-display-updated khi thực sự
+// có một lượt gọi số / gọi lại — chỉ những trường hợp này mới cần đọc loa.
+// (đối chiếu ticket.action.service.js phía backend)
+const CALL_REASONS = new Set([
+  "ticket-called",
+  "call-next",
+  "call-by-id",
+  "ticket-recalled",
+  "recall-ticket",
+  "recall-processing",
+]);
 
 // ── Display mode type ──────────────────────────────────────────────────────
 type DisplayMode = "service" | "queue";
@@ -33,6 +47,7 @@ interface Counter {
   number: number;
   isActive: boolean;
   processedCount: number;
+  ttsEnabled?: boolean;
 }
 
 interface Service {
@@ -80,6 +95,26 @@ export default function CounterDisplayPage() {
   const [displayMode, setDisplayModeState] = useState<DisplayMode>("service");
   const rowElementsRef = useRef(new Map<string, HTMLDivElement>());
   const previousRowRectsRef = useRef(new Map<string, DOMRect>());
+
+  // ── Đọc số ngay tại trình duyệt của phòng này (không phụ thuộc server) ──
+  const { speak } = useTTS();
+  const [globalTtsEnabled, setGlobalTtsEnabled] = useState(true);
+  // Một số trình duyệt (đặc biệt khi chạy kiosk trên TV, không có tương tác
+  // người dùng) chặn phát âm thanh cho tới khi có 1 cú click/chạm đầu tiên
+  // trên trang. Hiển thị nút "Bật âm thanh" để mở khóa thủ công 1 lần/ngày
+  // nếu không cấu hình được cờ --autoplay-policy=no-user-gesture-required.
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const unlockAudio = useCallback(() => {
+    void speak(" ").catch(() => {});
+    setAudioUnlocked(true);
+  }, [speak]);
+  // Chống xử lý trùng CÙNG MỘT sự kiện (vd socket phát lại do reconnect),
+  // KHÔNG phải chống đọc lại cùng 1 vé — nhân viên được phép "gọi lại" cùng
+  // một vé nhiều lần nếu đương sự chưa tới, mỗi lần gọi lại vẫn phải đọc.
+  // Mỗi lần backend emit sự kiện đều kèm updatedAt mới (timestamp riêng),
+  // nên dùng updatedAt làm khóa chống trùng là an toàn và không chặn nhầm
+  // các lượt gọi lại hợp lệ.
+  const lastSpokenEventKeyRef = useRef<string | null>(null);
 
   const applySnapshot = (snapshot: StaffDisplaySnapshot) => {
     setData({
@@ -137,12 +172,44 @@ export default function CounterDisplayPage() {
   }, [counterParam, fetchDisplayData]);
 
   useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(`${getPublicApiBase()}/settings/tts`);
+        const json = await res.json();
+        if (active) setGlobalTtsEnabled(json?.data?.tts_enabled !== false);
+      } catch {
+        if (active) setGlobalTtsEnabled(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!resolvedCounterId) return;
     const socket = createStaffSocket();
 
     const unsubscribe = onStaffDisplayUpdated(socket, (payload: StaffDisplayUpdatedPayload) => {
       if (payload.counterId && payload.counterId !== resolvedCounterId) return;
       applySnapshot(payload.data);
+
+      const ticket = payload.data.currentTicket;
+      const isCallEvent = CALL_REASONS.has(payload.reason);
+      const eventKey = `${ticket?.id ?? ""}-${payload.updatedAt ?? ""}`;
+      const alreadyHandled = lastSpokenEventKeyRef.current === eventKey;
+      const ttsAllowed =
+        globalTtsEnabled && payload.data.counter.ttsEnabled !== false;
+
+      if (isCallEvent && ticket && !alreadyHandled && ttsAllowed) {
+        lastSpokenEventKeyRef.current = eventKey;
+        const number =
+          ticket.displayNumber ||
+          ticket.formattedNumber ||
+          String(ticket.number).padStart(3, "0");
+        void speak(`Mời số ${number} đến ${payload.data.counter.name}`);
+      }
     });
     const unsubscribeSocketError = onSocketError(socket, (payload) => {
       console.error("Display socket room error:", payload);
@@ -165,7 +232,6 @@ export default function CounterDisplayPage() {
     };
   }, [resolvedCounterId]);
 
-  // Poll display mode mỗi 30 giây để nhận thay đổi admin realtime
   useEffect(() => {
     const pollMode = async () => {
       try {
@@ -249,7 +315,6 @@ export default function CounterDisplayPage() {
     );
   }
 
-  // ── Queue mode layout (Document 2 — danh sách chờ) ──────────────────────
   if (displayMode === "queue") {
     const TABLE_SAFE_SPACE = "clamp(12px, 1.4dvh, 24px)";
     const TABLE_ROW_HEIGHT = `calc((${VIEWPORT_HEIGHT} - ${TOP_HEADER_HEIGHT} - ${INFO_BAR_HEIGHT} - ${TABLE_HEADER_HEIGHT} - ${TABLE_SAFE_SPACE}) / 5)`;
@@ -262,6 +327,14 @@ export default function CounterDisplayPage() {
 
     return (
       <div className="displayPortraitViewport" style={{ width: "100vw", height: VIEWPORT_HEIGHT, overflow: "hidden", background: "#091a2d" }}>
+        {!audioUnlocked && (
+          <button
+            onClick={unlockAudio}
+            style={{ position: "fixed", top: 12, right: 12, zIndex: 9999, background: "#ffd86d", color: "#003366", fontWeight: 800, border: "none", borderRadius: 999, padding: "10px 18px", fontSize: 14, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.25)" }}
+          >
+            Bật âm thanh
+          </button>
+        )}
         <div className="displayPortraitStage">
           <div className="displayPortraitCanvas" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "linear-gradient(180deg, #fdfcf9 0%, #f8f6f1 32%, #f3f3f3 100%)", padding: 0, margin: 0, overflow: "hidden", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", color: "#003366" }}>
             {/* Header */}
@@ -376,6 +449,14 @@ export default function CounterDisplayPage() {
       className="displayPortraitViewport"
       style={{ width: "100vw", height: VIEWPORT_HEIGHT, overflow: "hidden", background: "#091a2d" }}
     >
+      {!audioUnlocked && (
+        <button
+          onClick={unlockAudio}
+          style={{ position: "fixed", top: 12, right: 12, zIndex: 9999, background: "#ffd86d", color: "#003366", fontWeight: 800, border: "none", borderRadius: 999, padding: "10px 18px", fontSize: 14, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.25)" }}
+        >
+          Bật âm thanh
+        </button>
+      )}
       <div className="displayPortraitStage">
         <div
           className="displayPortraitCanvas"

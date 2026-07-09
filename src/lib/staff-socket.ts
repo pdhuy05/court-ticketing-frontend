@@ -22,6 +22,7 @@ export interface StaffDisplaySnapshot {
     number: number;
     isActive: boolean;
     processedCount: number;
+    ttsEnabled?: boolean;
   };
   services: Array<{ id: string; _id?: string; name: string; code: string; icon?: string; displayOrder?: number; isActive?: boolean }>;
   availableServices?: Array<{ id: string; _id?: string; name: string; code: string; icon?: string; displayOrder?: number; isActive?: boolean }>;
