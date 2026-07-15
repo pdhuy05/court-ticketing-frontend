@@ -530,7 +530,6 @@ export default function HomePage() {
                 </div>
 
                 <div className="closed-modal-service-wrap">
-                  <span className="closed-modal-service-label">Dịch vụ</span>
                   <span className="closed-modal-service">{modal.serviceName}</span>
                 </div>
 

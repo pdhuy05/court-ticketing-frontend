@@ -45,6 +45,7 @@ export default function AppLayout({
 }>) {
   const pathname = usePathname();
   const isStaffLogin = pathname === "/staff/login";
+  const isHomeRoute = pathname === "/";
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function AppLayout({
 
   return (
     <>
-      <NewTicketGlobalSocket />
+      {!isHomeRoute && <NewTicketGlobalSocket />}
       <div className="app-shell" style={{ display: "flex", flexDirection: "column" }}>
         {!isStaffLogin && (
           <header className="app-header">

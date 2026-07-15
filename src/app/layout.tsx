@@ -31,6 +31,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable}`}
       style={{ height: "100%", width: "100%" }}
+      suppressHydrationWarning
     >
       <head>
         <link
@@ -39,6 +40,7 @@ export default function RootLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         style={{
           margin: 0,
           padding: 0,

@@ -76,16 +76,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 function AdminLayoutInner({ children }: { children: ReactNode }) {
   const { siteConfig } = useSiteConfig();
   const router    = useRouter();
-  const pathname  = usePathname(); // Lưu ý: đây là pathname THẬT trên browser (secret path), không phải "/admin/..."
+  const pathname  = usePathname(); 
   const routerRef = useRef(router);
 
-  const [isLoggedIn,         setIsLoggedIn        ] = useState(hasAdminToken);
-  const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(getCachedAdminUser);
+  const [isLoggedIn,         setIsLoggedIn        ] = useState(false);
+  const [adminUser,          setAdminUser          ] = useState<AdminProfile | null>(null);
   const [showLogoutConfirm,  setShowLogoutConfirm  ] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed ] = useState(false);
   const [openGroup,          setOpenGroup          ] = useState<string | null>(null);
 
-  // base = "/p-xxxxx" (secret path hiện tại) hoặc "/admin" nếu không có cookie (fallback an toàn)
+  useEffect(() => {
+    setIsLoggedIn(hasAdminToken());
+    setAdminUser(getCachedAdminUser());
+  }, []);
+
   const base = adminPath("/admin");
   const loginHref = adminPath("/admin/login");
   const isLoginPage = pathname === loginHref;
@@ -125,8 +129,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
 
   const isGroupActive = (item: NavItem) =>
     item.children ? item.children.some((c) => isActive(c.href)) : isActive(item.href);
-
-  // Tự mở nhóm chứa trang đang xem (vd: vào thẳng link /admin/public-ai).
   useEffect(() => {
     const activeParent = navItems.find((item) => item.children && isGroupActive(item));
     if (activeParent) setOpenGroup(activeParent.href);
@@ -198,7 +200,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
               {navItems
                 .map((item) => {
                   if (!item.children) return item;
-                  // Lọc children theo quyền, ẩn cả nhóm nếu không còn child nào được phép xem.
                   const visibleChildren = item.children.filter((c) => {
                     const perm = ROUTE_PERMISSION_MAP[c.href] as AdminPermission | undefined;
                     if (!perm) return true;
@@ -208,18 +209,11 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                 })
                 .filter((item): item is NavItem => {
                   if (item === null) return false;
-                  // Mục "Phân quyền" (quản lý admin khác + cấp/thu hồi Super Admin)
-                  // chỉ dành cho Super Admin thật (isSuperAdmin === true). Trước đây
-                  // còn cho phép cả admin "Toàn quyền" (adminPermissions == null) vào,
-                  // nhưng đó là quyền truy cập TÍNH NĂNG, không phải quyền quản trị admin
-                  // khác — gây ra lỗi admin phụ có thể chỉnh cờ Super Admin của người khác.
                   if (item.href === "/admin/permissions") {
                     return adminUser?.isSuperAdmin === true;
                   }
-                  // /admin/profile luôn hiển thị
                   if (item.href === "/admin/profile") return true;
-                  if (item.children) return true; // đã lọc quyền ở bước trên
-                  // Các route khác: kiểm tra permission tương ứng (bao gồm audit-logs)
+                  if (item.children) return true; 
                   const perm = ROUTE_PERMISSION_MAP[item.href] as AdminPermission | undefined;
                   if (!perm) return true;
                   return hasPermission(adminUser, perm);
@@ -228,7 +222,6 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
                 const Icon   = item.icon;
                 const active = isGroupActive(item);
 
-                // ── Mục có nhóm con (vd: "Trợ lý AI") ──────────────────
                 if (item.children) {
                   const isOpen = openGroup === item.href && !isSidebarCollapsed;
                   return (
